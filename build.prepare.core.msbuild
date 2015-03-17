@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0"
+         DefaultTargets="Build_Core_Run"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <!-- Defines whether the current script file has been loaded / imported or not -->
+        <ExistsBuildSlaves>true</ExistsBuildSlaves>
+
+        <!-- The full path to the settings file that contains all the settings for the build process -->
+        <BuildPropertyFile Condition=" '$(BuildPropertyFile)' == '' ">UNDEFINED</BuildPropertyFile>
+    </PropertyGroup>
+
+    <Import Project="$(BuildPropertyFile)"
+            Condition="Exists('$(BuildPropertyFile)') AND '$(ExistsSettings)' != 'true' " />
+
+    <PropertyGroup>
+        <!-- Build flags -->
+        <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
+        <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
+
+        <!-- Files -->
+        <FileSemanticVersion Condition=" '$(FileSemanticVersion)' == '' ">$(DirBuildTemp)\semantic_version.json</FileSemanticVersion>
+
+        <!-- Version number -->
+        <VersionSemantic>0</VersionSemantic>
+    </PropertyGroup>
+
+    <Import Project="$(DirMsBuildShared)\shared.templatetokens.msbuild"
+            Condition="Exists('$(DirMsBuildShared)\shared.templatetokens.msbuild') AND '$(ExistsSharedTemplateTokens)' != 'true' " />
+
+    <Import Project="$(DirMsBuildExtensions)\GetSemanticVersionFromFile.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\GetSemanticVersionFromFile.msbuild') AND '$(ExistsExtensionsGetSemanticVersionFromFile)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
+
+    <Target Name="Build_Core_Run" DependsOnTargets="_Build_Core_DisplayInfo">
+        <CallTarget Targets="_Build_Core_GetVersion" />
+        <CallTarget Targets="_Build_Core_GatherScriptFiles" />
+        <CallTarget Targets="_Build_Core_GatherCookbooks" />
+        <CallTarget Targets="_Build_Core_GatherTemplates" />
+    </Target>
+
+    <Target Name="_Build_Core_DisplayInfo">
+        <Message Text="Project directory structure:" />
+        <Message Text="The workspace is located at:                                      $(DirWorkspace)" />
+        <Message Text="The directory containing the build output is located at:          $(DirBuild)" />
+        <Message Text="The directory containing the build logs is located at:            $(DirBuildLogs)" />
+        <Message Text="The directory containing the temporary build files is located at: $(DirBuildTemp)" />
+        <Message Text="The directory containing the configuration is located at:         $(DirConfig)" />
+        <Message Text="The directory containing the installation scripts is located at:  $(DirScripts)" />
+        <Message Text=" " />
+    </Target>
+
+    <Target Name="_Build_Core_GetVersion" Condition="Exists('$(FileSemanticVersion)')">
+        <GetSemanticVersionFromFile VersionFile="$(FileSemanticVersion)"
+                                    Condition="Exists('$(FileSemanticVersion)') AND '$(ShouldExecute)' == 'true' ">
+            <Output TaskParameter="VersionSemantic" PropertyName="VersionSemantic" />
+        </GetSemanticVersionFromFile>
+
+        <Message Text="Version: $(VersionSemantic)" />
+    </Target>
+
+    <Target Name="_Build_Core_GatherScriptFiles">
+        <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreScripts)"
+                 Condition="!Exists('$(DirBuildTempCoreScripts)')" />
+
+        <ItemGroup>
+            <ScriptFiles Include="$(DirScripts)\**\*.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ScriptFiles)"
+              DestinationFiles="@(ScriptFiles->'$(DirBuildTempCoreScripts)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Build_Core_GatherCookbooks">
+        <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooks)"
+                 Condition="!Exists('$(DirBuildTempCoreWCookbooks)')" />
+
+        <ItemGroup>
+            <CookbookFiles Include="$(DirCookbooks)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(CookbookFiles)"
+              DestinationFiles="@(CookbookFiles->'$(DirBuildTempCoreCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Build_Core_GatherTemplates">
+        <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreTemplates)"
+                 Condition="!Exists('$(DirBuildTempCoreTemplates)')" />
+
+        <ItemGroup>
+            <TemplateFiles Include="$(DirTemplates)\**\*.*"
+                           Exclude="$(DirTemplates)\*.nuspec"/>
+        </ItemGroup>
+        <Copy SourceFiles="@(TemplateFiles)"
+              DestinationFiles="@(TemplateFiles->'$(DirBuildTempCoreTemplates)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+</Project>
