@@ -60,8 +60,6 @@ $commonParameterSwitches =
     }
 
 # Load the helper functions
-$winrmHelpers = Join-Path (Split-Path -Parent $azureScriptDirectory) WinRM.ps1
-. $winrmHelpers
 $azureHelpers = Join-Path $azureScriptDirectory Azure.ps1
 . $azureHelpers
 
@@ -124,8 +122,7 @@ Write-Verbose "imageName: $imageName"
 $imageLabel = $config.service.image.label
 Write-Verbose "imageLabel: $imageLabel"
 
-$remoteConfigurationDirectory = 'c:\configuration'
-$remoteLogDirectory = "c:\logs"
+[string[]]$cookbookNames = @("master")
 
 # Set the storage account for the selected subscription
 Set-AzureSubscription -SubscriptionName $subscriptionName -CurrentStorageAccount $storageAccount @commonParameterSwitches
@@ -159,44 +156,16 @@ try
     $vm = Get-AzureVM -ServiceName $resourceGroupName -Name $vmName
     Write-Verbose ("Get-PSSessionForAzureVM complete - VM state: " + $vm.Status)
 
-    # Create the installer directory on the virtual machine
-    Copy-FilesToRemoteMachine -session $session -localDirectory $installationDirectory -remoteDirectory $remoteConfigurationDirectory
-
-    $vm = Get-AzureVM -ServiceName $resourceGroupName -Name $vmName
-    Write-Verbose ("Copy-FilesToRemoteMachine complete - VM state: " + $vm.Status)
-
-    # Execute the remote installation scripts
     $hasError = $false
     try
     {
-        Invoke-Command `
-            -Session $session `
-            -ArgumentList @( (Join-Path $remoteConfigurationDirectory (Split-Path -Leaf $installationScript)), $remoteConfigurationDirectory, $remoteLogDirectory ) `
-            -ScriptBlock {
-                param(
-                    [string] $installationScript,
-                    [string] $configurationDirectory,
-                    [string] $logDirectory
-                )
-
-                & $installationScript -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookName 'master'
-            } `
-             @commonParameterSwitches
+        $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
+        & $newWindowsResource -session $session -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
     }
     catch
     {
         $hasError = $true
         Write-Output ("Error while installing applications. Exception is: " + $_.Exception.ToString())
-    }
-    finally
-    {
-        Write-Verbose "Copying log files from VM ..."
-        Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
-
-        Write-Verbose "Copied log files from VM"
-
-        Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteConfigurationDirectory
-        Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory
     }
 
     if (-not $hasError)
