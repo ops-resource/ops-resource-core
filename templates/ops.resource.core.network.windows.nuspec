@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Ops.Resource.Core.Network.Windows</id>
+        <version>$VersionSemantic$</version>
+        <authors>P. van der Velde</authors>
+        <owners>P. van der Velde</owners>
+        <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+        <projectUrl>$CompanyUrl$</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>
+            Provides the core cookbooks and scripts that are used to create new Windows machine images on a local network.
+        </description>
+        <dependencies>
+            $Dependencies$
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="$DirOutput$\cookbooks\**\*.*" target="cookbooks" />
+        <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
+        <file src="$DirOutput$\scripts\host\network\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\templates\host\windows\network\*.*" target="templates\host" />
+    </files>
+</package>
