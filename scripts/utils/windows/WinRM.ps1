@@ -1,31 +1,31 @@
 <#
     .SYNOPSIS
- 
+
     Copies a file to the given remote path on the machine that the session is connected to.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Copy-ItemToRemoteMachine function copies a local file to the given remote path on the machine that the session is connected to.
- 
- 
+
+
     .PARAMETER localPath
- 
+
     The full path of the file that should be copied.
- 
- 
+
+
     .PARAMETER remotePath
- 
+
     The full file path to which the local file should be copied
- 
- 
+
+
     .PARAMETER session
- 
+
     The PSSession that provides the connection between the local machine and the remote machine.
- 
- 
+
+
     .EXAMPLE
- 
+
     Copy-ItemToRemoteMachine -localPath 'c:\temp\myfile.txt' -remotePath 'c:\remote\myfile.txt' -session $session
 #>
 function Copy-ItemToRemoteMachine
@@ -41,7 +41,7 @@ function Copy-ItemToRemoteMachine
     $content = [Io.File]::ReadAllBytes( $localPath )
     $contentsizeMB = $content.Count / 1MB + 1MB
 
-    Write-Output "Copying $fileName from $localPath to $remotePath on $session.Name ..."
+    Write-Output "Copying $fileName from $localPath to $remotePath on $($session.Name) ..."
 
     # Open local file
     try
@@ -51,7 +51,7 @@ function Copy-ItemToRemoteMachine
     }
     catch
     {
-        Write-Error "Could not open local file $localPath because:" $_.Exception.ToString()
+        Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -64,7 +64,7 @@ function Copy-ItemToRemoteMachine
                 param(
                     $remFile
                 )
-                
+
                 $dir = Split-Path -Parent $remFile
                 if (-not (Test-Path $dir))
                 {
@@ -78,7 +78,7 @@ function Copy-ItemToRemoteMachine
     }
     catch
     {
-        Write-Error "Could not open remote file $remotePath because:" $_.Exception.ToString()
+        Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -99,7 +99,7 @@ function Copy-ItemToRemoteMachine
         }
         catch
         {
-            Write-Error "Could not copy $fileName to $($Connection.Name) because:" $_.Exception.ToString()
+            Write-Error "Could not copy $fileName to $($Connection.Name) because: $($_.Exception.ToString())"
             return $false
         }
         finally
@@ -117,7 +117,7 @@ function Copy-ItemToRemoteMachine
     }
     catch
     {
-        Write-Error "Could not close remote file $remotePath because:" $_.Exception.ToString()
+        Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -129,7 +129,7 @@ function Copy-ItemToRemoteMachine
     }
     catch
     {
-        Write-Error "Could not close local file $localPath because:" $_.Exception.ToString()
+        Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
         Return $false
     }
 }
@@ -141,7 +141,7 @@ function Read-FromRemoteStream
         [int] $chunkSize
     )
 
-    try 
+    try
     {
         $data = Invoke-Command `
             -Session $Session `
@@ -163,9 +163,9 @@ function Read-FromRemoteStream
 
         return $data
     }
-    catch 
+    catch
     {
-        Write-Error "Could not copy $fileName to $($Connection.Name) because:" $_.Exception.ToString()
+        Write-Error "Could not copy $fileName to $($Connection.Name) because: $($_.Exception.ToString())"
         return -1
     }
     finally
@@ -176,32 +176,32 @@ function Read-FromRemoteStream
 
 <#
     .SYNOPSIS
- 
+
     Copies a file from the given remote path on the machine that the session is connected to.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Copy-ItemFromRemoteMachine function copies a remote file to the given local path on the machine that the session is connected to.
- 
- 
+
+
     .PARAMETER remotePath
- 
+
     The full file path from which the local file should be copied
 
 
     .PARAMETER localPath
- 
+
     The full path of the file to which the file should be copied.
 
-  
+
     .PARAMETER session
- 
+
     The PSSession that provides the connection between the local machine and the remote machine.
- 
- 
+
+
     .EXAMPLE
- 
+
     Copy-ItemFromRemoteMachine -remotePath 'c:\remote\myfile.txt' -localPath 'c:\temp\myfile.txt' -session $session
 #>
 function Copy-ItemFromRemoteMachine
@@ -213,7 +213,7 @@ function Copy-ItemFromRemoteMachine
         [System.Management.Automation.Runspaces.PSSession] $session
     )
 
-    Write-Output "Copying $fileName from $remotePath to $localPath on $($session.Name) ..."
+    Write-Output "Copying $fileName from $localPath to $remotePath on $($session.Name) ..."
 
     # Open local file
     try
@@ -229,7 +229,7 @@ function Copy-ItemFromRemoteMachine
     }
     catch
     {
-        Write-Error "Could not open local file $localPath because:" $_.Exception.ToString()
+        Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -244,7 +244,7 @@ function Copy-ItemFromRemoteMachine
     }
     catch
     {
-        Write-Error "Could not open remote file $remotePath because:" $_.Exception.ToString()
+        Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -260,7 +260,7 @@ function Copy-ItemFromRemoteMachine
         }
         catch
         {
-            Write-Error "Could not copy $fileName from $($Connection.Name) because:" $_.Exception.ToString()
+            Write-Error "Could not copy $fileName from $($Connection.Name) because: $($_.Exception.ToString())"
             return $false
         }
         finally
@@ -276,7 +276,7 @@ function Copy-ItemFromRemoteMachine
     }
     catch
     {
-        Write-Error "Could not close local file $localPath because:" $_.Exception.ToString()
+        Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
         Return $false
     }
 
@@ -290,39 +290,39 @@ function Copy-ItemFromRemoteMachine
     }
     catch
     {
-        Write-Error "Could not close remote file $remotePath because:" $_.Exception.ToString()
+        Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
         Return $false
     }
 }
 
 <#
     .SYNOPSIS
- 
+
     Copies a set of files to a remote directory on a given remote machine.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Copy-FilesToRemoteMachine function copies a set of files to a remote directory on a given remote machine.
- 
- 
+
+
     .PARAMETER session
- 
+
     The PSSession that provides the connection between the local machine and the remote machine.
- 
- 
+
+
     .PARAMETER remoteDirectory
- 
+
     The full path to the remote directory into which the files should be copied. Defaults to 'c:\installers'
- 
- 
+
+
     .PARAMETER filesToCopy
- 
+
     The collection of local files that should be copied.
- 
- 
+
+
     .EXAMPLE
- 
+
     Copy-FilesToRemoteMachine -session $session -remoteDirectory 'c:\temp' -filesToCopy (Get-ChildItem c:\temp -recurse)
 #>
 function Copy-FilesToRemoteMachine
@@ -344,7 +344,8 @@ function Copy-FilesToRemoteMachine
             ErrorAction = "Stop"
         }
 
-    $filesToCopy = Get-ChildItem -File -Path $localDirectory -Recurse -Force @commonParameterSwitches | 
+    $filesToCopy = Get-ChildItem -Path $localDirectory -Recurse -Force @commonParameterSwitches |
+        Where-Object { -not $_.PsIsContainer } |
         Select-Object -ExpandProperty FullName
 
     # Push binaries to the new VM
@@ -355,38 +356,38 @@ function Copy-FilesToRemoteMachine
         $remotePath = Join-Path $remoteDirectory $relativePath
 
         Write-Verbose "Copying $fileToCopy to $remotePath"
-        Copy-ItemToRemoteMachine -localPath $fileToCopy -remotePath $remotePath -Session $session @commonParameterSwitches
+        Copy-ItemToRemoteMachine -localPath $fileToCopy -remotePath $remotePath -session $session @commonParameterSwitches
     }
 }
 
 <#
     .SYNOPSIS
- 
+
     Copies a set of files from a remote directory on a given remote machine.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Copy-FilesFromRemoteMachine function copies a set of files from a remote directory on a given remote machine.
- 
- 
+
+
     .PARAMETER session
- 
+
     The PSSession that provides the connection between the local machine and the remote machine.
- 
- 
+
+
     .PARAMETER remoteDirectory
- 
+
     The full path to the remote directory from which the files should be copied. Defaults to 'c:\logs'
- 
- 
+
+
     .PARAMETER localDirectory
- 
+
     The full path to the local directory into which the files should be copied.
- 
- 
+
+
     .EXAMPLE
- 
+
     Copy-FilesFromRemoteMachine -session $session -remoteDirectory 'c:\temp' -localDirectory 'c:\temp'
 #>
 function Copy-FilesFromRemoteMachine
@@ -422,8 +423,8 @@ function Copy-FilesFromRemoteMachine
             param(
                 [string] $dir
             )
-        
-            return Get-ChildItem -File -Recurse -Path $dir
+
+            return Get-ChildItem -Recurse -Path $dir
         } `
          @commonParameterSwitches
 
@@ -432,8 +433,7 @@ function Copy-FilesFromRemoteMachine
     foreach($fileToCopy in $remoteFiles)
     {
         $file = $fileToCopy.FullName
-        $relativePath = $file.SubString($remoteDirectory.Length)
-        $localPath = Join-Path $localDirectory $relativePath
+        $localPath = Join-Path $localDirectory (Split-Path -Leaf $file)
 
         Write-Verbose "Copying $fileToCopy to $localPath"
         Copy-ItemFromRemoteMachine -localPath $localPath -remotePath $file -Session $session @commonParameterSwitches
@@ -442,27 +442,27 @@ function Copy-FilesFromRemoteMachine
 
 <#
     .SYNOPSIS
- 
+
     Removes a directory on the given remote machine.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Remove-FilesFromRemoteMachine function removes a directory on the given remote machine.
- 
- 
+
+
     .PARAMETER session
- 
+
     The PSSession that provides the connection between the local machine and the remote machine.
- 
- 
+
+
     .PARAMETER remoteDirectory
- 
+
     The full path to the remote directory that should be removed
- 
- 
+
+
     .EXAMPLE
- 
+
     Remove-FilesFromRemoteMachine -session $session -remoteDirectory 'c:\temp'
 #>
 function Remove-FilesFromRemoteMachine
@@ -491,7 +491,7 @@ function Remove-FilesFromRemoteMachine
             param(
                 [string] $dir
             )
-        
+
             if (Test-Path $dir)
             {
                 Remove-Item -Path $dir -Force -Recurse

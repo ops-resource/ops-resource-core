@@ -1,17 +1,18 @@
 <#
     .SYNOPSIS
- 
+
     Executes the tests that verify whether the current machine has all the tools installed to allow it to work as a Windows Jenkins master.
- 
- 
+
+
     .DESCRIPTION
- 
-    The Verify-ApplicationsOnWindows script executes the tests that verify whether the current machine has all the tools installed to allow it to work as a Windows Jenkins master.
- 
- 
+
+    The Verify-ConfigurationOnWindowsMachine script executes the tests that verify whether the current machine has all the tools installed to
+    allow it to work as a jenkins windows machine.
+
+
     .EXAMPLE
- 
-    Verify-ApplicationsOnWindows
+
+    Verify-ConfigurationOnWindowsMachine.ps1
 #>
 [CmdletBinding()]
 param(
@@ -57,7 +58,7 @@ Add-Content -Path "C:\tools\DevKit2\config.yml" -Value " - $rubyPath"
 # rerun devkit install stuff
 Write-Output "Updating ruby with DevKit ..."
 $currentPath = $pwd
-try 
+try
 {
     sl "C:\tools\DevKit2\"
     & ruby "dk.rb" install
@@ -87,17 +88,18 @@ $env:SSL_CERT_FILE = $rubyCertFile
 
 Write-Output ("Environment variable SSL_CERT_FILE set to: " + $env:SSL_CERT_FILE)
 
-Write-Output "Installing ruby-wmi gem ..."
-& gem install ruby-wmi --version 0.4.0 --no-document --conservative --minimal-deps --verbose
+# Read the gems that need to be installed from a list
 
-Write-Output "Installing rest_client gem ..."
-& gem install rest_client --version 1.7.2 --no-document --conservative --minimal-deps --verbose
+Write-Output "Installing bundler gem ..."
+& gem install bundler --version 1.8.2 --no-document --conservative --minimal-deps --verbose
 
-Write-Output "Installing serverspec gem ..."
-& gem install serverspec --version 2.7.0 --no-document --conservative --minimal-deps --verbose
-
-Write-Output "Installing the RSpec JUnit formatter ..."
-& gem install rspec_junit_formatter --version 0.2.0 --no-document --conservative --minimal-deps --verbose
+# Install all the ruby gems that are required
+$bundleFiles = Get-ChildItem -Path $testDirectory -Include 'gemfile' -Recurse
+foreach($bundleFile in $bundleFiles)
+{
+    Write-Output "Installing gem files from $($bundleFile.FullName)"
+    & bundle install --clean --gemfile="$($bundleFile.FullName)" --no-cache
+}
 
 $currentDir = $pwd
 try
@@ -111,7 +113,7 @@ try
 
         $rspecPattern = "./*/*_spec.rb"
         Write-Output "Executing ServerSpec tests from: $pwd. With pattern: $rspecPattern"
-        & rspec --format documentation --format RspecJunitFormatter --out "$logDirectory\serverspec.xml" --pattern $rspecPattern
+        & rspec  --format documentation --format RspecJunitFormatter --out "$logDirectory\serverspec.xml" --pattern $rspecPattern
     }
     finally
     {

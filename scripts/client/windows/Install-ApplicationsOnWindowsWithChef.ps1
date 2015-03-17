@@ -1,12 +1,12 @@
 <#
     .SYNOPSIS
- 
+
     Takes all the actions necessary to prepare a Windows machine for use. The final use of the machine depends on the Chef cookbook that is
     provided.
- 
- 
+
+
     .DESCRIPTION
- 
+
     The Install-ApplicationsOnWindowsWithChef script takes all the actions necessary to prepare a Windows machine for use.
 
 
@@ -21,20 +21,20 @@
     The directory in which all the logs should be stored.
 
 
-    .PARAMETER cookbookName
+    .PARAMETER cookbookNames
 
-    The name of the cookbook that should be used to configure the current machine.
- 
- 
+    An array containing the names of the cookbooks that should be used to configure the current machine.
+
+
     .EXAMPLE
- 
-    Install-ApplicationsOnWindowsWithChef -configurationDirectory "c:\configuration" -logDirectory "c:\logs" -cookbookName "myCookbook"
+
+    Install-ApplicationsOnWindowsWithChef -configurationDirectory "c:\configuration" -logDirectory "c:\logs" -cookbookNames "myCookbook", "myOtherCookbook"
 #>
 [CmdletBinding()]
 param(
     [string] $configurationDirectory = "c:\configuration",
-    [string] $logDirectory          = "c:\logs",
-    [string] $cookbookName          = "master"
+    [string] $logDirectory           = "c:\logs",
+    [string[]] $cookbookNames        = "jenkinsmaster"
 )
 
 function Install-Msi
@@ -92,15 +92,18 @@ if (-not (Test-Path $logDirectory))
 
 # Download chef client. Note that this is obviously hard-coded but for now it will work. Later on we'll make this a configuration option
 Write-Output "Downloading chef installer ..."
-$chefClientInstallFile = "chef-windows-11.16.4-1.windows.msi"
-$chefClientDownloadUrl = "https://opscode-omnibus-packages.s3.amazonaws.com/windows/2008r2/x86_64/" + $chefClientInstallFile
+$chefClientInstallFile = "chef-windows-11.18.6-1.windows.msi"
 $chefClientInstall = Join-Path $configurationDirectory $chefClientInstallFile
-Invoke-WebRequest -Uri $chefClientDownloadUrl -OutFile $chefClientInstall -Verbose
-
-Write-Output "Chef download complete."
 if (-not (Test-Path $chefClientInstall))
 {
-    throw 'Failed to download the chef installer.'
+    $chefClientDownloadUrl = "https://opscode-omnibus-packages.s3.amazonaws.com/windows/2008r2/x86_64/" + $chefClientInstallFile
+    Invoke-WebRequest -Uri $chefClientDownloadUrl -OutFile $chefClientInstall -Verbose
+
+    Write-Output "Chef download complete."
+    if (-not (Test-Path $chefClientInstall))
+    {
+        throw 'Failed to download the chef installer.'
+    }
 }
 
 # Install the chef client
@@ -110,7 +113,7 @@ Write-Output "Installing chef from $chefClientInstall ..."
 $chefInstallLogFile = Join-Path $logDirectory "chef.install.log"
 Install-Msi -msiFile "$chefClientInstall" -logFile "$chefInstallLogFile"
 
-try 
+try
 {
     # Set the path for the cookbooks
     $chefConfigDir = Join-Path $env:UserProfile ".chef"
@@ -124,10 +127,10 @@ try
     if (-not (Test-Path $chefConfig))
     {
         Write-Output "Creating the chef configuration file"
-        Set-Content -Path $chefConfig -Value ('cookbook_path ["' + $configurationDirectory.Replace('\', '/') + '/cookbooks"]')
+        Set-Content -Path $chefConfig -Value ('cookbook_path ["' + $configurationDirectory.Replace('\', '/') + '/cookbooks"]') -Verbose
 
         # Make a copy of the config for debugging purposes
-        Copy-Item $chefConfig $logDirectory
+        Copy-Item $chefConfig $logDirectory -Verbose
     }
 
     $opscodePath = "c:\opscode"
@@ -153,11 +156,12 @@ try
     }
 
     Write-Output "Running chef-client ..."
-    try 
+    try
     {
-        & $chefClient -z -o $cookbookName
+        $cookbook = $cookbookNames -join ','
+        & $chefClient --local-mode --override-runlist $cookbook
     }
-    catch 
+    catch
     {
         Write-Output ("chef-client failed. Error was: " + $_.Exception.ToString())
     }
@@ -168,7 +172,7 @@ try
         $chefPath = "$userProfile\.chef\local-mode-cache\cache"
         if (Test-Path $chefPath)
         {
-            Get-ChildItem -Path $chefPath -Include *.pid,*.out | Copy-Item -Destination $logDirectory
+            Get-ChildItem -Path $chefPath -Recurse -Force | Copy-Item -Destination $logDirectory
         }
 
         throw "Chef-client failed. Exit code: $LastExitCode"

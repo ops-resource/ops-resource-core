@@ -152,7 +152,7 @@ try
     # Verify that everything is there
     Invoke-Command `
         -Session $session `
-        -ArgumentList @( (Join-Path $remoteDirectory 'Verify-ApplicationsOnWindows.ps1'), (Join-Path $remoteDirectory "spec"), $remoteLogDirectory ) `
+        -ArgumentList @( (Join-Path $remoteDirectory 'Verify-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteDirectory "spec"), $remoteLogDirectory ) `
         -ScriptBlock {
             param(
                 [string] $verificationScript,
