@@ -61,8 +61,6 @@ $commonParameterSwitches =
     }
 
 # Load the helper functions
-$winrmHelpers = Join-Path (Split-Path -Parent $azureScriptDirectory) WinRM.ps1
-. $winrmHelpers
 $azureHelpers = Join-Path $azureScriptDirectory Azure.ps1
 . $azureHelpers
 
@@ -116,11 +114,8 @@ Write-Verbose "imageName: $imageName"
 $imageLabel = $config.service.image.label
 Write-Verbose "imageLabel: $imageLabel"
 
-$remoteLogDirectory = "c:\logs"
-
 # Set the storage account for the selected subscription
 Set-AzureSubscription -SubscriptionName $subscriptionName -CurrentStorageAccount $storageAccount @commonParameterSwitches
-
 
 # The name of the VM is technically irrevant because we're only going to create it to check that the image is correct.
 # So make sure it's unique but don't bother with an actual name
@@ -146,46 +141,8 @@ try
         -adminName $adminName `
         -adminPassword $adminPassword
 
-    $remoteDirectory = 'c:\verification'
-    Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remoteDirectory $remoteDirectory
-
-    # Verify that everything is there
-    Invoke-Command `
-        -Session $session `
-        -ArgumentList @( (Join-Path $remoteDirectory 'Verify-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteDirectory "spec"), $remoteLogDirectory ) `
-        -ScriptBlock {
-            param(
-                [string] $verificationScript,
-                [string] $testDirectory,
-                [string] $logDirectory
-            )
-
-            & $verificationScript -testDirectory $testDirectory -logDirectory $logDirectory
-        } `
-         @commonParameterSwitches
-
-    Write-Verbose "Copying log files from VM ..."
-    Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
-
-    $serverSpecLog = Join-Path $logDirectory 'serverspec.xml'
-    if (-not (Test-Path $serverSpecLog))
-    {
-        throw "Test failed. No serverspec log produced."
-    }
-
-    $serverSpecXml = [xml](Get-Content $serverSpecLog)
-    $tests = $serverSpecXml.testsuite.tests
-    $failures = $serverSpecXml.testsuite.failures
-    $errors = $serverSpecXml.testsuite.errors
-
-    if (($tests -gt 0) -and ($failures -eq 0) -and ($errors -eq 0))
-    {
-        Write-Output "Test PASSED"
-    }
-    else
-    {
-        throw "Test FAILED"
-    }
+    $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
+    & $testWindowsResource -session $session -testDirectory $testDirectory -logDirectory $logDirectory
 }
 finally
 {

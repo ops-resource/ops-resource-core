@@ -1,17 +1,17 @@
 <#
     .SYNOPSIS
 
-    Verifies that a given windows machine can indeed be used as a Jenkins slave.
+    Verifies that a given windows machine can indeed is configured correctly.
 
 
     .DESCRIPTION
 
-    The Verify-JenkinsWindowsSlave script verifies that a given windows machine can indeed be used as a Jenkins slave.
+    The Test-LocalNetworkResource script verifies that a given windows machine is configured correctly.
 
 
     .PARAMETER computerName
 
-    The name of the machine that should be set up as a Jenkins slave machine.
+    The name of the machine for which the configuration should be verified.
 
 
     .PARAMETER testDirectory
@@ -26,7 +26,7 @@
 
     .EXAMPLE
 
-    Verify-JenkinsWindowsSlave -computerName "AKTFSJS01" -testDirectory "c:\tests" -logDirectory "c:\logs"
+    Test-LocalNetworkResource -computerName "AKTFSJS01" -testDirectory "c:\tests" -logDirectory "c:\logs"
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
@@ -44,10 +44,6 @@ $commonParameterSwitches =
         Debug = $PSBoundParameters.ContainsKey('Debug');
         ErrorAction = "Stop"
     }
-
-# Load the helper functions
-$winrmHelpers = Join-Path $PSScriptRoot WinRM.ps1
-. $winrmHelpers
 
 if (-not (Test-Path $testDirectory))
 {
@@ -67,44 +63,5 @@ if ($session -eq $null)
 
 Write-Verbose "Connected to $computerName via $($session.Name)"
 
-$remoteDirectory = 'c:\verification'
-$remoteLogDirectory = "c:\logs"
-Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remoteDirectory $remoteDirectory
-
-# Verify that everything is there
-Invoke-Command `
-    -Session $session `
-    -ArgumentList @( (Join-Path $remoteDirectory 'Verify-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteDirectory "spec"), $remoteLogDirectory ) `
-    -ScriptBlock {
-        param(
-            [string] $verificationScript,
-            [string] $testDirectory,
-            [string] $logDirectory
-        )
-
-        & $verificationScript -testDirectory $testDirectory -logDirectory $logDirectory
-    } `
-    @commonParameterSwitches
-
-Write-Verbose "Copying log files from VM ..."
-Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
-
-$serverSpecLog = Join-Path $logDirectory 'serverspec.xml'
-if (-not (Test-Path $serverSpecLog))
-{
-    throw "Test failed. No serverspec log produced."
-}
-
-$serverSpecXml = [xml](Get-Content $serverSpecLog)
-$tests = $serverSpecXml.testsuite.tests
-$failures = $serverSpecXml.testsuite.failures
-$errors = $serverSpecXml.testsuite.errors
-
-if (($tests -gt 0) -and ($failures -eq 0) -and ($errors -eq 0))
-{
-    Write-Output "Test PASSED"
-}
-else
-{
-    throw "Test FAILED"
-}
+$testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
+& $testWindowsResource -session $session -testDirectory $testDirectory -logDirectory $logDirectory
