@@ -145,7 +145,7 @@
         <!-- NOTE: The 'DirWorkspace' property is always set to the top-level directory of the workspace / repository -->
 
         <!-- The directory that will contain all the files generated during the build process -->
-        <!-- <DirBuild Condition=" '$(DirBuild)' == '' ">$(DirWorkspace)\build</DirBuild> -->
+        <DirBuild Condition=" '$(DirBuild)' == '' ">$(DirWorkspace)\build</DirBuild>
 
         <!--
             The directory that will contain all the binaries generated during the build process.
@@ -161,22 +161,33 @@
         <!-- <DirBuildBinPlatformConfig Condition=" '$(DirBuildBinPlatformConfig)' == '' ">$([System.IO.Path]::GetFullPath('$(DirBuildBin)\$(PlatformWithoutSpaces)\$(Configuration)\'))</DirBuildBinPlatformConfig> -->
 
         <!-- The directory that will contain all the generated artifacts during the build process -->
-        <!-- <DirBuildDeploy Condition=" '$(DirBuildDeploy)' == '' ">$(DirBuild)\deploy</DirBuildDeploy> -->
+        <DirBuildDeploy Condition=" '$(DirBuildDeploy)' == '' ">$(DirBuild)\deploy</DirBuildDeploy>
 
         <!-- The directory that will contain all the generated build logs during the build process -->
-        <!-- <DirBuildLogs Condition=" '$(DirBuildLogs)' == '' ">$(DirBuild)\logs</DirBuildLogs> -->
+        <DirBuildLogs Condition=" '$(DirBuildLogs)' == '' ">$(DirBuild)\logs</DirBuildLogs>
 
         <!-- The directory that will contain all the temporary files needed during the build process -->
-        <!-- <DirBuildTemp Condition=" '$(DirBuildTemp)' == '' ">$(DirBuild)\temp</DirBuildTemp> -->
+        <DirBuildTemp Condition=" '$(DirBuildTemp)' == '' ">$(DirBuild)\temp</DirBuildTemp>
+        <DirBuildTempCore>$(DirBuildTemp)\core</DirBuildTempCore>
+        <DirBuildTempCoreScripts>$(DirBuildTempCore)\scripts</DirBuildTempCoreScripts>
+        <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
+        <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
+
+        <!-- The directory that contains the Chef cookbooks -->
+        <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
 
         <!-- The directory that contains all the NuGet packages for the project -->
-        <!-- <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages> -->
+        <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages>
 
-        <!-- The directory that contains the source files for the project -->
-        <!-- <DirSrc Condition=" '$(DirSrc)' == '' ">$(DirWorkspace)\src</DirSrc> -->
+        <!-- The directory that contains all the scripts for the project -->
+        <DirScripts Condition=" '$(DirScripts)' == '' ">$(DirWorkspace)\scripts</DirScripts>
+        <DirScriptsExisting Condition=" '$(DirScriptsExisting)' == '' ">$(DirScripts)\existing</DirScriptsExisting>
 
         <!-- The directory that contains the template files for the project -->
-        <!-- <DirTemplates Condition=" '$(DirTemplates)' == '' ">$(DirWorkspace)\templates</DirTemplates> -->
+        <DirTemplates Condition=" '$(DirTemplates)' == '' ">$(DirWorkspace)\templates</DirTemplates>
+        <DirTemplatesHost Condition=" '$(DirTemplatesHost)' == '' ">$(DirTemplates)\host</DirTemplatesHost>
+        <DirTemplatesHostNetwork Condition=" '$(DirTemplatesHostNetwork)' == '' ">$(DirTemplatesHost)\network</DirTemplatesHostNetwork>
+        <DirTemplatesHostNetworkWindows Condition=" '$(DirTemplatesHostNetworkWindows)' == '' ">$(DirTemplatesHostNetwork)\windows</DirTemplatesHostNetworkWindows>
     </PropertyGroup>
 
 
@@ -223,10 +234,14 @@
             <Properties>
             </Properties>
         </BuildStepsToExecute>
+
+        <!--
         <BuildStepsToExecute Include="$(BuildStepsPrepareReleaseNotes)">
             <Properties>
             </Properties>
         </BuildStepsToExecute>
+        -->
+
         <BuildStepsToExecute Include="$(BuildStepsPrepareVcsInfo)">
             <Properties>
             </Properties>
@@ -242,6 +257,7 @@
             </Properties>
         </BuildStepsToExecute>
 
+        <!--
         <BuildStepsToExecute Include="$(DirWorkspace)\analyze.rubocop.msbuild">
             <Properties>
             </Properties>
@@ -257,6 +273,7 @@
                 Platform=$(Platform)
             </Properties>
         </BuildStepsToExecute>
+        -->
 
         <BuildStepsToExecute Include="$(BuildStepsPackNuGet)">
             <Properties>
@@ -383,11 +400,9 @@
         The default templates, as indicated at the top of this file, are always available.
     -->
     <ItemGroup>
-        <!--
-        <TemplateTokens Include="">
-            <ReplacementValue></ReplacementValue>
+        <TemplateTokens Include="DirOutput">
+            <ReplacementValue>$(DirBuildTempCore)</ReplacementValue>
         </TemplateTokens>
-        -->
     </ItemGroup>
 
 
@@ -403,7 +418,14 @@
         Allows build templates.
     -->
     <ItemGroup>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.nuspec">
+        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.azure.windows.nuspec">
+            <ShouldBuildSymbols>false</ShouldBuildSymbols>
+            <IncludedDependencies>
+            </IncludedDependencies>
+            <ExcludedDependencies>
+            </ExcludedDependencies>
+        </NuGetPackageSpecs>
+        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.network.windows.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
             </IncludedDependencies>
