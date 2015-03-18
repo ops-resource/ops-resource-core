@@ -15,6 +15,16 @@
     The powershell remote session that can be used to connect to the machine that should be configured.
 
 
+    .PARAMETER resourceName
+
+    The name of the resource that is being created.
+
+
+    .PARAMETER resourceVersion
+
+    The version of the resource that is being created.
+
+
     .PARAMETER cookbookNames
 
     An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
@@ -48,6 +58,8 @@
 [CmdletBinding()]
 param(
     [System.Management.Automation.Runspaces.PSSession] $session = $(throw 'Please provide a Powershell remoting session that can be used to connect to the machine that needs to be initialized.'),
+    [string] $resourceName                                      = '',
+    [string] $resourceVersion                                   = '',
     [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
     [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
@@ -96,16 +108,18 @@ try
 {
     Invoke-Command `
         -Session $session `
-        -ArgumentList @( (Join-Path $remoteConfigurationDirectory (Split-Path -Leaf $installationScript)), $remoteConfigurationDirectory, $remoteLogDirectory, $cookbookNames ) `
+        -ArgumentList @( $resourceName, $resourceVersion, (Join-Path $remoteConfigurationDirectory (Split-Path -Leaf $installationScript)), $remoteConfigurationDirectory, $remoteLogDirectory, $cookbookNames ) `
         -ScriptBlock {
             param(
+                [string] $resourceName,
+                [string] $resourceVersion,
                 [string] $installationScript,
                 [string] $configurationDirectory,
                 [string] $logDirectory,
                 [string[]] $cookbookNames
             )
 
-            & $installationScript -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookNames $cookbookNames
+            & $installationScript -resourceName $resourceName -$resourceVersion $resourceVersion -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookNames $cookbookNames
         } `
         @commonParameterSwitches
 }

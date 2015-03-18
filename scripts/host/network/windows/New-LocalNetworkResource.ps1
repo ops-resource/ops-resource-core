@@ -15,6 +15,16 @@
     The name of the machine that should be set up.
 
 
+    .PARAMETER resourceName
+
+    The name of the resource that is being created.
+
+
+    .PARAMETER resourceVersion
+
+    The version of the resource that is being created.
+
+
     .PARAMETER cookbookNames
 
     An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
@@ -38,6 +48,8 @@
 [CmdletBinding()]
 param(
     [string] $computerName          = $(throw 'Please specify the name of the machine that should be configured.'),
+    [string] $resourceName          = '',
+    [string] $resourceVersion       = '',
     [string[]] $cookbookNames       = $(throw 'Please specify the names of the cookbooks that should be executed.'),
     [string] $installationDirectory = $(Join-Path $PSScriptRoot 'configuration'),
     [string] $logDirectory          = $(Join-Path $PSScriptRoot 'logs')
@@ -70,4 +82,4 @@ if ($session -eq $null)
 }
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-& $newWindowsResource -session $session -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
+& $newWindowsResource -session $session -resoruceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory

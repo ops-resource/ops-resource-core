@@ -122,6 +122,8 @@ Write-Verbose "imageName: $imageName"
 $imageLabel = $config.service.image.label
 Write-Verbose "imageLabel: $imageLabel"
 
+$resourceName = "Jenkins-Master"
+$resourceVersion = "0.0.0.1"
 [string[]]$cookbookNames = @("master")
 
 # Set the storage account for the selected subscription
@@ -160,7 +162,7 @@ try
     try
     {
         $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-        & $newWindowsResource -session $session -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
+        & $newWindowsResource -session $session -resourceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
     }
     catch
     {

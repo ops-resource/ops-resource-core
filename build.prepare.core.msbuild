@@ -20,6 +20,8 @@
 
         <!-- Files -->
         <FileSemanticVersion Condition=" '$(FileSemanticVersion)' == '' ">$(DirBuildTemp)\semantic_version.json</FileSemanticVersion>
+        <FileResourceCoreMetadataTemplate>$(DirCookbooksResourcesCore)\metadata.rb</FileResourceCoreMetadataTemplate>
+        <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourcesCore)\metadata.rb</FileResourceCoreMetadataGenerated>
 
         <!-- Version number -->
         <VersionSemantic>0</VersionSemantic>
@@ -93,6 +95,11 @@
         </ItemGroup>
         <Copy SourceFiles="@(CookbookFiles)"
               DestinationFiles="@(CookbookFiles->'$(DirBuildTempCoreCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+        <TemplateFile Template="$(FileResourceCoreMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreMetadataGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>
 
     <Target Name="_Build_Core_GatherTemplates">

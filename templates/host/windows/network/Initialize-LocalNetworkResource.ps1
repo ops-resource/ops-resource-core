@@ -34,16 +34,18 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
+$resourceName = '${ProductName}'
+$resourceVersion = '${VersionSemanticFull}'
 $cookbookNames = '${CookbookNames}'.Split(';')
 
 $installationDirectory = $(Join-Path $PSScriptRoot 'configuration')
 $testDirectory = $(Join-Path $PSScriptRoot 'verification')
 $logDirectory = $(Join-Path $PSScriptRoot 'logs')
 
-$installationScript = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-$verificationScript = Join-Path $PSScriptRoot 'Verify-WindowsResource.ps1'
+$installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
+$verificationScript = Join-Path $PSScriptRoot 'Verify-LocalNetworkResource.ps1'
 
-& $installationScript -computerName $computerName -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory @commonParameterSwitches
+& $installationScript -computerName $computerName -resourceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory @commonParameterSwitches
 
 & $verificationScript -computerName $computerName -testDirectory $testDirectory -logDirectory $logDirectory @commonParameterSwitches
 
