@@ -1,0 +1,13 @@
+Metrics/LineLength:
+  Max: 100
+  Enabled: false
+
+AllCops:
+  Exclude:
+    - 'build/temp/nuget/configuration/cookbooks/chef_handler/**/*'
+    - 'build/temp/nuget/configuration/cookbooks/iis/**/*'
+    - 'build/temp/nuget/configuration/cookbooks/ms_dotnet/**/*'
+    - 'build/temp/nuget/configuration/cookbooks/windows/**/*'
+    - 'cookbooks/**/*'
+    - 'spec/**/*'
+    - 'packages/**/*'

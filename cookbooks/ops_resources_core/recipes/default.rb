@@ -7,5 +7,5 @@
 # All rights reserved - Do Not Redistribute
 #
 
-include_recipe 'resources_core::consul'
-include_recipe 'resources_core::meta'
+include_recipe 'ops_resources_core::consul'
+include_recipe 'ops_resources_core::meta'

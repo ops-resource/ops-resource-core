@@ -40,6 +40,7 @@
         <CallTarget Targets="_Build_Core_GatherScriptFiles" />
         <CallTarget Targets="_Build_Core_GatherCookbooks" />
         <CallTarget Targets="_Build_Core_GatherTemplates" />
+        <CallTarget Targets="_Build_Core_CreateTestFiles" />
     </Target>
 
     <Target Name="_Build_Core_DisplayInfo">
@@ -80,7 +81,8 @@
               DestinationFiles="@(ScriptFiles->'$(DirBuildTempCoreScripts)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
-    <Target Name="_Build_Core_GatherCookbooks">
+    <Target Name="_Build_Core_GatherCookbooks"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize">
         <MakeDir Directories="$(DirBuild)"
                  Condition="!Exists('$(DirBuild)')" />
         <MakeDir Directories="$(DirBuildTemp)"
@@ -118,5 +120,19 @@
         </ItemGroup>
         <Copy SourceFiles="@(TemplateFiles)"
               DestinationFiles="@(TemplateFiles->'$(DirBuildTempCoreTemplates)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Build_Core_CreateTestFiles">
+        <ItemGroup>
+          <MetaLines Include="{" />
+          <MetaLines Include="    &quot;key&quot;: &quot;value&quot;" />
+          <MetaLines Include="}" />
+        </ItemGroup>
+
+        <WriteLinesToFile
+          File="$(DirBuildTempCore)\meta.json"
+          Lines="@(MetaLines)"
+          Overwrite="False"
+          Encoding="UTF-8" />
     </Target>
 </Project>

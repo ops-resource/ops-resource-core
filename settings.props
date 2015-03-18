@@ -257,7 +257,6 @@
             </Properties>
         </BuildStepsToExecute>
 
-        <!--
         <BuildStepsToExecute Include="$(DirWorkspace)\analyze.rubocop.msbuild">
             <Properties>
             </Properties>
@@ -273,7 +272,6 @@
                 Platform=$(Platform)
             </Properties>
         </BuildStepsToExecute>
-        -->
 
         <BuildStepsToExecute Include="$(BuildStepsPackNuGet)">
             <Properties>
