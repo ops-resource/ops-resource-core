@@ -72,6 +72,7 @@
 
         <ItemGroup>
             <ScriptFiles Include="$(DirScripts)\**\*.ps1" />
+            <ScriptFiles Include="$(DirScripts)\**\*.msbuild" />
         </ItemGroup>
         <Copy SourceFiles="@(ScriptFiles)"
               DestinationFiles="@(ScriptFiles->'$(DirBuildTempCoreScripts)\%(RecursiveDir)%(Filename)%(Extension)')" />

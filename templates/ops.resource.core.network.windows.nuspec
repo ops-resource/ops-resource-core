@@ -21,5 +21,6 @@
         <file src="$DirOutput$\scripts\host\network\windows\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.*" target="scripts\host" />
         <file src="$DirOutput$\templates\host\windows\network\*.*" target="templates\host" />
+        <file src="$DirOutput$\scripts\distribute.core.msbuild" />
     </files>
 </package>

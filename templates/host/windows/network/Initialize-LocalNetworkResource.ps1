@@ -34,8 +34,7 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
-[string[]]$cookbookNames = 'resources_core'
-$cookbookNames += '${CookbookNames}'.Split(',')
+$cookbookNames = '${CookbookNames}'.Split(';')
 
 $installationDirectory = $(Join-Path $PSScriptRoot 'configuration')
 $testDirectory = $(Join-Path $PSScriptRoot 'verification')
