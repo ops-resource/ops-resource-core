@@ -96,27 +96,15 @@ directory consul_data_directory do
   action :create
 end
 
-consul_config_directory = node['paths']['consul_config']
-directory consul_config_directory do
-  action :create
-end
-
-# Add health check scripts
-
-# Add health checks
-# - HDD available
-# - RAM available
-# - CPU loading
-
-# Add a service definition for each of the services that should be available
-
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
   action :create
 end
 
-# unzip the consul package
-
+# add the consul application
+remote_file "#{consul_bin_directory}\\consul.exe" do
+  source "file://#{configuration_directory}/consul.exe"
+end
 
 # add the winsw binaries
 # Copy the service runner & rename to consul.exe
@@ -139,6 +127,9 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
   XML
   action :create
 end
+
+# Get IP for consul join from CMDB
+ip_consul_entry_node = ''
 
 # add the consul_service.xml config
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
@@ -172,15 +163,6 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
     <id>#{service_name}</id>
     <name>#{service_name}</name>
     <description>This service runs the consul agent.</description>
-
-    <!-- if you'd like to run Jenkins with a specific version of Java, specify a full path to java.exe. The following value assumes that you have java in your PATH. -->
-    <executable>#{consul_bin_directory}\\consul.exe</executable>
-    <arguments>agent -data-dir #{consol_data_directory} -config-dir #{consul_config_directory} -retry-join=#{ip_consul_entry_node} -retry-interval=30s</arguments>
-
-    <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
-    <logmode>rotate</logmode>
-    <onfailure action="restart"/>
-</service>
 
     <!-- if you'd like to run Jenkins with a specific version of Java, specify a full path to java.exe. The following value assumes that you have java in your PATH. -->
     <executable>#{consul_bin_directory}\\consul.exe</executable>
@@ -240,5 +222,3 @@ file "#{meta_directory}\\service_consul.json" do
 end
 
 # open ports in the firewall?
-
-# Join existing cluster
