@@ -5,3 +5,6 @@ license 'All rights reserved'
 description 'Configures a server with the standard core applications'
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version '${VersionSemantic}'
+
+depends 'windows'
+depends 'windows_firewall'
