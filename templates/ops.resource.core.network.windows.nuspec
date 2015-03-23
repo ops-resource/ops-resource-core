@@ -9,14 +9,17 @@
         <projectUrl>$CompanyUrl$</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>
-            Provides the core cookbooks and scripts that are used to create new Windows machine images on a local network.
+            Provides the core cookbooks and scripts that are used to configure new Windows machines on a local network.
         </description>
         <dependencies>
             $Dependencies$
         </dependencies>
     </metadata>
     <files>
-        <file src="$DirOutput$\cookbooks\**\*.*" target="cookbooks" />
+        <file src="$DirOutput$\cookbooks\**\*.*"
+              exclude="$DirOutput$\cookbooks\**\*_spec.rb"
+              target="cookbooks" />
+        <file src="$DirOutput$\spec\**\*.*" target="spec" />
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
         <file src="$DirOutput$\scripts\host\network\windows\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.*" target="scripts\host" />
