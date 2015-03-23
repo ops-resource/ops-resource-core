@@ -8,6 +8,7 @@
 #
 
 include_recipe 'windows'
+include_recipe 'windows_firewall'
 
 configuration_directory = 'c:\\configuration'
 log_directory = 'c:\\logs'
@@ -93,6 +94,7 @@ end
 
 consul_data_directory = node['paths']['consul_data']
 directory consul_data_directory do
+  rights :modify, consul_username, applies_to_children: true, applies_to_self: false
   action :create
 end
 
@@ -129,7 +131,7 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
 end
 
 # Get IP for consul join from CMDB
-ip_consul_entry_node = ''
+ip_consul_entry_node = node['consul']['entry_node_ip']
 
 # add the consul_service.xml config
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
@@ -221,4 +223,12 @@ file "#{meta_directory}\\service_consul.json" do
   action :create
 end
 
-# open ports in the firewall?
+windows_firewall_rule 'Consul' do
+  protocol :TCP
+  firewall_action :allow
+end
+
+windows_firewall_rule 'Consul' do
+  protocol :UDP
+  firewall_action :allow
+end
