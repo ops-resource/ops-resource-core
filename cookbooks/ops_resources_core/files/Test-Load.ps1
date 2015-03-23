@@ -1,10 +1,11 @@
-﻿$cpuLoad = (Get-Counter '\processor(_total)\% processor time' -SampleInterval 1).CounterSamples.CookedValue
+﻿$sampleTime = 10
+$cpuLoad = (Get-Counter '\processor(_total)\% processor time' -SampleInterval $sampleTime).CounterSamples.CookedValue
 
 $warnAt = 95
 $criticalAt = 90
 
 $processorText = ''
-$diskText += "Average load: $([int]([System.Math]::Round($cpuLoad)))%"
+$loadText += "Average load: $([int]([System.Math]::Round($cpuLoad)))% (Sample time: $sampleTime seconds)"
 
 $hasWarning = ($cpuLoad -gt $warnAt)
 $hasError = ($cpuLoad -gt $criticalAt)
@@ -23,5 +24,5 @@ if ($hasError)
     $text = "CRITICAL: Load"
 }
 
-Write-Output ($text + " - " + $diskText)
+Write-Output ($text + " - " + $loadText)
 exit $exitCode

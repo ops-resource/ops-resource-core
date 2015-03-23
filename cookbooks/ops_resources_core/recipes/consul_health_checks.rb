@@ -36,21 +36,21 @@ file "#{consul_config_directory}\\check_server.json" do
             "id": "disk",
             "name": "Disk",
             "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_disk}",
-            "interval": "30s",
+            "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "memory",
             "name": "Memory",
             "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_memory}",
-            "interval": "30s",
+            "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "load",
             "name": "Load",
             "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_load}",
-            "interval": "30s",
+            "interval": "60s",
             "notes": "Critical 95%, warning 90%"
         }
     ]
