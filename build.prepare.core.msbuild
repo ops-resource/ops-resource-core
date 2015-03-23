@@ -39,6 +39,7 @@
         <CallTarget Targets="_Build_Core_GetVersion" />
         <CallTarget Targets="_Build_Core_GatherScriptFiles" />
         <CallTarget Targets="_Build_Core_GatherCookbooks" />
+        <CallTarget Targets="_Build_Core_GatherSpecs" />
         <CallTarget Targets="_Build_Core_GatherTemplates" />
         <CallTarget Targets="_Build_Core_CreateTestFiles" />
     </Target>
@@ -102,6 +103,23 @@
                       OutputFileName="$(FileResourceCoreMetadataGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' "/>
+    </Target>
+
+    <Target Name="_Build_Core_GatherSpecs">
+        <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreSpec)"
+                 Condition="!Exists('$(DirBuildTempCoreSpec)')" />
+
+        <ItemGroup>
+            <SpecFiles Include="$(DirSpec)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(SpecFiles)"
+              DestinationFiles="@(SpecFiles->'$(DirBuildTempCoreSpec)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
     <Target Name="_Build_Core_GatherTemplates">

@@ -173,6 +173,7 @@
         <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
         <DirBuildTempCoreCookbooksResourcesCore>$(DirBuildTempCoreCookbooks)\ops_resources_core</DirBuildTempCoreCookbooksResourcesCore>
+        <DirBuildTempCoreSpec>$(DirBuildTempCore)\spec</DirBuildTempCoreSpec>
 
         <!-- The directory that contains the Chef cookbooks -->
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
@@ -184,6 +185,9 @@
         <!-- The directory that contains all the scripts for the project -->
         <DirScripts Condition=" '$(DirScripts)' == '' ">$(DirWorkspace)\scripts</DirScripts>
         <DirScriptsExisting Condition=" '$(DirScriptsExisting)' == '' ">$(DirScripts)\existing</DirScriptsExisting>
+
+        <!-- The directory that contains all the server spec files -->
+        <DirSpec Condition=" '$(DirSpec)' == '' ">$(DirWorkspace)\spec</DirSpec>
 
         <!-- The directory that contains the template files for the project -->
         <DirTemplates Condition=" '$(DirTemplates)' == '' ">$(DirWorkspace)\templates</DirTemplates>
