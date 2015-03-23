@@ -18,25 +18,37 @@
         <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
+        <!-- Properties -->
+        <ConsulEntryPointIp Condition=" '$(ConsulEntryPointIp)' == '' ">UNDEFINED</ConsulEntryPointIp>
+
         <!-- Directories -->
+        <DirBuildTempConsulUnzip>$(DirBuildTemp)\unzip\consul</DirBuildTempConsulUnzip>
+
         <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
         <DirOutputConfiguration Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfiguration)' == '' ">$(DirOutput)\configuration</DirOutputConfiguration>
         <DirOutputConfigurationCookbooks Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooks)' == '' ">$(DirOutputConfiguration)\cookbooks</DirOutputConfigurationCookbooks>
         <DirOutputVerification Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerification)' == '' ">$(DirOutput)\verification</DirOutputVerification>
+        <DirOutputVerificationSpec Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationSpec)' == '' ">$(DirOutputVerification)\spec</DirOutputVerificationSpec>
 
         <DirOrigin>$(MSBuildProjectDirectory)</DirOrigin>
         <DirOriginCookbooks>$(DirOrigin)\cookbooks</DirOriginCookbooks>
         <DirOriginScripts>$(DirOrigin)\scripts</DirOriginScripts>
         <DirOriginScriptsClient>$(DirOriginScripts)\client</DirOriginScriptsClient>
         <DirOriginScriptsHost>$(DirOriginScripts)\host</DirOriginScriptsHost>
+        <DirOriginSpec>$(DirOrigin)\spec</DirOriginSpec>
         <DirOriginTemplates>$(DirOrigin)\templates</DirOriginTemplates>
 
         <DirExternalInstallers Condition=" '$(DirExternalInstallers)' == '' ">UNDEFINED</DirExternalInstallers>
-        <DirExternalInstallersChef Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersChef)' == '' ">$(DirExternalInstallers)/chef</DirExternalInstallersChef>
+        <DirExternalInstallersChef Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersChef)' == '' ">$(DirExternalInstallers)\chef</DirExternalInstallersChef>
+        <DirExternalInstallersConsul Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersConsul)' == '' ">$(DirExternalInstallers)\consul</DirExternalInstallersConsul>
+        <DirExternalInstallersWinSw Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersWinSw)' == '' ">$(DirExternalInstallers)\winsw</DirExternalInstallersWinSw>
 
         <!-- Files -->
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
+
+        <FileCookbookConsulAttributesTemplate>$(DirOriginCookbooks)\ops_resources_core\attributes\consul.rb</FileCookbookConsulAttributesTemplate>
+        <FileCookbookConsulAttributesGenerated>$(DirOutputConfigurationCookbooks)\ops_resources_core\attributes\consul.rb</FileCookbookConsulAttributesGenerated>
     </PropertyGroup>
 
     <ItemGroup>
@@ -49,12 +61,15 @@
 
     <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
             Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\Unzip.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\Unzip.msbuild') AND '$(ExistsExtensionsUnzip)' != 'true' " />
 
     <Target Name="Distribute_Core_Run" DependsOnTargets="_Distribute_Core_DisplayInfo">
         <CallTarget Targets="_Distribute_Core_VerifyInputs" />
-        <CallTarget Targets="_Distribute_Core_Cookbooks" />
         <CallTarget Targets="_Distribute_Core_Scripts" />
         <CallTarget Targets="_Distribute_Core_Templates" />
+        <CallTarget Targets="_Distribute_Core_Cookbooks" />
+        <CallTarget Targets="_Distribute_Core_Specs" />
         <CallTarget Targets="_Distribute_Core_Externals" />
     </Target>
 
@@ -76,29 +91,6 @@
     <Target Name="_Distribute_Core_VerifyInputs">
         <Error Text="The output directory has not been defined!"
                Condition=" '$(DirOutput)' == 'UNDEFINED' " />
-    </Target>
-
-    <Target Name="_Distribute_Core_Cookbooks">
-        <MakeDir Directories="$(DirOutput)"
-                 Condition="!Exists('$(DirOutput)')" />
-        <MakeDir Directories="$(DirOutputConfiguration)"
-                 Condition="!Exists('$(DirOutputConfiguration)')" />
-        <MakeDir Directories="$(DirOutputConfigurationCookbooks)"
-                 Condition="!Exists('$(DirOutputConfigurationCookbooks)')" />
-
-        <ItemGroup>
-            <CookbookFiles Include="$(DirOriginCookbooks)\**\*.*"
-                           Exclude="" />
-        </ItemGroup>
-        <Copy SourceFiles="@(CookbookFiles)"
-              DestinationFiles="@(CookbookFiles->'$(DirOutputConfigurationCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
-
-        <!--
-        <TemplateFile Template="$(FOOBAR)"
-                      OutputFileName="$(FileNuGetMetadataGenerated)"
-                      Tokens="@(TemplateTokens)"
-                      Condition=" '$(ShouldExecute)' == 'true' "/>
-        -->
     </Target>
 
     <Target Name="_Distribute_Core_Scripts">
@@ -152,6 +144,48 @@
                       Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeLocalNetworkScriptTemplate)')"/>
     </Target>
 
+    <Target Name="_Distribute_Core_Cookbooks"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputConfiguration)"
+                 Condition="!Exists('$(DirOutputConfiguration)')" />
+        <MakeDir Directories="$(DirOutputConfigurationCookbooks)"
+                 Condition="!Exists('$(DirOutputConfigurationCookbooks)')" />
+
+        <ItemGroup>
+            <CookbookFiles Include="$(DirOriginCookbooks)\**\*.*"
+                           Exclude="$(FileCookbookConsulAttributesTemplate)" />
+        </ItemGroup>
+        <Copy SourceFiles="@(CookbookFiles)"
+              DestinationFiles="@(CookbookFiles->'$(DirOutputConfigurationCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <TemplateTokens Include="ConsulEntryPointIp" >
+                <ReplacementValue>@(ConsulEntryPointIp)</ReplacementValue>
+            </TemplateTokens>
+        </ItemGroup>
+        <TemplateFile Template="$(FileCookbookConsulAttributesTemplate)"
+                      OutputFileName="$(FileCookbookConsulAttributesGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' "/>
+    </Target>
+
+    <Target Name="_Distribute_Core_Specs">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputVerification)"
+                 Condition="!Exists('$(DirOutputVerification)')" />
+        <MakeDir Directories="$(DirOutputVerificationSpec)"
+                 Condition="!Exists('$(DirOutputVerificationSpec)')" />
+
+        <ItemGroup>
+            <SpecFiles Include="$(DirOriginSpec)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(SpecFiles)"
+              DestinationFiles="@(SpecFiles->'$(DirOutputVerificationSpec)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
     <Target Name="_Distribute_Core_Externals">
         <MakeDir Directories="$(DirOutput)"
                  Condition="!Exists('$(DirOutput)')" />
@@ -164,5 +198,23 @@
         </ItemGroup>
         <Copy SourceFiles="@(ChefFiles)"
               DestinationFiles="@(ChefFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <WinSwFiles Include="$(DirExternalInstallersWinSw)/**/*.*"
+                        Condition="Exists('$(DirExternalInstallersWinSw)')" />
+        </ItemGroup>
+        <Copy SourceFiles="@(WinSwFiles)"
+              DestinationFiles="@(WinSwFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <ZippedConsulFiles Include="$(DirExternalInstallersConsul)/*.zip" />
+        </ItemGroup>
+        <Unzip InputFileName="@(ZippedConsulFiles)"
+               DestinationDirectory="$(DirBuildTempConsulUnzip)" />
+        <ItemGroup>
+            <ConsulFiles Include="$(DirBuildTemplConsulUnzip)/*.exe" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ConsulFiles)"
+              DestinationFiles="@(ConsulFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')"/>
     </Target>
 </Project>
