@@ -68,7 +68,7 @@ describe 'ops_resources_core'  do
   end
 
   consul_config_directory = 'c:\\meta\\consul'
-  ip_consul_entry_node = 'foobar'
+  ip_consul_entry_node = '${ConsulEntryPointIp}'
   consul_service_xml_content = <<-XML
 <?xml version="1.0"?>
 <!--
