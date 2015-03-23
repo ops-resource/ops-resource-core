@@ -10,8 +10,8 @@
 include_recipe 'windows'
 include_recipe 'windows_firewall'
 
-configuration_directory = 'c:\\configuration'
-log_directory = 'c:\\logs'
+configuration_directory = 'c:/configuration'
+log_directory = 'c:/logs'
 
 service_name = 'consul'
 win_service_name = 'consul_service'
@@ -85,33 +85,30 @@ powershell_script 'user_grant_service_logon_rights' do
   POWERSHELL
 end
 
-# Install 7-zip
-# options "INSTALLDIR=\"#{ENV['ProgramFiles']/7-zip}\""
-windows_package node['7-zip']['package_name'] do
-  source node['7-zip']['url']
-  action :install
-end
-
 consul_data_directory = node['paths']['consul_data']
 directory consul_data_directory do
+  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
   rights :modify, consul_username, applies_to_children: true, applies_to_self: false
+  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
+  rights :read_execute, 'Everyone', applies_to_children: true, applies_to_self: false
+  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
 # add the consul application
 remote_file "#{consul_bin_directory}\\consul.exe" do
-  source "file://#{configuration_directory}/consul.exe"
+  source "file:///#{configuration_directory}/consul.exe"
 end
 
 # add the winsw binaries
 # Copy the service runner & rename to consul.exe
 remote_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
-  source "file://#{configuration_directory}/winsw-1.16-bin.exe"
+  source "file:///#{configuration_directory}/winsw-1.16-bin.exe"
 end
 
 # Create consul.exe.config
@@ -131,6 +128,7 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
 end
 
 # Get IP for consul join from CMDB
+consul_config_directory = node['paths']['consul_config']
 ip_consul_entry_node = node['consul']['entry_node_ip']
 
 # add the consul_service.xml config
@@ -151,24 +149,9 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
     <id>#{service_name}</id>
     <name>#{service_name}</name>
     <description>This service runs the consul agent.</description>
-    <!--
-    The MIT License Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi Permission is hereby granted, free of charge, to any person obtaining a
-    copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights
-    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
-    subject to the following conditions: The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-    PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-    OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
--->
 
-<service>
-    <id>#{service_name}</id>
-    <name>#{service_name}</name>
-    <description>This service runs the consul agent.</description>
-
-    <!-- if you'd like to run Jenkins with a specific version of Java, specify a full path to java.exe. The following value assumes that you have java in your PATH. -->
     <executable>#{consul_bin_directory}\\consul.exe</executable>
-    <arguments>agent -data-dir #{consol_data_directory} -config-dir #{consul_config_directory} -retry-join=#{ip_consul_entry_node} -retry-interval=30s</arguments>
+    <arguments>agent -data-dir #{consul_data_directory} -config-dir #{consul_config_directory} -retry-join=#{ip_consul_entry_node} -retry-interval=30s</arguments>
 
     <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
     <logmode>rotate</logmode>
@@ -209,6 +192,8 @@ end
 
 meta_directory = node['paths']['meta']
 directory meta_directory do
+  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
+  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
