@@ -4,8 +4,9 @@ Metrics/LineLength:
 
 AllCops:
   Exclude:
-    - 'build/temp/core/configuration/cookbooks/windows/**/*'
-    - 'build/temp/core/configuration/cookbooks/windows_firewall/**/*'
+    - 'build/temp/core/cookbooks/chef_handler/**/*'
+    - 'build/temp/core/cookbooks/windows/**/*'
+    - 'build/temp/core/cookbooks/windows_firewall/**/*'
     - 'cookbooks/**/*'
     - 'spec/**/*'
     - 'packages/**/*'
