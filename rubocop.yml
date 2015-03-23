@@ -4,10 +4,8 @@ Metrics/LineLength:
 
 AllCops:
   Exclude:
-    - 'build/temp/nuget/configuration/cookbooks/chef_handler/**/*'
-    - 'build/temp/nuget/configuration/cookbooks/iis/**/*'
-    - 'build/temp/nuget/configuration/cookbooks/ms_dotnet/**/*'
-    - 'build/temp/nuget/configuration/cookbooks/windows/**/*'
+    - 'build/temp/core/configuration/cookbooks/windows/**/*'
+    - 'build/temp/core/configuration/cookbooks/windows_firewall/**/*'
     - 'cookbooks/**/*'
     - 'spec/**/*'
     - 'packages/**/*'
