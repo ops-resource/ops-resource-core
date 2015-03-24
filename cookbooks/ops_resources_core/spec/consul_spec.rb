@@ -108,6 +108,15 @@ describe 'ops_resources_core'  do
     expect(chef_run).to run_powershell_script('consul_as_service')
   end
 
+  it 'creates the windows service event log' do
+    expect(chef_run).to create_registry_key("HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\services\\eventlog\\Application\\#{service_name}").with(
+      values: [{
+        name: 'EventMessageFile',
+        type: :string,
+        data: 'c:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\EventLogMessages.dll'
+      }])
+  end
+
   meta_directory = 'c:\\meta'
   it 'creates the meta directory' do
     expect(chef_run).to create_directory(meta_directory)
