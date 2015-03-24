@@ -223,3 +223,20 @@ shell_out("netsh advfirewall firewall add rule name=\"Consul_Tcp\" dir=in action
 #   firewall_action :allow
 # end
 shell_out("netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain")
+
+consul_base_path = node['paths']['consul_base']
+set_consul_metadata = 'Set-ConsulMetadata.ps1'
+cookbook_file "#{consul_base_path}\\#{set_consul_metadata}" do
+  source set_consul_metadata
+  action :create
+end
+
+# upon reboot connect to the join node and set the meta data for the current resource to be equal to the data in the meta.json file
+registry_key 'HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce' do
+  values [{
+    name: 'SetResourceMetadataInConsul',
+    type: :string,
+    data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
+  }]
+  action :create
+end

@@ -122,4 +122,18 @@ describe 'ops_resources_core'  do
   it 'creates the service_consul.json meta file' do
     expect(chef_run).to create_file("#{meta_directory}\\service_consul.json").with_content(consul_service_config_content)
   end
+
+  set_consul_metadata = 'Set-ConsulMetadata.ps1'
+  it 'copies the Set-ConsulMetadata.ps1 file' do
+    expect(chef_run).to create_cookbook_file("c:\\ops\\consul\\#{set_consul_metadata}").with(source: set_consul_metadata)
+  end
+
+  it 'creates the runonce registry value' do
+    expect(chef_run).to create_registry_key('HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce').with(
+      values: [{
+        name: 'SetResourceMetadataInConsul',
+        type: :string,
+        data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
+      }])
+  end
 end
