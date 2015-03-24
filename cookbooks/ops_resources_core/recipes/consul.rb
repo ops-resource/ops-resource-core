@@ -17,8 +17,8 @@ service_name = 'consul'
 win_service_name = 'consul_service'
 
 # Create user
-# - limited user (from AD?)
-# - Reduce access to files. User should only have write access to Jenkins dir and workspaces
+# - limited user
+# - Reduce access to files. User should only have write access to consul dir
 consul_username = 'consul_user'
 consul_password = SecureRandom.uuid
 user consul_username do
@@ -100,7 +100,6 @@ directory consul_bin_directory do
   action :create
 end
 
-# add the consul application
 remote_file "#{consul_bin_directory}\\consul.exe" do
   source "file:///#{configuration_directory}/consul.exe"
 end
@@ -111,7 +110,6 @@ remote_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
   source "file:///#{configuration_directory}/winsw-1.16-bin.exe"
 end
 
-# Create consul.exe.config
 file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
   content <<-XML
 <configuration>
@@ -131,7 +129,6 @@ end
 consul_config_directory = node['paths']['consul_config']
 ip_consul_entry_node = node['consul']['entry_node_ip']
 
-# add the consul_service.xml config
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   content <<-XML
 <?xml version="1.0"?>
