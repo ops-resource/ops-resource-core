@@ -31,12 +31,18 @@ describe 'ops_resources_core'  do
     expect(chef_run).to create_user('consul_user')
   end
 
-  consul_data_directory = 'c:\\ops\\consul\\data'
+  consul_base_path = 'c:\\ops\\consul'
+  consul_data_directory = '#{consul_base_path}\\data'
   it 'creates the consul data directory' do
     expect(chef_run).to create_directory(consul_data_directory)
   end
 
-  consul_bin_directory = 'c:\\ops\\consul\\bin'
+  consul_checks_directory = '#{consul_base_path}\\checks'
+  it 'creates the consul checks directory' do
+    expect(chef_run).to create_directory(consul_checks_directory)
+  end
+
+  consul_bin_directory = "#{consul_base_path}\\bin"
   it 'creates the consul bin directory' do
     expect(chef_run).to create_directory(consul_bin_directory)
   end

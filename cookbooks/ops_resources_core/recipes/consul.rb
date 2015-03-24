@@ -93,6 +93,13 @@ directory consul_data_directory do
   action :create
 end
 
+consul_checks_directory = node['paths']['consul_checks']
+directory consul_checks_directory do
+  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
+  rights :modify, 'Administrators', applies_to_children: true
+  action :create
+end
+
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
   rights :read_execute, 'Everyone', applies_to_children: true, applies_to_self: false
