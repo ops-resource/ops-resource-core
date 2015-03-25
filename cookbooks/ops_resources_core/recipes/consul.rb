@@ -10,7 +10,6 @@
 include_recipe 'windows'
 include_recipe 'windows_firewall'
 
-configuration_directory = 'c:/configuration'
 log_directory = 'c:/logs'
 
 service_name = 'consul'
@@ -107,14 +106,17 @@ directory consul_bin_directory do
   action :create
 end
 
-remote_file "#{consul_bin_directory}\\consul.exe" do
-  source "file:///#{configuration_directory}/consul.exe"
+consul_exe = 'consul.exe'
+cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
+  source consul_exe
+  action :create
 end
 
 # add the winsw binaries
 # Copy the service runner & rename to consul.exe
-remote_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
-  source "file:///#{configuration_directory}/winsw-1.16-bin.exe"
+cookbook_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
+  source 'winsw-1.16-bin.exe'
+  action :create
 end
 
 file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do

@@ -27,6 +27,8 @@
         <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
         <DirOutputConfiguration Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfiguration)' == '' ">$(DirOutput)\configuration</DirOutputConfiguration>
         <DirOutputConfigurationCookbooks Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooks)' == '' ">$(DirOutputConfiguration)\cookbooks</DirOutputConfigurationCookbooks>
+        <DirOutputConfigurationCookbooksCore Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCore)' == '' ">$(DirOutputConfigurationCookbooks)\ops_resources_core</DirOutputConfigurationCookbooksCore>
+        <DirOutputConfigurationCookbooksCoreFiles Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCoreFiles)' == '' ">$(DirOutputConfigurationCookbooksCore)\files</DirOutputConfigurationCookbooksCoreFiles>
         <DirOutputVerification Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerification)' == '' ">$(DirOutput)\verification</DirOutputVerification>
         <DirOutputVerificationSpec Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationSpec)' == '' ">$(DirOutputVerification)\spec</DirOutputVerificationSpec>
 
@@ -204,7 +206,7 @@
                         Condition="Exists('$(DirExternalInstallersWinSw)')" />
         </ItemGroup>
         <Copy SourceFiles="@(WinSwFiles)"
-              DestinationFiles="@(WinSwFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')" />
+              DestinationFiles="@(WinSwFiles->'$(DirOutputConfigurationCookbooksCoreFiles)\%(RecursiveDir)%(Filename)%(Extension)')" />
 
         <ItemGroup>
             <ZippedConsulFiles Include="$(DirExternalInstallersConsul)/*.zip" />
@@ -212,9 +214,9 @@
         <Unzip InputFileName="@(ZippedConsulFiles)"
                DestinationDirectory="$(DirBuildTempConsulUnzip)" />
         <ItemGroup>
-            <ConsulFiles Include="$(DirBuildTemplConsulUnzip)/*.exe" />
+            <ConsulFiles Include="$(DirBuildTempConsulUnzip)/*.exe" />
         </ItemGroup>
         <Copy SourceFiles="@(ConsulFiles)"
-              DestinationFiles="@(ConsulFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')"/>
+              DestinationFiles="@(ConsulFiles->'$(DirOutputConfigurationCookbooksCoreFiles)\%(RecursiveDir)%(Filename)%(Extension)')"/>
     </Target>
 </Project>

@@ -32,12 +32,12 @@ describe 'ops_resources_core'  do
   end
 
   consul_base_path = 'c:\\ops\\consul'
-  consul_data_directory = '#{consul_base_path}\\data'
+  consul_data_directory = "#{consul_base_path}\\data"
   it 'creates the consul data directory' do
     expect(chef_run).to create_directory(consul_data_directory)
   end
 
-  consul_checks_directory = '#{consul_base_path}\\checks'
+  consul_checks_directory = "#{consul_base_path}\\checks"
   it 'creates the consul checks directory' do
     expect(chef_run).to create_directory(consul_checks_directory)
   end
@@ -47,15 +47,14 @@ describe 'ops_resources_core'  do
     expect(chef_run).to create_directory(consul_bin_directory)
   end
 
-  configuration_directory = 'c:/configuration'
   service_name = 'consul'
   it 'creates consul.exe in the consul ops directory' do
-    expect(chef_run).to create_remote_file("#{consul_bin_directory}\\#{service_name}.exe").with_source("file:///#{configuration_directory}/consul.exe")
+    expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{service_name}.exe").with_source("#{service_name}.exe")
   end
 
   win_service_name = 'consul_service'
   it 'creates consul_service.exe in the consul ops directory' do
-    expect(chef_run).to create_remote_file("#{consul_bin_directory}\\#{win_service_name}.exe").with_source("file:///#{configuration_directory}/winsw-1.16-bin.exe")
+    expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{win_service_name}.exe").with_source('winsw-1.16-bin.exe')
   end
 
   consul_service_exe_config_content = <<-XML
