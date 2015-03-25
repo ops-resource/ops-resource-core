@@ -1,4 +1,4 @@
-name 'ops_resouce_core'
+name 'ops_resource_core'
 maintainer '${CompanyName} (${CompanyUrl})'
 maintainer_email '${EmailDocumentation}'
 license 'All rights reserved'

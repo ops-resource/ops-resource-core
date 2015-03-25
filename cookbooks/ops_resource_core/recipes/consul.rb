@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: ops_resouce_core
+# Cookbook Name:: ops_resource_core
 # Recipe:: consul
 #
 # Copyright 2015, P. van der Velde
