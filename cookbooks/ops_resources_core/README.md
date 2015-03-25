@@ -1,4 +1,4 @@
-ops_resources_core Cookbook
+ops_resouce_core Cookbook
 ======================
 TODO: Enter the cookbook description here.
 

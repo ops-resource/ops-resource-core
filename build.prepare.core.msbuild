@@ -20,8 +20,8 @@
 
         <!-- Files -->
         <FileSemanticVersion Condition=" '$(FileSemanticVersion)' == '' ">$(DirBuildTemp)\semantic_version.json</FileSemanticVersion>
-        <FileResourceCoreMetadataTemplate>$(DirCookbooksResourcesCore)\metadata.rb</FileResourceCoreMetadataTemplate>
-        <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourcesCore)\metadata.rb</FileResourceCoreMetadataGenerated>
+        <FileResourceCoreMetadataTemplate>$(DirCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataTemplate>
+        <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataGenerated>
 
         <!-- Version number -->
         <VersionSemantic>0</VersionSemantic>

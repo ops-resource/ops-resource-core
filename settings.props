@@ -172,12 +172,12 @@
         <DirBuildTempCoreScripts>$(DirBuildTempCore)\scripts</DirBuildTempCoreScripts>
         <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
-        <DirBuildTempCoreCookbooksResourcesCore>$(DirBuildTempCoreCookbooks)\ops_resources_core</DirBuildTempCoreCookbooksResourcesCore>
+        <DirBuildTempCoreCookbooksResourcesCore>$(DirBuildTempCoreCookbooks)\ops_resouce_core</DirBuildTempCoreCookbooksResourcesCore>
         <DirBuildTempCoreSpec>$(DirBuildTempCore)\spec</DirBuildTempCoreSpec>
 
         <!-- The directory that contains the Chef cookbooks -->
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
-        <DirCookbooksResourcesCore>$(DirCookbooks)\ops_resources_core</DirCookbooksResourcesCore>
+        <DirCookbooksResourcesCore>$(DirCookbooks)\ops_resouce_core</DirCookbooksResourcesCore>
 
         <!-- The directory that contains all the NuGet packages for the project -->
         <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages>

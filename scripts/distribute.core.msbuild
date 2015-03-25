@@ -27,7 +27,7 @@
         <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
         <DirOutputConfiguration Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfiguration)' == '' ">$(DirOutput)\configuration</DirOutputConfiguration>
         <DirOutputConfigurationCookbooks Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooks)' == '' ">$(DirOutputConfiguration)\cookbooks</DirOutputConfigurationCookbooks>
-        <DirOutputConfigurationCookbooksCore Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCore)' == '' ">$(DirOutputConfigurationCookbooks)\ops_resources_core</DirOutputConfigurationCookbooksCore>
+        <DirOutputConfigurationCookbooksCore Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCore)' == '' ">$(DirOutputConfigurationCookbooks)\ops_resouce_core</DirOutputConfigurationCookbooksCore>
         <DirOutputConfigurationCookbooksCoreFiles Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCoreFiles)' == '' ">$(DirOutputConfigurationCookbooksCore)\files</DirOutputConfigurationCookbooksCoreFiles>
         <DirOutputVerification Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerification)' == '' ">$(DirOutput)\verification</DirOutputVerification>
         <DirOutputVerificationSpec Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationSpec)' == '' ">$(DirOutputVerification)\spec</DirOutputVerificationSpec>
@@ -49,12 +49,12 @@
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
 
-        <FileCookbookConsulAttributesTemplate>$(DirOriginCookbooks)\ops_resources_core\attributes\consul.rb</FileCookbookConsulAttributesTemplate>
-        <FileCookbookConsulAttributesGenerated>$(DirOutputConfigurationCookbooks)\ops_resources_core\attributes\consul.rb</FileCookbookConsulAttributesGenerated>
+        <FileCookbookConsulAttributesTemplate>$(DirOriginCookbooks)\ops_resouce_core\attributes\consul.rb</FileCookbookConsulAttributesTemplate>
+        <FileCookbookConsulAttributesGenerated>$(DirOutputConfigurationCookbooks)\ops_resouce_core\attributes\consul.rb</FileCookbookConsulAttributesGenerated>
     </PropertyGroup>
 
     <ItemGroup>
-        <CookbooksToInvoke Include="ops_resources_core" />
+        <CookbooksToInvoke Include="ops_resouce_core" />
         <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
     </ItemGroup>
 

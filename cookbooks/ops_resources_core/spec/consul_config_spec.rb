@@ -24,7 +24,7 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resources_core'  do
+describe 'ops_resouce_core'  do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   it 'creates the consul configuration directory' do
