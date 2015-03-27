@@ -1,11 +1,13 @@
 ﻿$sampleTime = 10
-$cpuLoad = (Get-Counter '\processor(_total)\% processor time' -SampleInterval $sampleTime).CounterSamples.CookedValue
+
+$wmiProcessor = Get-WmiObject win32_processor
+$loadPercentage = $wmiProcessor | Select-Object LoadPercentage
+$cpuLoad = $loadPercentage.LoadPercentage
 
 $warnAt = 95
 $criticalAt = 90
 
-$processorText = ''
-$loadText += "Average load: $([int]([System.Math]::Round($cpuLoad)))% (Sample time: $sampleTime seconds)"
+$loadText = "Average load: $cpuLoad%"
 
 $hasWarning = ($cpuLoad -gt $warnAt)
 $hasError = ($cpuLoad -gt $criticalAt)
