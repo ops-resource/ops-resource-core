@@ -25,6 +25,12 @@ user consul_username do
   action :create
 end
 
+group 'Performance Monitor Users' do
+  action :modify
+  members consul_username
+  append true
+end
+
 # Grant the user the LogOnAsService permission. Following this anwer on SO: http://stackoverflow.com/a/21235462/539846
 # With some additional bug fixes to get the correct line from the export file and to put the correct text in the import file
 powershell_script 'user_grant_service_logon_rights' do
