@@ -1,24 +1,23 @@
 ops_resource_core Cookbook
 ======================
-TODO: Enter the cookbook description here.
-
-e.g.
-This cookbook makes your favorite breakfast sandwich.
+This cookbook installs the applications and files that should be present on all machines that are created. Default installed are:
+* The c:\meta\meta.json file describing which cookbooks were used to configure the machine.
+* The [consul](https://consul.io/) client application which provides monitoring of the machine and a distributed key store that is used to indicate which services are installed on the machine and what environment the machine belongs to.
 
 Requirements
 ------------
-TODO: List your cookbook requirements. Be sure to include any requirements this cookbook has on platforms, libraries, other cookbooks, packages, operating systems, etc.
 
-e.g.
-#### packages
-- `toaster` - jenkinsmaster needs toaster to brown your bagel.
+#### cookbooks
+- `chef_handler`
+- `windows`
+- `windows_firewall`
 
 Attributes
 ----------
 TODO: List your cookbook attributes here.
 
 e.g.
-#### jenkinsmaster::default
+#### ops_resource_core::default
 <table>
   <tr>
     <th>Key</th>
@@ -27,42 +26,63 @@ e.g.
     <th>Default</th>
   </tr>
   <tr>
-    <td><tt>['jenkinsmaster']['bacon']</tt></td>
-    <td>Boolean</td>
-    <td>whether to include bacon</td>
-    <td><tt>true</tt></td>
+    <td><tt>['paths']['meta']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the meta data.</td>
+    <td><tt>c:\meta</tt></td>
+  </tr>
+  <tr>
+    <td><tt>['paths']['consul_base']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the consul directories.</td>
+    <td><tt>c:\ops\consul</tt></td>
+  </tr>
+  <tr>
+    <td><tt>['paths']['consul_bin']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the consul executable.</td>
+    <td><tt>c:\ops\consul</tt></td>
+  </tr>
+  <tr>
+    <td><tt>['paths']['consul_data']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the consul data files.</td>
+    <td><tt>c:\ops\consul</tt></td>
+  </tr>
+  <tr>
+    <td><tt>['paths']['consul_checks']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the consul checks files.</td>
+    <td><tt>c:\ops\consul</tt></td>
+  </tr>
+  <tr>
+    <td><tt>['paths']['consul_config']</tt></td>
+    <td>String</td>
+    <td>The path to the directory that contains the consul configuration files.</td>
+    <td><tt>c:\meta\consul</tt></td>
   </tr>
 </table>
 
 Usage
 -----
-#### jenkinsmaster::default
-TODO: Write usage instructions for each cookbook.
-
-e.g.
-Just include `jenkinsmaster` in your node's `run_list`:
+#### ops_resource_core::default
+Just include `ops_resource_core` in your node's `run_list`:
 
 ```json
 {
   "name":"my_node",
   "run_list": [
-    "recipe[jenkinsmaster]"
+    "recipe[ops_resource_core]"
   ]
 }
 ```
 
 Contributing
 ------------
-TODO: (optional) If this is a public cookbook, detail the process for contributing. If this is a private cookbook, remove this section.
-
-e.g.
-1. Fork the repository on Github
-2. Create a named feature branch (like `add_component_x`)
-3. Write your change
-4. Write tests for your change (if applicable)
-5. Run the tests, ensuring they all pass
-6. Submit a Pull Request using Github
+In order to contribute please see contribution guidelines at [github](https://github.com/pvandervelde/ops-resource-core)
 
 License and Authors
 -------------------
-Authors: TODO: List authors
+Authors: Patrick van der Velde
+
+Licensed under the Apache 2.0 license
