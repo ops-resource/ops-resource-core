@@ -47,6 +47,12 @@ param(
     [string] $remoteLogDirectory                                = 'c:\logs'
 )
 
+Write-Verbose "Test-WindowsResource - session: $($session.Name)"
+Write-Verbose "Test-WindowsResource - testDirectory: $testDirectory"
+Write-Verbose "Test-WindowsResource - logDirectory: $logDirectory"
+Write-Verbose "Test-WindowsResource - remoteVerificationDirectory: $remoteVerificationDirectory"
+Write-Verbose "Test-WindowsResource - remoteLogDirectory: $remoteLogDirectory"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 
@@ -89,6 +95,10 @@ Invoke-Command `
             [string] $testDirectory,
             [string] $logDirectory
         )
+
+        Write-Output "Test-WindowsResource - verifying remote - verificationScript: $verificationScript"
+        Write-Output "Test-WindowsResource - verifying remote - testDirectory: $testDirectory"
+        Write-Output "Test-WindowsResource - verifying remote - logDirectory: $logDirectory"
 
         & $verificationScript -testDirectory $testDirectory -logDirectory $logDirectory
     } `

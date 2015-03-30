@@ -6,7 +6,7 @@
 
     .DESCRIPTION
 
-    The New-AzureWindowsImage script creates a new Azure VM image for a Windows machine that can serve as a Jenkins master.
+    The New-AzureImage script creates a new Azure VM image for a Windows machine that can serve as a Jenkins master.
 
 
     .PARAMETER configFile
@@ -40,7 +40,7 @@
 
     .EXAMPLE
 
-    New-AzureWindowsImage -configFile 'c:\temp\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\temp\source'
+    New-AzureImage -configFile 'c:\temp\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\temp\source'
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
@@ -48,6 +48,10 @@ param(
     [string] $azureScriptDirectory = $PSScriptRoot,
     [string] $logDirectory = $(throw "Please specify a log directory.")
 )
+
+Write-Verbose "New-AzureImage - configFile: $configFile"
+Write-Verbose "New-AzureImage - azureScriptDirectory: $azureScriptDirectory"
+Write-Verbose "New-AzureImage - logDirectory: $logDirectory"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'

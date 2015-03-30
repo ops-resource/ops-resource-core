@@ -24,6 +24,8 @@ param(
     [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.')
 )
 
+Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 

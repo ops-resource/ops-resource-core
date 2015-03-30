@@ -169,6 +169,12 @@ function Install-ChefClient
     Install-Msi -msiFile "$chefClientInstall" -logFile "$chefInstallLogFile"
 }
 
+Write-Output "Install-ApplicationsOnWindowsWithChef - resourceName: $resourceName"
+Write-Output "Install-ApplicationsOnWindowsWithChef - resourceVersion: $resourceVersion"
+Write-Output "Install-ApplicationsOnWindowsWithChef - configurationDirectory: $configurationDirectory"
+Write-Output "Install-ApplicationsOnWindowsWithChef - logDirectory: $logDirectory"
+Write-Output "Install-ApplicationsOnWindowsWithChef - cookbookNames: $cookbookNames"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 

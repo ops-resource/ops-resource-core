@@ -50,6 +50,11 @@ param(
     [string] $logDirectory =  $(throw "Please specify a log directory.")
 )
 
+Write-Verbose "Test-AzureImage - configFile: $configFile"
+Write-Verbose "Test-AzureImage - azureScriptDirectory: $azureScriptDirectory"
+Write-Verbose "Test-AzureImage - testDirectory: $testDirectory"
+Write-Verbose "Test-AzureImage - logDirectory: $logDirectory"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 

@@ -55,6 +55,13 @@ param(
     [string] $logDirectory          = $(Join-Path $PSScriptRoot 'logs')
 )
 
+Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
+Write-Verbose "New-LocalNetworkResource - resourceName: $resourceName"
+Write-Verbose "New-LocalNetworkResource - resourceVersion: $resourceVersion"
+Write-Verbose "New-LocalNetworkResource - cookbookNames: $cookbookNames"
+Write-Verbose "New-LocalNetworkResource - installationDirectory: $installationDirectory"
+Write-Verbose "New-LocalNetworkResource - logDirectory: $logDirectory"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 

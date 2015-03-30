@@ -6,19 +6,22 @@
 
     .DESCRIPTION
 
-    The Verify-ConfigurationOnWindowsMachine script executes the tests that verify whether the current machine has all the tools installed to
+    The Test-ConfigurationOnWindowsMachine script executes the tests that verify whether the current machine has all the tools installed to
     allow it to work as a jenkins windows machine.
 
 
     .EXAMPLE
 
-    Verify-ConfigurationOnWindowsMachine.ps1
+    Test-ConfigurationOnWindowsMachine.ps1
 #>
 [CmdletBinding()]
 param(
     [string] $testDirectory = "c:\tests",
     [string] $logDirectory  = "c:\logs"
 )
+
+Write-Verbose "Test-ConfigurationOnWindowsMachine - testDirectory: $testDirectory"
+Write-Verbose "Test-ConfigurationOnWindowsMachine - logDirectory: $logDirectory"
 
 $ErrorActionPreference = "Stop"
 

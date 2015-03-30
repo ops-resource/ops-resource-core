@@ -37,6 +37,10 @@ function Copy-ItemToRemoteMachine
         [System.Management.Automation.Runspaces.PSSession] $session
     )
 
+    Write-Verbose "Copy-ItemToRemoteMachine - localPath: $localPath"
+    Write-Verbose "Copy-ItemToRemoteMachine - remotePath: $remotePath"
+    Write-Verbose "Copy-ItemToRemoteMachine - session: $($session.Name)"
+
     # Use .NET file handling for speed
     $content = [Io.File]::ReadAllBytes( $localPath )
     $contentsizeMB = $content.Count / 1MB + 1MB
@@ -213,7 +217,10 @@ function Copy-ItemFromRemoteMachine
         [System.Management.Automation.Runspaces.PSSession] $session
     )
 
-    Write-Output "Copying $fileName from $localPath to $remotePath on $($session.Name) ..."
+    Write-Verbose "Copy-ItemFromRemoteMachine - remotePath: $remotePath"
+    Write-Verbose "Copy-ItemFromRemoteMachine - localPath: $localPath"
+    Write-Verbose "Copy-ItemFromRemoteMachine - session: $($session.Name)"
+    Write-Output "Copying $fileName from $remotePath to $localPath on $($session.Name) ..."
 
     # Open local file
     try
@@ -334,6 +341,10 @@ function Copy-FilesToRemoteMachine
         [string] $localDirectory
     )
 
+    Write-Verbose "Copy-FilesToRemoteMachine - session: $($session.Name)"
+    Write-Verbose "Copy-FilesToRemoteMachine - remoteDirectory: $remoteDirectory"
+    Write-Verbose "Copy-FilesToRemoteMachine - localDirectory: $localDirectory"
+
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
 
@@ -349,7 +360,7 @@ function Copy-FilesToRemoteMachine
         Select-Object -ExpandProperty FullName
 
     # Push binaries to the new VM
-    Write-Verbose "Copying files to virtual machine: $filesToCopy"
+    Write-Verbose "Copying files to remote resource: $filesToCopy"
     foreach($fileToCopy in $filesToCopy)
     {
         $relativePath = $fileToCopy.SubString($localDirectory.Length)
@@ -398,6 +409,10 @@ function Copy-FilesFromRemoteMachine
         [string] $remoteDirectory = "c:\logs",
         [string] $localDirectory
     )
+
+    Write-Verbose "Copy-FilesFromRemoteMachine: session: $($session.Name)"
+    Write-Verbose "Copy-FilesFromRemoteMachine: remoteDirectory: $remoteDirectory"
+    Write-Verbose "Copy-FilesFromRemoteMachine: localDirectory: $localDirectory"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -472,6 +487,9 @@ function Remove-FilesFromRemoteMachine
         [System.Management.Automation.Runspaces.PSSession] $session,
         [string] $remoteDirectory = "c:\logs"
     )
+
+    Write-Verbose "Remove-FilesFromRemoteMachine: session: $($session.Name)"
+    Write-Verbose "Remove-FilesFromRemoteMachine: remoteDirectory: $remoteDirectory"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'

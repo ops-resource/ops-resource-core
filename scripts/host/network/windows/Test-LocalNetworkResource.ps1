@@ -35,6 +35,10 @@ param(
     [string] $logDirectory  = $(Join-Path $PSScriptRoot "logs")
 )
 
+Write-Verbose "Test-LocalNetworkResource - computerName: $computerName"
+Write-Verbose "Test-LocalNetworkResource - testDirectory: $testDirectory"
+Write-Verbose "Test-LocalNetworkResource - logDirectory: $logDirectory"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 

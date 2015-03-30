@@ -67,6 +67,15 @@ param(
     [string] $remoteLogDirectory                                = 'c:\logs'
 )
 
+Write-Verbose "New-WindowsResource - session: $($session.Name)"
+Write-Verbose "New-WindowsResource - resourceName: $resourceName"
+Write-Verbose "New-WindowsResource - resourceVersion: $resourceVersion"
+Write-Verbose "New-WindowsResource - cookbookNames: $cookbookNames"
+Write-Verbose "New-WindowsResource - installationDirectory: $installationDirectory"
+Write-Verbose "New-WindowsResource - logDirectory: $logDirectory"
+Write-Verbose "New-WindowsResource - remoteConfigurationDirectory: $remoteConfigurationDirectory"
+Write-Verbose "New-WindowsResource - remoteLogDirectory: $remoteLogDirectory"
+
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 
@@ -106,6 +115,7 @@ $installationScript = Join-Path $installationDirectory 'Install-ApplicationsOnWi
 
 try
 {
+    Write-Output "Configuring remote resource ..."
     Invoke-Command `
         -Session $session `
         -ArgumentList @( $resourceName, $resourceVersion, (Join-Path $remoteConfigurationDirectory (Split-Path -Leaf $installationScript)), $remoteConfigurationDirectory, $remoteLogDirectory, $cookbookNames ) `
@@ -118,6 +128,13 @@ try
                 [string] $logDirectory,
                 [string[]] $cookbookNames
             )
+
+            Write-Output "New-WindowsResource - Configuring remote - resourceName: $resourceName"
+            Write-Output "New-WindowsResource - Configuring remote - resourceVersion: $resourceVersion"
+            Write-Output "New-WindowsResource - Configuring remote - installationScript: $installationScript"
+            Write-Output "New-WindowsResource - Configuring remote - configurationDirectory: $configurationDirectory"
+            Write-Output "New-WindowsResource - Configuring remote - logDirectory: $logDirectory"
+            Write-Output "New-WindowsResource - Configuring remote - cookbookNames: $cookbookNames"
 
             & $installationScript -resourceName $resourceName -$resourceVersion $resourceVersion -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookNames $cookbookNames
         } `
