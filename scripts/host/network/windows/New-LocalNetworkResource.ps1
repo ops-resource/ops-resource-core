@@ -89,4 +89,4 @@ if ($session -eq $null)
 }
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-& $newWindowsResource -session $session -resoruceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
+& $newWindowsResource -session $session -resourceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
