@@ -146,11 +146,11 @@ function Install-ChefClient
     )
 
     # Download chef client. Note that this is obviously hard-coded but for now it will work. Later on we'll make this a configuration option
-    Write-Output "Downloading chef installer ..."
-    $chefClientInstallFile = "chef-windows-11.18.6-1.windows.msi"
+    $chefClientInstallFile = "chef-client-12.1.2-1.msi"
     $chefClientInstall = Join-Path $configurationDirectory $chefClientInstallFile
     if (-not (Test-Path $chefClientInstall))
     {
+        Write-Output "Downloading chef installer ..."
         $chefClientDownloadUrl = "https://opscode-omnibus-packages.s3.amazonaws.com/windows/2008r2/x86_64/" + $chefClientInstallFile
         Invoke-WebRequest -Uri $chefClientDownloadUrl -OutFile $chefClientInstall -Verbose
 
