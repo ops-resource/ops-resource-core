@@ -48,94 +48,108 @@ function Copy-ItemToRemoteMachine
     Write-Output "Copying $fileName from $localPath to $remotePath on $($session.Name) ..."
 
     # Open local file
+    $wasSuccessful = $true
     try
-    {
-        [IO.FileStream]$filestream = [IO.File]::OpenRead( $localPath )
-        Write-Output "Opened local file for reading"
-    }
-    catch
-    {
-        Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Open remote file
-    try
-    {
-        Invoke-Command `
-            -Session $Session `
-            -ScriptBlock {
-                param(
-                    $remFile
-                )
-
-                $dir = Split-Path -Parent $remFile
-                if (-not (Test-Path $dir))
-                {
-                    New-Item -Path $dir -ItemType Directory
-                }
-
-                [IO.FileStream]$filestream = [IO.File]::OpenWrite( $remFile )
-            } `
-            -ArgumentList $remotePath
-        Write-Output "Opened remote file for writing"
-    }
-    catch
-    {
-        Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Copy file in chunks
-    $chunksize = 1MB
-    [byte[]]$contentchunk = New-Object byte[] $chunksize
-    $bytesread = 0
-    while (($bytesread = $filestream.Read( $contentchunk, 0, $chunksize )) -ne 0)
     {
         try
         {
-            $percent = $filestream.Position / $filestream.Length
-            Write-Output ("Copying {0}, {1:P2} complete, sending {2} bytes" -f $fileName, $percent, $bytesread)
-            Invoke-Command -Session $Session -ScriptBlock {
-                Param($data, $bytes)
-                $filestream.Write( $data, 0, $bytes )
-            } -ArgumentList $contentchunk,$bytesread
+            [IO.FileStream]$filestream = [IO.File]::OpenRead( $localPath )
+            Write-Output "Opened local file for reading"
         }
         catch
         {
-            Write-Error "Could not copy $fileName to $($Connection.Name) because: $($_.Exception.ToString())"
-            return $false
+            Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
+            Return $false
         }
-        finally
+
+        # Open remote file
+        try
         {
+            Invoke-Command `
+                -Session $Session `
+                -ScriptBlock {
+                    param(
+                        $remFile
+                    )
+
+                    $dir = Split-Path -Parent $remFile
+                    if (-not (Test-Path $dir))
+                    {
+                        New-Item -Path $dir -ItemType Directory
+                    }
+
+                    [IO.FileStream]$filestream = [IO.File]::OpenWrite( $remFile )
+                } `
+                -ArgumentList $remotePath
+            Write-Output "Opened remote file for writing"
+        }
+        catch
+        {
+            Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
+            Return $false
+        }
+
+        # Copy file in chunks
+        $chunksize = 1MB
+        [byte[]]$contentchunk = New-Object byte[] $chunksize
+        $bytesread = 0
+        while (($bytesread = $filestream.Read( $contentchunk, 0, $chunksize )) -ne 0)
+        {
+            try
+            {
+                $percent = $filestream.Position / $filestream.Length
+                Write-Output ("Copying {0}, {1:P2} complete, sending {2} bytes" -f $fileName, $percent, $bytesread)
+                Invoke-Command -Session $Session -ScriptBlock {
+                    Param($data, $bytes)
+                    $filestream.Write( $data, 0, $bytes )
+                } -ArgumentList $contentchunk,$bytesread
+            }
+            catch
+            {
+                Write-Error "Could not copy $fileName to $($Connection.Name) because: $($_.Exception.ToString())"
+                return $false
+            }
+            finally
+            {
+            }
+        }
+    }
+    finally
+    {
+        # Close remote file
+        try
+        {
+            Invoke-Command -Session $Session -ScriptBlock {
+                if ($fileStream -ne $null)
+                {
+                    $filestream.Close()
+                }
+            }
+            Write-Output "Closed remote file, copy complete"
+        }
+        catch
+        {
+            Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
+            $wasSuccessful = $false
+        }
+
+        # Close local file
+        try
+        {
+            if ($fileStream -ne $null)
+            {
+                $filestream.Close()
+            }
+            Write-Output "Closed local file, copy complete"
+        }
+        catch
+        {
+            Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
+            $wasSuccessful = $false
         }
     }
 
-    # Close remote file
-    try
-    {
-        Invoke-Command -Session $Session -ScriptBlock {
-            $filestream.Close()
-        }
-        Write-Output "Closed remote file, copy complete"
-    }
-    catch
-    {
-        Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Close local file
-    try
-    {
-        $filestream.Close()
-        Write-Output "Closed local file, copy complete"
-    }
-    catch
-    {
-        Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
-        Return $false
-    }
+    return $wasSuccessful
 }
 
 function Read-FromRemoteStream
@@ -171,10 +185,6 @@ function Read-FromRemoteStream
     {
         Write-Error "Could not copy $fileName to $($Connection.Name) because: $($_.Exception.ToString())"
         return -1
-    }
-    finally
-    {
-
     }
 }
 
@@ -223,83 +233,97 @@ function Copy-ItemFromRemoteMachine
     Write-Output "Copying $fileName from $remotePath to $localPath on $($session.Name) ..."
 
     # Open local file
+    $wasSuccessful = $true
     try
-    {
-        $localDir = Split-Path -Parent $localPath
-        if (-not (Test-Path $localDir))
-        {
-            New-Item -Path $localDir -ItemType Directory | Out-Null
-        }
-
-        [IO.FileStream]$filestream = [IO.File]::OpenWrite( $localPath )
-        Write-Output "Opened local file for writing"
-    }
-    catch
-    {
-        Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Open remote file
-    try
-    {
-        Invoke-Command -Session $Session -ScriptBlock {
-            Param($remFile)
-            [IO.FileStream]$filestream = [IO.File]::OpenRead( $remFile )
-        } -ArgumentList $remotePath
-        Write-Output "Opened remote file for reading"
-    }
-    catch
-    {
-        Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Copy file in chunks
-    $chunksize = 1MB
-    $data = $null
-    while (($data = Read-FromRemoteStream $session $chunksize ).BytesRead -ne 0)
     {
         try
         {
-            Write-Output ("Copying {0}, receiving {1} bytes" -f $fileName, $data.BytesRead)
-            $fileStream.Write( $data.Chunk, 0, $data.BytesRead)
+            $localDir = Split-Path -Parent $localPath
+            if (-not (Test-Path $localDir))
+            {
+                New-Item -Path $localDir -ItemType Directory | Out-Null
+            }
+
+            [IO.FileStream]$filestream = [IO.File]::OpenWrite( $localPath )
+            Write-Output "Opened local file for writing"
         }
         catch
         {
-            Write-Error "Could not copy $fileName from $($Connection.Name) because: $($_.Exception.ToString())"
-            return $false
+            Write-Error "Could not open local file $localPath because: $($_.Exception.ToString())"
+            Return $false
         }
-        finally
+
+        # Open remote file
+        try
         {
+            Invoke-Command -Session $Session -ScriptBlock {
+                Param($remFile)
+                [IO.FileStream]$filestream = [IO.File]::OpenRead( $remFile )
+            } -ArgumentList $remotePath
+            Write-Output "Opened remote file for reading"
+        }
+        catch
+        {
+            Write-Error "Could not open remote file $remotePath because: $($_.Exception.ToString())"
+            Return $false
+        }
+
+        # Copy file in chunks
+        $chunksize = 1MB
+        $data = $null
+        while (($data = Read-FromRemoteStream $session $chunksize ).BytesRead -ne 0)
+        {
+            try
+            {
+                Write-Output ("Copying {0}, receiving {1} bytes" -f $fileName, $data.BytesRead)
+                $fileStream.Write( $data.Chunk, 0, $data.BytesRead)
+            }
+            catch
+            {
+                Write-Error "Could not copy $fileName from $($Connection.Name) because: $($_.Exception.ToString())"
+                return $false
+            }
+            finally
+            {
+            }
+        }
+    }
+    finally
+    {
+        # Close local file
+        try
+        {
+            if ($fileStream -ne $null)
+            {
+                $filestream.Close()
+            }
+            Write-Output "Closed local file, copy complete"
+        }
+        catch
+        {
+            Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
+            $wasSuccessful = $false
+        }
+
+        # Close remote file
+        try
+        {
+            Invoke-Command -Session $Session -ScriptBlock {
+                if ($fileStream -ne $null)
+                {
+                    $filestream.Close()
+                }
+            }
+            Write-Output "Closed remote file, copy complete"
+        }
+        catch
+        {
+            Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
+            $wasSuccessful = $false
         }
     }
 
-    # Close local file
-    try
-    {
-        $filestream.Close()
-        Write-Output "Closed local file, copy complete"
-    }
-    catch
-    {
-        Write-Error "Could not close local file $localPath because: $($_.Exception.ToString())"
-        Return $false
-    }
-
-    # Close remote file
-    try
-    {
-        Invoke-Command -Session $Session -ScriptBlock {
-            $filestream.Close()
-        }
-        Write-Output "Closed remote file, copy complete"
-    }
-    catch
-    {
-        Write-Error "Could not close remote file $remotePath because: $($_.Exception.ToString())"
-        Return $false
-    }
+    return $wasSuccessful
 }
 
 <#
@@ -439,12 +463,13 @@ function Copy-FilesFromRemoteMachine
                 [string] $dir
             )
 
-            return Get-ChildItem -Recurse -Path $dir
+            Write-Verbose "Searching for files to copy in: $dir"
+            return Get-ChildItem -Recurse -Path $dir -Verbose
         } `
          @commonParameterSwitches
 
     # Push binaries to the new VM
-    Write-Verbose "Copying files from the virtual machine"
+    Write-Verbose "Copying files from the remote resource: $remoteFiles"
     foreach($fileToCopy in $remoteFiles)
     {
         $file = $fileToCopy.FullName
