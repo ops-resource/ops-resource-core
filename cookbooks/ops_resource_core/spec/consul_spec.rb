@@ -29,7 +29,7 @@ describe 'ops_resource_core'  do
 
   it 'creates the consul user' do
     expect(chef_run).to create_user('consul_user')
-    expect(chef_run).to modify_group('Performance Monitor Users').with(members: 'consul_user')
+    expect(chef_run).to modify_group('Performance Monitor Users').with(members: ['consul_user'])
   end
 
   consul_base_path = 'c:\\ops\\consul'
