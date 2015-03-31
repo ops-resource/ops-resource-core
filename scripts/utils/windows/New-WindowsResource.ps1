@@ -156,7 +156,7 @@ try
             Write-Output "New-WindowsResource - Configuring remote - logDirectory: $logDirectory"
             Write-Output "New-WindowsResource - Configuring remote - cookbookNames: $cookbookNames"
 
-            & $installationScript -resourceName $resourceName -$resourceVersion $resourceVersion -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookNames $cookbookNames
+            & $installationScript -resourceName $resourceName -resourceVersion $resourceVersion -configurationDirectory $configurationDirectory -logDirectory $logDirectory -cookbookNames $cookbookNames
         } `
         @commonParameterSwitches
 }
