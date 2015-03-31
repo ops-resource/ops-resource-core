@@ -184,7 +184,6 @@
 
         <!-- The directory that contains all the scripts for the project -->
         <DirScripts Condition=" '$(DirScripts)' == '' ">$(DirWorkspace)\scripts</DirScripts>
-        <DirScriptsExisting Condition=" '$(DirScriptsExisting)' == '' ">$(DirScripts)\existing</DirScriptsExisting>
 
         <!-- The directory that contains all the server spec files -->
         <DirSpec Condition=" '$(DirSpec)' == '' ">$(DirWorkspace)\spec</DirSpec>
@@ -192,8 +191,8 @@
         <!-- The directory that contains the template files for the project -->
         <DirTemplates Condition=" '$(DirTemplates)' == '' ">$(DirWorkspace)\templates</DirTemplates>
         <DirTemplatesHost Condition=" '$(DirTemplatesHost)' == '' ">$(DirTemplates)\host</DirTemplatesHost>
-        <DirTemplatesHostNetwork Condition=" '$(DirTemplatesHostNetwork)' == '' ">$(DirTemplatesHost)\network</DirTemplatesHostNetwork>
-        <DirTemplatesHostNetworkWindows Condition=" '$(DirTemplatesHostNetworkWindows)' == '' ">$(DirTemplatesHostNetwork)\windows</DirTemplatesHostNetworkWindows>
+        <DirTemplatesHostLAN Condition=" '$(DirTemplatesHostLAN)' == '' ">$(DirTemplatesHost)\lan</DirTemplatesHostLAN>
+        <DirTemplatesHostLANWindows Condition=" '$(DirTemplatesHostLANWindows)' == '' ">$(DirTemplatesHostLAN)\windows</DirTemplatesHostLANWindows>
     </PropertyGroup>
 
 
@@ -429,7 +428,7 @@
             <ExcludedDependencies>
             </ExcludedDependencies>
         </NuGetPackageSpecs>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.network.windows.nuspec">
+        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.lan.windows.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
             </IncludedDependencies>

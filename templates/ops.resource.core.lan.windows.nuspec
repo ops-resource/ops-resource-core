@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
-        <id>Ops.Resource.Core.Network.Windows</id>
+        <id>Ops.Resource.Core.Lan.Windows</id>
         <version>$VersionSemantic$</version>
         <authors>P. van der Velde</authors>
         <owners>P. van der Velde</owners>
@@ -21,9 +21,10 @@
               target="cookbooks" />
         <file src="$DirOutput$\spec\**\*.*" target="spec" />
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
-        <file src="$DirOutput$\scripts\host\network\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\host\lan\windows\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.*" target="scripts\host" />
-        <file src="$DirOutput$\templates\host\windows\network\*.*" target="templates\host" />
+        <file src="$DirOutput$\templates\host\windows\lan\*.*" target="templates\host" />
+        <file src="$DirOutput$\scripts\dependencies.msbuild" />
         <file src="$DirOutput$\scripts\distribute.core.msbuild" />
     </files>
 </package>
