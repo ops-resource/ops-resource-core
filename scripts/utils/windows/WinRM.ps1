@@ -464,7 +464,9 @@ function Copy-FilesFromRemoteMachine
             )
 
             Write-Verbose "Searching for files to copy in: $dir"
-            return Get-ChildItem -Recurse -Path $dir -Verbose
+            return Get-ChildItem -Path $dir -Recurse -Force |
+                Where-Object { -not $_.PsIsContainer } |
+                Select-Object -ExpandProperty FullName
         } `
          @commonParameterSwitches
 
@@ -472,11 +474,11 @@ function Copy-FilesFromRemoteMachine
     Write-Verbose "Copying files from the remote resource: $remoteFiles"
     foreach($fileToCopy in $remoteFiles)
     {
-        $file = $fileToCopy.FullName
-        $localPath = Join-Path $localDirectory (Split-Path -Leaf $file)
+        $relativePath = $fileToCopy.SubString($remoteDirectory.Length)
+        $localPath = Join-Path $localDirectory $relativePath
 
         Write-Verbose "Copying $fileToCopy to $localPath"
-        Copy-ItemFromRemoteMachine -localPath $localPath -remotePath $file -Session $session @commonParameterSwitches
+        Copy-ItemFromRemoteMachine -localPath $localPath -remotePath $fileToCopy -Session $session @commonParameterSwitches
     }
 }
 
