@@ -233,13 +233,21 @@
             <Output TaskParameter="Result" PropertyName="ExternalFilesForScriptsDestination" />
         </TemplateText>
 
-        <CreateProperty Value="$([System.IO.Path]::GetDirectoryName('$(ExternalFilesForScriptsDestination)'))">
+        <!--
+            Strip the spaces out of the path because Chef has issues (https://github.com/chef/chef/issues/3170) with
+            spaces in paths.
+        -->
+        <CreateProperty Value='$(ExternalFilesForScriptsDestination.Replace(" ","_"))'>
+            <Output TaskParameter="Value" PropertyName="ExternalFilesForScriptsDestinationWithoutSpaces" />
+        </CreateProperty>
+
+        <CreateProperty Value="$([System.IO.Path]::GetDirectoryName('$(ExternalFilesForScriptsDestinationWithoutSpaces)'))">
             <Output TaskParameter="Value" PropertyName="DirToCreate" />
         </CreateProperty>
         <MakeDir Directories="$(DirToCreate)"
                  Condition="!Exists('$(DirToCreate)') AND '$(ShouldExecute)' == 'true' " />
 
         <Copy SourceFiles="%(ExternalFiles.Identity)"
-              DestinationFiles="$(ExternalFilesForScriptsDestination)" />
+              DestinationFiles="$(ExternalFilesForScriptsDestinationWithoutSpaces)" />
     </Target>
 </Project>
