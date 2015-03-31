@@ -77,7 +77,7 @@ function Uninstall-Msi
 
     if ($p.ExitCode -ne 0)
     {
-        throw "Failed to install: $msiFile"
+        throw "Failed to uninstall: $msiFile"
     }
 }
 
@@ -266,5 +266,5 @@ finally
     $chefUninstallLogFile = Join-Path $logDirectory "chef.uninstall.log"
     Uninstall-Msi -msiFile $chefClientInstall -logFile $chefUninstallLogFile
 
-    Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction SilentlyContinue
+    Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction Continue
 }

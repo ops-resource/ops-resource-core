@@ -162,10 +162,17 @@ try
 }
 finally
 {
-    Write-Verbose "Copying log files from remote resource ..."
-    Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
+    try
+    {
+        Write-Verbose "Copying log files from remote resource ..."
+        Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
 
-    Write-Verbose "Copied log files from remote resource"
+        Write-Verbose "Copied log files from remote resource"
+    }
+    catch
+    {
+        Write-Error "Failed to copy log files from remote machine. Error was $($_.Exception.ToString())"
+    }
 
     Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteConfigurationDirectory
     Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory
