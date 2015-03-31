@@ -224,13 +224,21 @@ end
 #   protocol :TCP
 #   firewall_action :allow
 # end
-shell_out("netsh advfirewall firewall add rule name=\"Consul_Tcp\" dir=in action=allow protocol=TCP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain")
+powershell_script 'firewall_open_TCP_ports_for_consul' do
+  code <<-POWERSHELL
+    netsh advfirewall firewall add rule name=\"Consul_Tcp\" dir=in action=allow protocol=TCP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
+  POWERSHELL
+end
 
 # windows_firewall_rule 'Consul' do
 #   protocol :UDP
 #   firewall_action :allow
 # end
-shell_out("netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain")
+powershell_script 'firewall_open_UDP_ports_for_consul' do
+  code <<-POWERSHELL
+    netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
+  POWERSHELL
+end
 
 consul_base_path = node['paths']['consul_base']
 set_consul_metadata = 'Set-ConsulMetadata.ps1'

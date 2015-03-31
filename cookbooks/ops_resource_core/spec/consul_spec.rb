@@ -132,6 +132,14 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_file("#{meta_directory}\\service_consul.json").with_content(consul_service_config_content)
   end
 
+  it 'opens the TCP ports for consul in the firewall' do
+    expect(chef_run).to run_powershell_script('firewall_open_TCP_ports_for_consul')
+  end
+
+  it 'opens the UDP ports for consul in the firewall' do
+    expect(chef_run).to run_powershell_script('firewall_open_UDP_ports_for_consul')
+  end
+
   set_consul_metadata = 'Set-ConsulMetadata.ps1'
   it 'copies the Set-ConsulMetadata.ps1 file' do
     expect(chef_run).to create_cookbook_file("c:\\ops\\consul\\#{set_consul_metadata}").with(source: set_consul_metadata)
