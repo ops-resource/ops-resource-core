@@ -22,8 +22,6 @@
         <ConsulEntryPointIp Condition=" '$(ConsulEntryPointIp)' == '' ">UNDEFINED</ConsulEntryPointIp>
 
         <!-- Directories -->
-        <DirBuildTempConsulUnzip>$(DirBuildTemp)\unzip\consul</DirBuildTempConsulUnzip>
-
         <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
         <DirOutputConfiguration Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfiguration)' == '' ">$(DirOutput)\configuration</DirOutputConfiguration>
         <DirOutputConfigurationCookbooks Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooks)' == '' ">$(DirOutputConfiguration)\cookbooks</DirOutputConfigurationCookbooks>
@@ -46,6 +44,9 @@
         <DirExternalInstallersWinSw Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersWinSw)' == '' ">$(DirExternalInstallers)\winsw</DirExternalInstallersWinSw>
 
         <!-- Files -->
+        <!-- The file that contains the dependencies for the non-core cookbooks etc. -->
+        <FileNonCoreDependencies Condition=" '$(FileNonCoreDependencies)' == '' ">UNDEFINED</FileNonCoreDependencies>
+
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
 
@@ -58,11 +59,18 @@
         <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
     </ItemGroup>
 
+    <Import Project="$(MSBuildProjectDirectory)\dependencies.msbuild"
+            Condition="Exists('$(MSBuildProjectDirectory)\dependencies.msbuild') AND '$(ExistsDistributeCoreDependencies)' != 'true' " />
+    <Import Project="$(FileNonCoreDependencies)"
+            Condition="Exists('$(FileNonCoreDependencies)')" />
+
     <Import Project="$(DirMsBuildShared)\shared.templatetokens.msbuild"
             Condition="Exists('$(DirMsBuildShared)\shared.templatetokens.msbuild') AND '$(ExistsSharedTemplateTokens)' != 'true' " />
 
     <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
             Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\TemplateText.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\TemplateText.msbuild') AND '$(ExistsExtensionsTemplateText)' != 'true' " />
     <Import Project="$(DirMsBuildExtensions)\Unzip.msbuild"
             Condition="Exists('$(DirMsBuildExtensions)\Unzip.msbuild') AND '$(ExistsExtensionsUnzip)' != 'true' " />
 
@@ -188,35 +196,50 @@
               DestinationFiles="@(SpecFiles->'$(DirOutputVerificationSpec)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
-    <Target Name="_Distribute_Core_Externals">
+    <Target Name="_Distribute_Core_Externals"
+            Outputs="%(ExternalFiles.Identity)"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize"
+            Condition=" '@(ExternalFiles)' != '' ">
         <MakeDir Directories="$(DirOutput)"
                  Condition="!Exists('$(DirOutput)')" />
         <MakeDir Directories="$(DirOutputConfiguration)"
                  Condition="!Exists('$(DirOutputConfiguration)')" />
 
         <ItemGroup>
-            <ChefFiles Include="$(DirExternalInstallersChef)/**/*.*"
-                       Condition="Exists('$(DirExternalInstallersChef)')" />
+            <TemplateTokens Include="DestinationConfiguration">
+                <ReplacementValue>$(DirOutputConfiguration)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="DestinationConfigurationCookbooks">
+                <ReplacementValue>$(DirOutputConfigurationCookbooks)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="DestinationVerification">
+                <ReplacementValue>$(DirOutputVerification)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="CookbookName" Condition=" '%(ExternalFiles.CookbookName)' != '' ">
+                <ReplacementValue>%(ExternalFiles.CookbookName)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="RecursiveDir">
+                <ReplacementValue>%(ExternalFiles.RecursiveDir)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="Filename">
+                <ReplacementValue>%(ExternalFiles.Filename)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="Extension">
+                <ReplacementValue>%(ExternalFiles.Extension)</ReplacementValue>
+            </TemplateTokens>
         </ItemGroup>
-        <Copy SourceFiles="@(ChefFiles)"
-              DestinationFiles="@(ChefFiles->'$(DirOutputConfiguration)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <TemplateText Template="%(ExternalFiles.Destination)"
+                      Tokens="@(TemplateTokens)">
+            <Output TaskParameter="Result" PropertyName="ExternalFilesForScriptsDestination" />
+        </TemplateText>
 
-        <ItemGroup>
-            <WinSwFiles Include="$(DirExternalInstallersWinSw)/**/*.*"
-                        Condition="Exists('$(DirExternalInstallersWinSw)')" />
-        </ItemGroup>
-        <Copy SourceFiles="@(WinSwFiles)"
-              DestinationFiles="@(WinSwFiles->'$(DirOutputConfigurationCookbooksCoreFiles)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <CreateProperty Value="$([System.IO.Path]::GetDirectoryName('$(ExternalFilesForScriptsDestination)'))">
+            <Output TaskParameter="Value" PropertyName="DirToCreate" />
+        </CreateProperty>
+        <MakeDir Directories="$(DirToCreate)"
+                 Condition="!Exists('$(DirToCreate)') AND '$(ShouldExecute)' == 'true' " />
 
-        <ItemGroup>
-            <ZippedConsulFiles Include="$(DirExternalInstallersConsul)/*.zip" />
-        </ItemGroup>
-        <Unzip InputFileName="@(ZippedConsulFiles)"
-               DestinationDirectory="$(DirBuildTempConsulUnzip)" />
-        <ItemGroup>
-            <ConsulFiles Include="$(DirBuildTempConsulUnzip)/*.exe" />
-        </ItemGroup>
-        <Copy SourceFiles="@(ConsulFiles)"
-              DestinationFiles="@(ConsulFiles->'$(DirOutputConfigurationCookbooksCoreFiles)\%(RecursiveDir)%(Filename)%(Extension)')"/>
+        <Copy SourceFiles="%(ExternalFiles.Identity)"
+              DestinationFiles="$(ExternalFilesForScriptsDestination)" />
     </Target>
 </Project>
