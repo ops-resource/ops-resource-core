@@ -121,7 +121,7 @@ end
 # add the winsw binaries
 # Copy the service runner & rename to consul.exe
 cookbook_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
-  source 'winsw-1.17-bin.exe'
+  source 'winsw.exe'
   action :create
 end
 

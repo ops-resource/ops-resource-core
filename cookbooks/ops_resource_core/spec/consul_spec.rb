@@ -55,7 +55,7 @@ describe 'ops_resource_core'  do
 
   win_service_name = 'consul_service'
   it 'creates consul_service.exe in the consul ops directory' do
-    expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{win_service_name}.exe").with_source('winsw-1.16-bin.exe')
+    expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{win_service_name}.exe").with_source('winsw.exe')
   end
 
   consul_service_exe_config_content = <<-XML
