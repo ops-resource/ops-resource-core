@@ -90,25 +90,32 @@ powershell_script 'user_grant_service_logon_rights' do
   POWERSHELL
 end
 
+ops_base_directory = node['paths']['ops_base']
+directory ops_base_directory do
+  rights :read, 'Everyone', applies_to_children: true
+  rights :modify, 'Administrators', applies_to_children: true
+  action :create
+end
+
+consul_base_directory = node['paths']['consul_base']
+directory consul_base_directory do
+  action :create
+end
+
 consul_data_directory = node['paths']['consul_data']
 directory consul_data_directory do
-  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
   rights :modify, consul_username, applies_to_children: true, applies_to_self: false
-  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
 consul_checks_directory = node['paths']['consul_checks']
 directory consul_checks_directory do
-  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
-  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
   rights :read_execute, 'Everyone', applies_to_children: true, applies_to_self: false
-  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 
@@ -116,6 +123,29 @@ consul_exe = 'consul.exe'
 cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
   source consul_exe
   action :create
+end
+
+consul_config_datacenter = node['consul']['datacenter']
+consul_config_entry_node_dns = node['consul']['entry_node_ip']
+consul_config_recursors = node['consul']['dns_server_url']
+
+consul_config_file = 'consul_default.json'
+file "#{consul_bin_directory}\\#{consul_config_file}" do
+  content <<-JSON
+{
+  "data_dir": "#{consul_data_directory}",
+
+  "datacenter": "#{consul_config_datacenter}",
+
+  "retry_join": ["#{consul_config_entry_node_dns}"],
+  "retry_interval": "30s",
+
+  "recursors": ["#{consul_config_recursors}"],
+
+  "disable_remote_exec": true,
+  "disable_update_check": true
+}
+  JSON
 end
 
 # add the winsw binaries
@@ -142,7 +172,6 @@ end
 
 # Get IP for consul join from CMDB
 consul_config_directory = node['paths']['consul_config']
-ip_consul_entry_node = node['consul']['entry_node_ip']
 
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   content <<-XML
@@ -163,7 +192,7 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
     <description>This service runs the consul agent.</description>
 
     <executable>#{consul_bin_directory}\\consul.exe</executable>
-    <arguments>agent -data-dir #{consul_data_directory} -config-dir #{consul_config_directory} -retry-join=#{ip_consul_entry_node} -retry-interval=30s</arguments>
+    <arguments>agent -config-file=#{consul_bin_directory}\\#{consul_config_file} -config-dir=#{consul_config_directory}</arguments>
 
     <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
     <logmode>rotate</logmode>
@@ -199,13 +228,6 @@ registry_key "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\services\\eventlog\
     type: :string,
     data: 'c:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\EventLogMessages.dll'
   }]
-  action :create
-end
-
-meta_directory = node['paths']['meta']
-directory meta_directory do
-  rights :read, 'Everyone', applies_to_children: true, applies_to_self: false
-  rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
 

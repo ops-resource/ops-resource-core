@@ -32,7 +32,8 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_directory(meta_path)
   end
 
+  meta_file = 'meta.json'
   it 'creates the meta file' do
-    expect(chef_run).to create_file("#{meta_path}\\meta.json")
+    expect(chef_run).to create_cookbook_file("#{meta_path}\\#{meta_file}").with(source: meta_file)
   end
 end

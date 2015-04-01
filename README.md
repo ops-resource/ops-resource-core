@@ -26,7 +26,7 @@ In order to collect all the cookbooks and configuration scripts in the correct l
     * **`<DirExternalInstallers>\chef`** - The directory that contains the chef client installer. The scripts are currently expecting `chef-client-12.1.2-1.msi`.
     * **`<DirExternalInstallers>\consul`** - The directory that contains the [consul](https://consul.io/) executable in zipped form.
     * **`<DirExternalInstallers>\winsw`** - The directory that contains the [winsw](https://github.com/kohsuke/winsw/) executable. The cookbooks are currently expecting version 1.17
-* **ConsulEntryPointIp** - The IP address of one of the consul nodes on the network.
+* **ConsulEntryPointDns** - The IP address of one of the consul nodes on the network.
 
 Upon completion of the msbuild script the `DirOutput` will contain two directories, one containing all the configuration files and one containing all the verification files (e.g. the [serverspec](http://serverspec.org/) scripts)
 

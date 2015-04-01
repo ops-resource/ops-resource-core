@@ -32,6 +32,21 @@ describe 'ops_resource_core'  do
     expect(chef_run).to modify_group('Performance Monitor Users').with(members: ['consul_user'])
   end
 
+  ops_base_path = 'c:\\ops'
+  it 'creates the ops base directory' do
+    expect(chef_run).to create_directory(ops_base_path)
+  end
+
+  consul_base_path = "#{ops_base_path}\\consul"
+  it 'creates the consul base directory' do
+    expect(chef_run).to create_directory(consul_base_path)
+  end
+
+  consul_data_directory = "#{consul_base_path}\\data"
+  it 'creates the consul data directory' do
+    expect(chef_run).to create_directory(consul_data_directory)
+  end
+
   consul_base_path = 'c:\\ops\\consul'
   consul_data_directory = "#{consul_base_path}\\data"
   it 'creates the consul data directory' do
@@ -51,6 +66,29 @@ describe 'ops_resource_core'  do
   service_name = 'consul'
   it 'creates consul.exe in the consul ops directory' do
     expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{service_name}.exe").with_source("#{service_name}.exe")
+  end
+
+  consul_config_datacenter = '${ConsulDatacenter}'
+  consul_config_entry_node_dns = '${ConsulEntryPointDns}'
+  consul_config_recursors = '${ConsulDnsServerUrl}'
+  consul_default_config_content = <<-JSON
+{
+  "data_dir": "#{consul_data_directory}",
+
+  "datacenter": "#{consul_config_datacenter}",
+
+  "retry_join": ["#{consul_config_entry_node_dns}"],
+  "retry_interval": "30s",
+
+  "recursors": ["#{consul_config_recursors}"],
+
+  "disable_remote_exec": true,
+  "disable_update_check": true
+}
+  JSON
+  consul_config_file = 'consul_default.json'
+  it 'creates consul_default.json in the consul ops directory' do
+    expect(chef_run).to create_file("#{consul_bin_directory}\\#{consul_config_file}").with_content(consul_default_config_content)
   end
 
   win_service_name = 'consul_service'
@@ -74,7 +112,6 @@ describe 'ops_resource_core'  do
   end
 
   consul_config_directory = 'c:\\meta\\consul'
-  ip_consul_entry_node = '${ConsulEntryPointIp}'
   consul_service_xml_content = <<-XML
 <?xml version="1.0"?>
 <!--
@@ -93,7 +130,7 @@ describe 'ops_resource_core'  do
     <description>This service runs the consul agent.</description>
 
     <executable>#{consul_bin_directory}\\consul.exe</executable>
-    <arguments>agent -data-dir #{consul_data_directory} -config-dir #{consul_config_directory} -retry-join=#{ip_consul_entry_node} -retry-interval=30s</arguments>
+    <arguments>agent -config-file=#{consul_bin_directory}\\#{consul_config_file} -config-dir=#{consul_config_directory}</arguments>
 
     <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
     <logmode>rotate</logmode>
@@ -118,10 +155,6 @@ describe 'ops_resource_core'  do
   end
 
   meta_directory = 'c:\\meta'
-  it 'creates the meta directory' do
-    expect(chef_run).to create_directory(meta_directory)
-  end
-
   consul_service_config_content = <<-JSON
 {
     "install_path": "#{consul_bin_directory}",
