@@ -19,7 +19,9 @@
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
         <!-- Properties -->
-        <ConsulEntryPointIp Condition=" '$(ConsulEntryPointIp)' == '' ">UNDEFINED</ConsulEntryPointIp>
+        <ConsulDatacenter Condition=" '$(ConsulDatacenter)' == '' ">UNDEFINED</ConsulDatacenter>
+        <ConsulEntryPointDns Condition=" '$(ConsulEntryPointDns)' == '' ">UNDEFINED</ConsulEntryPointDns>
+        <ConsulDnsServerUrl Condition=" '$(ConsulDnsServerUrl)' == '' ">UNDEFINED</ConsulDnsServerUrl>
 
         <!-- Directories -->
         <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
@@ -49,9 +51,6 @@
 
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
-
-        <FileCookbookConsulAttributesTemplate>$(DirOriginCookbooks)\ops_resource_core\attributes\consul.rb</FileCookbookConsulAttributesTemplate>
-        <FileCookbookConsulAttributesGenerated>$(DirOutputConfigurationCookbooks)\ops_resource_core\attributes\consul.rb</FileCookbookConsulAttributesGenerated>
     </PropertyGroup>
 
     <ItemGroup>
@@ -164,21 +163,10 @@
                  Condition="!Exists('$(DirOutputConfigurationCookbooks)')" />
 
         <ItemGroup>
-            <CookbookFiles Include="$(DirOriginCookbooks)\**\*.*"
-                           Exclude="$(FileCookbookConsulAttributesTemplate)" />
+            <CookbookFiles Include="$(DirOriginCookbooks)\**\*.*" />
         </ItemGroup>
         <Copy SourceFiles="@(CookbookFiles)"
               DestinationFiles="@(CookbookFiles->'$(DirOutputConfigurationCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
-
-        <ItemGroup>
-            <TemplateTokens Include="ConsulEntryPointIp" >
-                <ReplacementValue>@(ConsulEntryPointIp)</ReplacementValue>
-            </TemplateTokens>
-        </ItemGroup>
-        <TemplateFile Template="$(FileCookbookConsulAttributesTemplate)"
-                      OutputFileName="$(FileCookbookConsulAttributesGenerated)"
-                      Tokens="@(TemplateTokens)"
-                      Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>
 
     <Target Name="_Distribute_Core_Specs">

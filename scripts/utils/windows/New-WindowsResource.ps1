@@ -67,6 +67,25 @@ param(
     [string] $remoteLogDirectory                                = 'c:\logs'
 )
 
+function Get-TargetEnvironmentDataFromConsul
+{
+    [CmdletBinding()]
+    param(
+    )
+
+    # Get the data from consul
+}
+
+function New-ConsulAttributesFile
+{
+    [CmdletBinding()]
+    param(
+    )
+
+    # Create the consul attributes file with the data describing the environment we want to join
+    $consulAttributeContent = Get-Content -Path ()
+}
+
 Write-Verbose "New-WindowsResource - session: $($session.Name)"
 Write-Verbose "New-WindowsResource - resourceName: $resourceName"
 Write-Verbose "New-WindowsResource - resourceVersion: $resourceVersion"
@@ -124,6 +143,8 @@ Invoke-Command `
         }
     } `
     @commonParameterSwitches
+
+
 
 
 # Create the installer directory on the virtual machine

@@ -90,6 +90,8 @@ function New-MetaFile
         [string] $resourceVersion
     )
 
+    Write-Output 'Gathering data for machine meta file ...'
+
     $now = [System.DateTimeOffset]::Now
     $meta = New-Object psobject
     Add-Member -InputObject $meta -MemberType NoteProperty -Name createdBy -Value ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)
@@ -130,11 +132,17 @@ function New-MetaFile
         Add-Member -InputObject $cookbookMeta -MemberType NoteProperty -Name version -Value $cookbookVersion
 
         $cookbooksMeta += $cookbookMeta
+
+        Write-Output "Machine meta file: New cookbook: $($cookbook.Name) at version: $cookbookVersion"
     }
     Add-Member -InputObject $meta -MemberType NoteProperty -Name cookbooks -Value $cookbooksMeta
 
     $jsonText = ConvertTo-Json -InputObject $meta
-    Out-File -filePath (Join-Path $configurationDirectory 'meta.json') -Encoding UTF8 -InputObject $jsonText -Verbose
+
+    $metaFile = Join-Path (Join-Path (Join-Path (Join-Path $configurationDirectory 'cookbooks') 'ops_resource_core') 'files') 'meta.json'
+    Out-File -filePath $metaFile -Encoding UTF8 -InputObject $jsonText -Verbose
+
+    Write-Output "Wrote machine meta file to: $metaFile"
 }
 
 function Install-ChefClient
