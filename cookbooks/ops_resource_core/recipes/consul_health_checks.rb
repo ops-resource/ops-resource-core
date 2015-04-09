@@ -31,6 +31,15 @@ consul_config_directory = node['paths']['consul_config']
 file "#{consul_config_directory}\\check_server.json" do
   content <<-JSON
 {
+    "service":
+    {
+        "name": "NodeMeta",
+        "id": "node_meta",
+        "tags":
+        [
+            "Windows"
+        ]
+    },
     "checks": [
         {
             "id": "disk",
