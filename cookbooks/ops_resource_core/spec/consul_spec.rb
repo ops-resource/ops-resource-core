@@ -53,7 +53,9 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_directory(consul_data_directory)
   end
 
-  consul_checks_directory = "#{consul_base_path}\\checks"
+  meta_directory = 'c:\\meta'
+  consul_config_directory = 'c:\\meta\\consul'
+  consul_checks_directory = "#{consul_config_directory}\\checks"
   it 'creates the consul checks directory' do
     expect(chef_run).to create_directory(consul_checks_directory)
   end
@@ -68,9 +70,9 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_cookbook_file("#{consul_bin_directory}\\#{service_name}.exe").with_source("#{service_name}.exe")
   end
 
-  consul_config_datacenter = '${ConsulDatacenter}'
-  consul_config_entry_node_dns = '${ConsulEntryPointDns}'
-  consul_config_recursors = '${ConsulDnsServerUrl}'
+  consul_config_datacenter = '${ConsulDataCenterName}'
+  consul_config_entry_node_dns = '${ConsulClusterEntryPointAddress}'
+  consul_config_recursors = '${ConsulGlobalDnsServerAddress}'
   consul_default_config_content = <<-JSON
 {
   "data_dir": "#{consul_data_directory}",
@@ -111,7 +113,6 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_file("#{consul_bin_directory}\\#{win_service_name}.exe.config").with_content(consul_service_exe_config_content)
   end
 
-  consul_config_directory = 'c:\\meta\\consul'
   consul_service_xml_content = <<-XML
 <?xml version="1.0"?>
 <!--
@@ -154,7 +155,6 @@ describe 'ops_resource_core'  do
       }])
   end
 
-  meta_directory = 'c:\\meta'
   consul_service_config_content = <<-JSON
 {
     "install_path": "#{consul_bin_directory}",

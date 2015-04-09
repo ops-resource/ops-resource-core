@@ -126,7 +126,7 @@ cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
 end
 
 consul_config_datacenter = node['consul']['datacenter']
-consul_config_entry_node_dns = node['consul']['entry_node_ip']
+consul_config_entry_node_dns = node['consul']['entry_node_dns']
 consul_config_recursors = node['consul']['dns_server_url']
 
 consul_config_file = 'consul_default.json'
@@ -232,6 +232,7 @@ registry_key "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\services\\eventlog\
 end
 
 # Add file to meta directory containing information about consul install
+meta_directory = node['paths']['meta']
 file "#{meta_directory}\\service_consul.json" do
   content <<-JSON
 {

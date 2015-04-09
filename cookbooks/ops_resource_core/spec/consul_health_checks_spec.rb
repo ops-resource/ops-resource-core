@@ -28,38 +28,47 @@ describe 'ops_resource_core'  do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   it 'copies the Test-Disk.ps1 file' do
-    expect(chef_run).to create_cookbook_file('c:\\ops\\consul\\checks\\Test-Disk.ps1').with(source: 'Test-Disk.ps1')
+    expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Disk.ps1').with(source: 'Test-Disk.ps1')
   end
 
   it 'copies the Test-Memory.ps1 file' do
-    expect(chef_run).to create_cookbook_file('c:\\ops\\consul\\checks\\Test-Memory.ps1').with(source: 'Test-Memory.ps1')
+    expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Memory.ps1').with(source: 'Test-Memory.ps1')
   end
 
   it 'copies the Test-Load.ps1 file' do
-    expect(chef_run).to create_cookbook_file('c:\\ops\\consul\\checks\\Test-Load.ps1').with(source: 'Test-Load.ps1')
+    expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Load.ps1').with(source: 'Test-Load.ps1')
   end
 
   check_server_content = <<-JSON
 {
+    "service":
+    {
+        "name": "NodeMeta",
+        "id": "node_meta",
+        "tags":
+        [
+            "Windows"
+        ]
+    },
     "checks": [
         {
             "id": "disk",
             "name": "Disk",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\ops\\consul\\checks\\Test-Disk.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Disk.ps1",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "memory",
             "name": "Memory",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\ops\\consul\\checks\\Test-Memory.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Memory.ps1",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "load",
             "name": "Load",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\ops\\consul\\checks\\Test-Load.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Load.ps1",
             "interval": "60s",
             "notes": "Critical 95%, warning 90%"
         }
