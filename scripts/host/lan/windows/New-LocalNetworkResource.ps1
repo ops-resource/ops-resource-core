@@ -41,18 +41,65 @@
     The directory in which all the logs should be stored.
 
 
+    .PARAMETER dataCenterName
+
+    The name of the consul data center to which the remote machine should belong once configuration is completed.
+
+
+    .PARAMETER clusterEntryPointAddress
+
+    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER globalDnsServerAddress
+
+    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
+
+
+    .PARAMETER environmentName
+
+    The name of the environment to which the remote machine should be added.
+
+
     .EXAMPLE
 
     New-WindowsResource -computerName "AKTFSJS01" -installationDirectory "c:\installers" -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
-    [string] $computerName          = $(throw 'Please specify the name of the machine that should be configured.'),
-    [string] $resourceName          = '',
-    [string] $resourceVersion       = '',
-    [string[]] $cookbookNames       = $(throw 'Please specify the names of the cookbooks that should be executed.'),
-    [string] $installationDirectory = $(Join-Path $PSScriptRoot 'configuration'),
-    [string] $logDirectory          = $(Join-Path $PSScriptRoot 'logs')
+    [Parameter(Mandatory = $true)]
+    [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
+
+    [Parameter(Mandatory = $false)]
+    [string] $resourceName                                      = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $resourceVersion                                   = '',
+
+    [Parameter(Mandatory = $true)]
+    [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
+
+    [Parameter(Mandatory = $false)]
+    [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
+
+    [Parameter(Mandatory = $false)]
+    [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $dataCenterName                                    = $(throw 'Please provide the name of the consul data center to which the machine needs to be connected.'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $clusterEntryPointAddress                          = $(throw 'Please provide the DNS name of the server machine to which can be used to connect to the consul cluster.'),
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $globalDnsServerAddress                            = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromMetaCluster')]
+    [string] $environmentName                                   = 'Staging'
 )
 
 Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
@@ -89,4 +136,29 @@ if ($session -eq $null)
 }
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-& $newWindowsResource -session $session -resourceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        & $newWindowsResource `
+            -session $session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -dataCenterName $dataCenterName `
+            -clusterEntryPointAddress $clusterEntryPointAddress `
+            -globalDnsServerAddress $globalDnsServerAddress
+    }
+
+    'FromMetaCluster' {
+        & $newWindowsResource `
+            -session $session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -environmentName $environmentName `
+    }
+}

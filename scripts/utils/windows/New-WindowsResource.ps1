@@ -51,39 +51,146 @@
     The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\logs'.
 
 
+    .PARAMETER dataCenterName
+
+    The name of the consul data center to which the remote machine should belong once configuration is completed.
+
+
+    .PARAMETER clusterEntryPointAddress
+
+    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER globalDnsServerAddress
+
+    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
+
+
+    .PARAMETER environmentName
+
+    The name of the environment to which the remote machine should be added.
+
+
     .EXAMPLE
 
     New-WindowsResource -session $session -installationDirectory "c:\installers" -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $true)]
     [System.Management.Automation.Runspaces.PSSession] $session = $(throw 'Please provide a Powershell remoting session that can be used to connect to the machine that needs to be initialized.'),
+
+    [Parameter(Mandatory = $false)]
     [string] $resourceName                                      = '',
+
+    [Parameter(Mandatory = $false)]
     [string] $resourceVersion                                   = '',
+
+    [Parameter(Mandatory = $false)]
     [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
+
+    [Parameter(Mandatory = $false)]
     [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
+
+    [Parameter(Mandatory = $false)]
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
+
+    [Parameter(Mandatory = $false)]
     [string] $remoteConfigurationDirectory                      = 'c:\configuration',
-    [string] $remoteLogDirectory                                = 'c:\logs'
+
+    [Parameter(Mandatory = $false)]
+    [string] $remoteLogDirectory                                = 'c:\logs',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $dataCenterName                                    = $(throw 'Please provide the name of the consul data center to which the machine needs to be connected.'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $clusterEntryPointAddress                          = $(throw 'Please provide the DNS name of the server machine to which can be used to connect to the consul cluster.'),
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $globalDnsServerAddress                            = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromMetaCluster')]
+    [string] $environmentName                                   = 'Staging'
 )
+
+function ConvertFrom-ConsulEncodedValue
+{
+    [CmdletBinding()]
+    param(
+        [string] $input
+    )
+
+    return [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($input))
+}
 
 function Get-TargetEnvironmentDataFromConsul
 {
     [CmdletBinding()]
     param(
+        [string] $environment = 'staging',
+        [string] $consulLocalAddress = 'http://localhost:8500'
     )
 
-    # Get the data from consul
+    # Go to the local consul node and get the address and the data center for the meta server
+    $urlForMetaUri = [System.Web.HttpUtility]::UrlEncode("$consulLocalAddress/v1/kv/environment/meta/http")
+    $urlForMetaResponse = Invoke-WebRequest -Uri $urlForMetaUri
+    $json = ConvertFrom-Json -InputObject $urlForMetaResponse
+    $consulMetaAddress = ConvertFrom-ConsulEncodedValue -input $json.Value
+
+    $datacenterForMetaUri = [System.Web.HttpUtility]::UrlEncode("$consulLocalAddress/v1/kv/environment/meta/datacenter")
+    $datacenterForMetaResponse = Invoke-WebRequest -Uri $datacenterForMetaUri
+    $json = ConvertFrom-Json -InputObject $datacenterForMetaResponse
+    $consulMetaDataCenter = ConvertFrom-ConsulEncodedValue -input $json.Value
+
+    # Get the name of the datacenter for our environment (e.g. the production environment is in the MyCompany-MyLocation01 datacenter)
+    $datacenterForEnvironmentUri = [System.Web.HttpUtility]::UrlEncode("$consulMetaAddress/v1/kv/environment/$environment/datacenter?dc=$consulMetaDataCenter")
+    $datacenterForEnvironmentResponse = Invoke-WebRequest -Uri $datacenterForEnvironmentUri
+    $json = ConvertFrom-Json -InputObject $datacenterForEnvironmentResponse
+    $dataCenterForEnvironment = ConvertFrom-ConsulEncodedValue -input $json.Value
+
+    # Get the entry point Url
+    $clusterEntryPointUri = [System.Web.HttpUtility]::UrlEncode("$consulMetaAddress/v1/kv/environment/$environment/serf_lan?dc=$consulMetaDataCenter")
+    $clusterEntryPointResponse = Invoke-WebRequest -Uri $clusterEntryPointUri
+    $json = ConvertFrom-Json -InputObject $clusterEntryPointResponse
+    $entryPointForEnvironment = ConvertFrom-ConsulEncodedValue -input $json.Value
+
+    # Get the DNS server fallback URL
+    $dnsFallbackUri = [System.Web.HttpUtility]::UrlEncode("$consulMetaAddress/v1/kv/environment/$environment/dns_fallback?dc=$consulMetaDataCenter")
+    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri
+    $json = ConvertFrom-Json -InputObject $dnsFallbackResponse
+    $dnsFallback = ConvertFrom-ConsulEncodedValue -input $json.Value
+
+    $result = New-Object psobject
+    Add-Member -InputObject $result -MemberType NoteProperty -Name DataCenter -Value $dataCenterForEnvironment
+    Add-Member -InputObject $result -MemberType NoteProperty -Name ClusterEntryPoint -Value $entryPointForEnvironment
+    Add-Member -InputObject $result -MemberType NoteProperty -Name GlobalDns -Value $dnsFallback
+
+    return $result
 }
 
 function New-ConsulAttributesFile
 {
     [CmdletBinding()]
     param(
+        [string] $consulAttributePath = $(Join-Path (Join-Path (Join-Path (Join-Path PSScriptRoot 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb'),
+        [string] $dataCenterName,
+        [string] $clusterEntryPointAddress,
+        [string] $globalDnsServerAddress
     )
 
     # Create the consul attributes file with the data describing the environment we want to join
-    $consulAttributeContent = Get-Content -Path ()
+    $consulAttributeContent = Get-Content -Path $consulAttributePath
+
+    $consulAttributeContent = $consulAttributeContent -replace '${ConsulDataCenterName}', "$dataCenterName"
+    $consulAttributeContent = $consulAttributeContent -replace '${ConsulClusterEntryPointAddress}', "$clusterEntryPointAddress"
+    $consulAttributeContent = $consulAttributeContent -replace '${ConsulGlobalDnsServerAddress}', "$globalDnsServerAddress"
+
+    Set-Content -Path $consulAttributePath -Value $consulAttributeContent -Force
 }
 
 Write-Verbose "New-WindowsResource - session: $($session.Name)"
@@ -144,8 +251,24 @@ Invoke-Command `
     } `
     @commonParameterSwitches
 
+if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
+{
+    $consulData = Get-TargetEnvironmentDataFromConsul `
+        -consulAddress $consulMetaAddress `
+        -consulMetaDatacenter $consulMetaDataCenter`
+        -environment $environmentName`
 
+    $dataCenterName = $consulData.DataCenter
+    $clusterEntryPointAddress = $consulData.ClusterEntryPoint
+    $globalDnsServerAddress = $consulData.GlobalDns
+}
 
+# Overwrite the consul.rb attributes file with the attributes for the machine we're about to create
+New-ConsulAttributesFile `
+    -consulAttributePath $(Join-Path (Join-Path (Join-Path (Join-Path $installationDirectory 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb') `
+    -dataCenterName $dataCenterName `
+    -clusterEntryPointAddress $clusterEntryPointAddress`
+    -globalDnsServerAddress $globalDnsServerAddress
 
 # Create the installer directory on the virtual machine
 Write-Output "Copying configuration files to remote resource ..."

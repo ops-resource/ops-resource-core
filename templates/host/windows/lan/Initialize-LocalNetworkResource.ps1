@@ -15,13 +15,50 @@
     The name of the machine that should be set up.
 
 
+    .PARAMETER dataCenterName
+
+    The name of the consul data center to which the remote machine should belong once configuration is completed.
+
+
+    .PARAMETER clusterEntryPointAddress
+
+    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER globalDnsServerAddress
+
+    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
+
+
+    .PARAMETER environmentName
+
+    The name of the environment to which the remote machine should be added.
+
+
     .EXAMPLE
 
     New-WindowsResource -computerName "AKTFSJS01"
 #>
 [CmdletBinding()]
 param(
-    [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.')
+    [Parameter(Mandatory = $true)]
+    [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $dataCenterName                                    = $(throw 'Please provide the name of the consul data center to which the machine needs to be connected.'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $clusterEntryPointAddress                          = $(throw 'Please provide the DNS name of the server machine to which can be used to connect to the consul cluster.'),
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $globalDnsServerAddress                            = '',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromMetaCluster')]
+    [string] $environmentName                                   = 'Staging'
 )
 
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
@@ -47,7 +84,33 @@ $logDirectory = $(Join-Path $PSScriptRoot 'logs')
 $installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
 $verificationScript = Join-Path $PSScriptRoot 'Verify-LocalNetworkResource.ps1'
 
-& $installationScript -computerName $computerName -resourceName $resourceName -resourceVersion $resourceVersion -cookbookNames $cookbookNames -installationDirectory $installationDirectory -logDirectory $logDirectory @commonParameterSwitches
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        & $installationScript `
+            -computerName $computerName `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -dataCenterName $dataCenterName `
+            -clusterEntryPointAddress $clusterEntryPointAddress `
+            -globalDnsServerAddress $globalDnsServerAddress `
+            @commonParameterSwitches
+    }
+
+    'FromMetaCluster' {
+        & $installationScript `
+            -computerName $computerName `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -environmentName $environmentName `
+            @commonParameterSwitches
+    }
+}
 
 & $verificationScript -computerName $computerName -testDirectory $testDirectory -logDirectory $logDirectory @commonParameterSwitches
-
