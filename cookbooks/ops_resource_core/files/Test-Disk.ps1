@@ -13,23 +13,27 @@ foreach($disk in $disks)
         [double]$freeSpace = $disk.FreeSpace
         [double]$size = $disk.Size
 
-        $freeInMb = [int]([System.Math]::Truncate($freeSpace / (1024 * 1024)))
-        $ratio = [int]([System.Math]::Round(($freeSpace / $size) * 100.0))
-
-        $text = "DISK OK"
-        if ($ratio -lt $warnAt)
+        # The disk size can be 0 if it is a removable disk that isn't there (e.g. a USB or floppy)
+        if ($size -ne 0)
         {
-            $hasWarning = $true
-            $text = "WARNING: Disk space"
-        }
+            $freeInMb = [int]([System.Math]::Truncate($freeSpace / (1024 * 1024)))
+            $ratio = [int]([System.Math]::Round(($freeSpace / $size) * 100.0))
 
-        if ($ratio -lt $criticalAt)
-        {
-            $hasError = $true
-            $text = "CRITICAL: Disk space"
-        }
+            $text = "DISK OK"
+            if ($ratio -lt $warnAt)
+            {
+                $hasWarning = $true
+                $text = "WARNING: Disk space"
+            }
 
-        Write-Output ($text + " - [$($disk.DeviceID)] free space: $freeInMb Mb ($ratio%); ")
+            if ($ratio -lt $criticalAt)
+            {
+                $hasError = $true
+                $text = "CRITICAL: Disk space"
+            }
+
+            Write-Output ($text + " - [$($disk.DeviceID)] free space: $freeInMb Mb ($ratio%); ")
+        }
     }
 }
 
