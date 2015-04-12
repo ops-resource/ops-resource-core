@@ -82,7 +82,7 @@ $testDirectory = $(Join-Path $PSScriptRoot 'verification')
 $logDirectory = $(Join-Path $PSScriptRoot 'logs')
 
 $installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
-$verificationScript = Join-Path $PSScriptRoot 'Verify-LocalNetworkResource.ps1'
+$verificationScript = Join-Path $PSScriptRoot 'Test-LocalNetworkResource.ps1'
 
 switch ($psCmdlet.ParameterSetName)
 {
