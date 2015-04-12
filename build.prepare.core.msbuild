@@ -141,6 +141,21 @@
     </Target>
 
     <Target Name="_Build_Core_CreateTestFiles">
+        <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooks)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooks)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files\default"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files\default')" />
+
         <ItemGroup>
           <MetaLines Include="{" />
           <MetaLines Include="    &quot;key&quot;: &quot;value&quot;" />
@@ -148,7 +163,7 @@
         </ItemGroup>
 
         <WriteLinesToFile
-          File="$(DirBuildTempCore)\meta.json"
+          File="$(DirBuildTempCoreCookbooksResourceCore)\files\default\meta.json"
           Lines="@(MetaLines)"
           Overwrite="False"
           Encoding="UTF-8" />
