@@ -189,9 +189,9 @@ function New-ConsulAttributesFile
     # Create the consul attributes file with the data describing the environment we want to join
     $consulAttributeContent = Get-Content -Path $consulAttributePath
 
-    $consulAttributeContent = $consulAttributeContent -replace '${ConsulDataCenterName}', "$dataCenterName"
-    $consulAttributeContent = $consulAttributeContent -replace '${ConsulClusterEntryPointAddress}', "$clusterEntryPointAddress"
-    $consulAttributeContent = $consulAttributeContent -replace '${ConsulGlobalDnsServerAddress}', "$globalDnsServerAddress"
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulDataCenterName}', "$dataCenterName")
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulClusterEntryPointAddress}', "$clusterEntryPointAddress")
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulGlobalDnsServerAddress}', "$globalDnsServerAddress")
 
     Set-Content -Path $consulAttributePath -Value $consulAttributeContent -Force
 }
