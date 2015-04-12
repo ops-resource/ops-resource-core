@@ -108,6 +108,11 @@ directory consul_data_directory do
   action :create
 end
 
+consul_config_directory = node['paths']['consul_config']
+directory consul_config_directory do
+  action :create
+end
+
 consul_checks_directory = node['paths']['consul_checks']
 directory consul_checks_directory do
   action :create
@@ -171,8 +176,6 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
 end
 
 # Get IP for consul join from CMDB
-consul_config_directory = node['paths']['consul_config']
-
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   content <<-XML
 <?xml version="1.0"?>
