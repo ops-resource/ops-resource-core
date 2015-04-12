@@ -87,11 +87,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = $(throw 'Please provide the name of the consul data center to which the machine needs to be connected.'),
+    [string] $dataCenterName                                    = '',
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = $(throw 'Please provide the DNS name of the server machine to which can be used to connect to the consul cluster.'),
+    [string] $clusterEntryPointAddress                          = '',
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
