@@ -121,9 +121,7 @@ function New-MetaFile
             # New cookbook metadata file type
             $path = Join-Path $cookbook.FullName 'metadata.json'
             $select = Select-String -Path $path -Pattern '"version":'
-            $select
             $line = $select.Line.Trim()
-            $line
             $cookbookVersion = $line.SubString($line.IndexOf(" ")).Trim().Trim(',').Trim("'").Trim('"')
         }
 
@@ -139,7 +137,13 @@ function New-MetaFile
 
     $jsonText = ConvertTo-Json -InputObject $meta
 
-    $metaFile = Join-Path (Join-Path (Join-Path (Join-Path $configurationDirectory 'cookbooks') 'ops_resource_core') 'files') 'meta.json'
+    $metaFileDirectory = Join-Path (Join-Path (Join-Path (Join-Path $configurationDirectory 'cookbooks') 'ops_resource_core') 'files') 'default'
+    if (-not (Test-Path $metaFileDirectory))
+    {
+        New-Item -Path $metaFileDirectory -ItemType Directory
+    }
+
+    $metaFile = Join-Path $metaFileDirectory 'meta.json'
     Out-File -filePath $metaFile -Encoding UTF8 -InputObject $jsonText -Verbose
 
     Write-Output "Wrote machine meta file to: $metaFile"

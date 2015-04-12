@@ -12,11 +12,11 @@
         </ExternalFiles>
         <ExternalFiles Include="$(DirExternalInstallers)\consul\consul-0.5.0-x86.exe">
             <CookbookName>ops_resource_core</CookbookName>
-            <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\consul.exe</Destination>
+            <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\consul.exe</Destination>
         </ExternalFiles>
         <ExternalFiles Include="$(DirExternalInstallers)\winsw\winsw-1.17-bin.exe">
             <CookbookName>ops_resource_core</CookbookName>
-            <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\winsw.exe</Destination>
+            <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\winsw.exe</Destination>
         </ExternalFiles>
     </ItemGroup>
 </Project>
