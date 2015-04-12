@@ -115,7 +115,7 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Staging'
+    [string] $environmentName                                   = 'Development'
 )
 
 function ConvertFrom-ConsulEncodedValue

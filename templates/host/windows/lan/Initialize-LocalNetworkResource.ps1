@@ -58,7 +58,7 @@ param(
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Staging'
+    [string] $environmentName                                   = 'Development'
 )
 
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
