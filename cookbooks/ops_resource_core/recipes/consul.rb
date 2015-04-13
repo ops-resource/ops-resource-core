@@ -275,9 +275,9 @@ cookbook_file "#{consul_base_path}\\#{set_consul_metadata}" do
 end
 
 # upon reboot connect to the join node and set the meta data for the current resource to be equal to the data in the meta.json file
-registry_key 'HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce' do
+registry_key 'HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce' do
   values [{
-    name: 'SetResourceMetadataInConsul',
+    name: '!SetResourceMetadataInConsul',
     type: :string,
     data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
   }]

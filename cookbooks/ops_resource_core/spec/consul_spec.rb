@@ -180,9 +180,9 @@ describe 'ops_resource_core'  do
   end
 
   it 'creates the runonce registry value' do
-    expect(chef_run).to create_registry_key('HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunOnce').with(
+    expect(chef_run).to create_registry_key('HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce').with(
       values: [{
-        name: 'SetResourceMetadataInConsul',
+        name: '!SetResourceMetadataInConsul',
         type: :string,
         data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
       }])
