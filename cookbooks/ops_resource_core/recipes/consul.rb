@@ -135,10 +135,11 @@ consul_config_entry_node_dns = node['consul']['entry_node_dns']
 consul_config_recursors = node['consul']['dns_server_url']
 
 consul_config_file = 'consul_default.json'
+consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\')
 file "#{consul_bin_directory}\\#{consul_config_file}" do
   content <<-JSON
 {
-  "data_dir": "#{consul_data_directory}",
+  "data_dir": "#{consul_data_directory_json_escaped}",
 
   "datacenter": "#{consul_config_datacenter}",
 

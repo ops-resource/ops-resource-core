@@ -73,9 +73,10 @@ describe 'ops_resource_core'  do
   consul_config_datacenter = '${ConsulDataCenterName}'
   consul_config_entry_node_dns = '${ConsulClusterEntryPointAddress}'
   consul_config_recursors = '${ConsulGlobalDnsServerAddress}'
+  consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\')
   consul_default_config_content = <<-JSON
 {
-  "data_dir": "#{consul_data_directory}",
+  "data_dir": "#{consul_data_directory_json_escaped}",
 
   "datacenter": "#{consul_config_datacenter}",
 

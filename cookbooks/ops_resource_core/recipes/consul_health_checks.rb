@@ -28,6 +28,7 @@ cookbook_file "#{consul_checks_directory}\\#{test_load}" do
 end
 
 consul_config_directory = node['paths']['consul_config']
+consul_checks_directory_json_escaped = consul_checks_directory.gsub('\\', '\\\\')
 file "#{consul_config_directory}\\check_server.json" do
   content <<-JSON
 {
@@ -44,21 +45,21 @@ file "#{consul_config_directory}\\check_server.json" do
         {
             "id": "disk",
             "name": "Disk",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_disk}",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\#{test_disk}",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "memory",
             "name": "Memory",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_memory}",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\#{test_memory}",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "load",
             "name": "Load",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory}\\#{test_load}",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\#{test_load}",
             "interval": "60s",
             "notes": "Critical 95%, warning 90%"
         }

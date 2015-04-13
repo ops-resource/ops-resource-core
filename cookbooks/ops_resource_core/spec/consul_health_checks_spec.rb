@@ -39,6 +39,7 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Load.ps1').with(source: 'Test-Load.ps1')
   end
 
+  consul_checks_directory_json_escaped = 'c:\\meta\\consul\\checks'.gsub('\\', '\\\\')
   check_server_content = <<-JSON
 {
     "service":
@@ -54,21 +55,21 @@ describe 'ops_resource_core'  do
         {
             "id": "disk",
             "name": "Disk",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Disk.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Disk.ps1",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "memory",
             "name": "Memory",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Memory.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Memory.ps1",
             "interval": "60s",
             "notes": "Critical 5% free, warning 10% free"
         },
         {
             "id": "load",
             "name": "Load",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File c:\\meta\\consul\\checks\\Test-Load.ps1",
+            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Load.ps1",
             "interval": "60s",
             "notes": "Critical 95%, warning 90%"
         }
