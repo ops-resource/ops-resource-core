@@ -107,7 +107,7 @@ function Get-GlobalDnsAddress
     $lowerCaseEnvironment = $environment.ToLower()
 
     # Go to the local consul node and get the address and the data center for the meta server
-    $meta = Get-ConsulMetaServer -environment $environment -consulLocalAddress $consulLocalAddress
+    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
 
     # Get the DNS server fallback URL
     $dnsFallbackUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns_fallback?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
