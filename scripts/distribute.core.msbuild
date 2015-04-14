@@ -112,6 +112,7 @@
 
         <ItemGroup>
             <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\New*.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\Consul.ps1" />
             <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\WinRm.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(HostConfigurationScriptFiles)"
@@ -119,6 +120,7 @@
 
         <ItemGroup>
             <ClientConfigurationScriptFiles Include="$(DirOriginScriptsClient)\Install*.ps1" />
+            <ClientConfigurationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(ClientConfigurationScriptFiles)"
               DestinationFiles="@(ClientConfigurationScriptFiles->'$(DirOutputConfiguration)\%(Filename)%(Extension)')" />
@@ -131,6 +133,7 @@
 
         <ItemGroup>
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Test*.ps1" />
+            <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(ClientVerificationScriptFiles)"
               DestinationFiles="@(ClientVerificationScriptFiles->'$(DirOutputVerification)\%(Filename)%(Extension)')" />

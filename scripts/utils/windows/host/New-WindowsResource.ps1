@@ -118,64 +118,6 @@ param(
     [string] $environmentName                                   = 'Development'
 )
 
-function ConvertFrom-ConsulEncodedValue
-{
-    [CmdletBinding()]
-    param(
-        [string] $encodedValue
-    )
-
-    return [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($encodedValue))
-}
-
-function Get-TargetEnvironmentDataFromConsul
-{
-    [CmdletBinding()]
-    param(
-        [string] $environment = 'staging',
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
-    )
-
-    # Load the System.Web assembly otherwise Powershell can't find the System.Web.HttpUtility class
-    Add-Type -AssemblyName System.Web
-
-    # Go to the local consul node and get the address and the data center for the meta server
-    $urlForMetaUri = "$consulLocalAddress/v1/kv/environment/meta/http"
-    $urlForMetaResponse = Invoke-WebRequest -Uri $urlForMetaUri
-    $json = ConvertFrom-Json -InputObject $urlForMetaResponse
-    $consulMetaAddress = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
-
-    $dataCenterForMetaUri = "$consulLocalAddress/v1/kv/environment/meta/datacenter"
-    $dataCenterForMetaResponse = Invoke-WebRequest -Uri $dataCenterForMetaUri
-    $json = ConvertFrom-Json -InputObject $dataCenterForMetaResponse
-    $consulMetaDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
-
-    # Get the name of the datacenter for our environment (e.g. the production environment is in the MyCompany-MyLocation01 datacenter)
-    $dataCenterForEnvironmentUri = "$consulMetaAddress/v1/kv/environment/$environment/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($consulMetaDataCenter))"
-    $dataCenterForEnvironmentResponse = Invoke-WebRequest -Uri $dataCenterForEnvironmentUri
-    $json = ConvertFrom-Json -InputObject $dataCenterForEnvironmentResponse
-    $dataCenterForEnvironment = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
-
-    # Get the entry point Url
-    $clusterEntryPointUri = "$consulMetaAddress/v1/kv/environment/$environment/serf_lan?dc=$([System.Web.HttpUtility]::UrlEncode($consulMetaDataCenter))"
-    $clusterEntryPointResponse = Invoke-WebRequest -Uri $clusterEntryPointUri
-    $json = ConvertFrom-Json -InputObject $clusterEntryPointResponse
-    $entryPointForEnvironment = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
-
-    # Get the DNS server fallback URL
-    $dnsFallbackUri = "$consulMetaAddress/v1/kv/environment/$environment/dns_fallback?dc=$([System.Web.HttpUtility]::UrlEncode($consulMetaDataCenter))"
-    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri
-    $json = ConvertFrom-Json -InputObject $dnsFallbackResponse
-    $dnsFallback = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
-
-    $result = New-Object psobject
-    Add-Member -InputObject $result -MemberType NoteProperty -Name DataCenter -Value $dataCenterForEnvironment
-    Add-Member -InputObject $result -MemberType NoteProperty -Name ClusterEntryPoint -Value $entryPointForEnvironment
-    Add-Member -InputObject $result -MemberType NoteProperty -Name GlobalDns -Value $dnsFallback
-
-    return $result
-}
-
 function New-ConsulAttributesFile
 {
     [CmdletBinding()]
@@ -256,11 +198,12 @@ Invoke-Command `
 
 if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
-    $consulData = Get-TargetEnvironmentDataFromConsul -environment $environmentName
+    . $(Join-Path $PSScriptRoot 'Consul.ps1')
 
-    $dataCenterName = $consulData.DataCenter
-    $clusterEntryPointAddress = $consulData.ClusterEntryPoint
-    $globalDnsServerAddress = $consulData.GlobalDns
+    $target = Get-ConsulTargetEnvironmentData -environment $environmentName
+    $dataCenterName = $target.DataCenter
+    $clusterEntryPointAddress = $target.SerfLan
+    $globalDnsServerAddress = Get-GlobalDnsAddress -environment $environmentName
 }
 
 # Overwrite the consul.rb attributes file with the attributes for the machine we're about to create

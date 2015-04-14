@@ -22,7 +22,9 @@
         <file src="$DirOutput$\spec\**\*.*" target="spec" />
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
         <file src="$DirOutput$\scripts\host\lan\windows\*.*" target="scripts\host" />
-        <file src="$DirOutput$\scripts\utils\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\host\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\client" />
         <file src="$DirOutput$\templates\host\windows\lan\*.*" target="templates\host" />
         <file src="$DirOutput$\scripts\dependencies.msbuild" />
         <file src="$DirOutput$\scripts\distribute.core.msbuild" />
