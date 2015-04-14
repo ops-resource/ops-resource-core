@@ -62,6 +62,18 @@ param(
 )
 
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        Write-Verbose "Initialize-LocalNetworkResource - dataCenterName: $dataCenterName"
+        Write-Verbose "Initialize-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
+        Write-Verbose "Initialize-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
+    }
+
+    'FromMetaCluster' {
+        Write-Verbose "Initialize-LocalNetworkResource - environmentName: $environmentName"
+    }
+}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
