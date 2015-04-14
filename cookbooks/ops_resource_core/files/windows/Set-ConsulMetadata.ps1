@@ -30,4 +30,4 @@ $resourceMetadata = Get-Content -Path $metaFile
 
 # Push the meta data up to the consul cluster
 $machineName = [System.Net.Dns]::GetHostName()
-Invoke-WebRequest -Uri "http://localhost:8500/v1/kv/resources/$machineName" -Method Put -Body $resourceMetadata
+Invoke-WebRequest -Uri "http://localhost:8500/v1/kv/resources/$machineName/configuration" -Method Put -Body $resourceMetadata
