@@ -14,9 +14,7 @@ Requirements
 
 Attributes
 ----------
-TODO: List your cookbook attributes here.
 
-e.g.
 #### ops_resource_core::default
 <table>
   <tr>
