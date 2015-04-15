@@ -56,12 +56,30 @@ function Install-Msi
         [string] $logFile
     )
 
-    $p = Start-Process -FilePath "msiExec.exe" -ArgumentList "/i $msiFile /Lime! $logFile /qn" -PassThru
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "msiexec.exe"
+    $startInfo.RedirectStandardError = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.Arguments = "/i $msiFile /Lime! $logFile /qn"
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $startInfo
+    $p.Start() | Out-Null
     $p.WaitForExit()
+
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+    Write-Output $stdout
 
     if ($p.ExitCode -ne 0)
     {
-        throw "Failed to install: $msiFile"
+        if (($sterr -ne $null) -and ($sterr -ne ''))
+        {
+            Write-Error $stderr
+        }
+
+        throw "Failed to install: $msiFile. Exit code was: $($p.ExitCode)"
     }
 }
 
@@ -72,12 +90,30 @@ function Uninstall-Msi
         [string] $logFile
     )
 
-    $p = Start-Process -FilePath "msiExec.exe" -ArgumentList "/x $msiFile /Lime! $logFile /qn" -PassThru
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "msiexec.exe"
+    $startInfo.RedirectStandardError = $true
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.UseShellExecute = $false
+    $startInfo.Arguments = "/x $msiFile /Lime! $logFile /qn"
+
+    $p = New-Object System.Diagnostics.Process
+    $p.StartInfo = $startInfo
+    $p.Start() | Out-Null
     $p.WaitForExit()
+
+    $stdout = $p.StandardOutput.ReadToEnd()
+    $stderr = $p.StandardError.ReadToEnd()
+    Write-Output $stdout
 
     if ($p.ExitCode -ne 0)
     {
-        throw "Failed to uninstall: $msiFile"
+        if (($sterr -ne $null) -and ($sterr -ne ''))
+        {
+            Write-Error $stderr
+        }
+
+        throw "Failed to uninstall: $msiFile. Exit code was: $($p.ExitCode)"
     }
 }
 
@@ -276,7 +312,14 @@ finally
 
     # delete chef from the machine
     $chefUninstallLogFile = Join-Path $logDirectory "chef.uninstall.log"
-    Uninstall-Msi -msiFile $chefClientInstall -logFile $chefUninstallLogFile
+    try
+    {
+        Uninstall-Msi -msiFile $chefClientInstall -logFile $chefUninstallLogFile
+    }
+    catch
+    {
+        Write-Output ("Failed to uninstall the chef client. Error was " + $_.Exception.ToString())
+    }
 
     Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction Continue
 }
