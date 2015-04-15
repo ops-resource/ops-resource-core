@@ -107,7 +107,7 @@ Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remo
 # Verify that everything is there
 Invoke-Command `
     -Session $session `
-    -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Verify-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteVerificationDirectory "spec"), $remoteLogDirectory ) `
+    -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Test-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteVerificationDirectory "spec"), $remoteLogDirectory ) `
     -ScriptBlock {
         param(
             [string] $verificationScript,
