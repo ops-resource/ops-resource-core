@@ -1,8 +1,0 @@
-name             'windows'
-maintainer       'Chef Software, Inc.'
-maintainer_email 'cookbooks@getchef.com'
-license          'Apache 2.0'
-description      'Provides a set of useful Windows-specific primitives.'
-version          '1.36.1'
-supports         'windows'
-depends          'chef_handler'
