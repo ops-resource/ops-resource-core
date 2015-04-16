@@ -44,7 +44,7 @@ $env:ChocolateyInstall = "C:\ProgramData\chocolatey"
 
 # Install ruby
 Write-Output "Installing ruby via chocolatey ..."
-& choco install ruby -version 2.0.0.57600
+& choco install ruby -version 2.0.0.57600 --accept-license --confirm --force --verbose
 
 # Patch PATH for ruby
 $rubyPath = "C:\tools\ruby200"
@@ -52,7 +52,7 @@ $env:PATH += ";$rubyPath\bin"
 
 # install ruby2.devkit
 Write-Output "Installing ruby2.devkit via chocolatey ..."
-& choco install ruby2.devkit -version 4.7.2.2013022402
+& choco install ruby2.devkit -version 4.7.2.2013022402 --accept-license --confirm --force --verbose
 
 # patch devkit config
 Write-Output "Patching ruby devkit config ..."
