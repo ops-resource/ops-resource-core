@@ -101,29 +101,40 @@ $bundleFiles = Get-ChildItem -Path $testDirectory -Include 'gemfile' -Recurse
 foreach($bundleFile in $bundleFiles)
 {
     Write-Output "Installing gem files from $($bundleFile.FullName)"
-    & bundle install --clean --gemfile="$($bundleFile.FullName)" --no-cache
-}
 
-$currentDir = $pwd
-try
-{
-    Set-Location $testDirectory
-    try
+    # Run bundle in a separate process so that this script can decide if there are errors or not. The issue is that on
+    # windows 'bundle' throws out a warning saying 'DL is deprecated, please use Fiddle'. However this warning is thrown
+    # out on the error stream which makes Powershell think the process failed. By running in a separate process under
+    # our control we can ignore the warnings.
+    $process = Start-Process -FilePath 'bundle' -ArgumentList "install --clean --gemfile=`"$($bundleFile.FullName)`" --no-cache" -PassThru
+    $process.WaitForExit()
+
+    if ($process.ExitCode -ne 0)
     {
-        # rspec may push data to the error stream which powershell will consider a failure, even if it's not.
-        $storedErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = "SilentlyContinue"
-
-        $rspecPattern = "./*/*_spec.rb"
-        Write-Output "Executing ServerSpec tests from: $pwd. With pattern: $rspecPattern"
-        & rspec  --format documentation --format RspecJunitFormatter --out "$logDirectory\serverspec.xml" --pattern $rspecPattern
+        throw "Failed to restore the Ruby gems for $($bundleFile.FullName)"
     }
-    finally
+    else
     {
-        $ErrorActionPreference = $storedErrorActionPreference
+        Write-Output "Installed $($bundleFile.FullName). Bundle exit code was $($process.ExitCode)"
     }
 }
-finally
+
+# rspec may push data to the error stream which powershell will consider a failure, even if it's not.
+$rspecPattern = "./*/*_spec.rb"
+Write-Output "Executing ServerSpec tests from: $pwd. With pattern: $rspecPattern"
+
+$stOutFile = "c:\logs\rspec_stout.txt"
+$stErrFile = "c:\logs\rspec_sterr.txt"
+$process = Start-Process -FilePath 'rspec.bat' -ArgumentList "--format documentation --format RspecJunitFormatter --out c:\logs\serverspec.xml --pattern $rspecPattern" -NoNewWindow -PassThru -Wait -WorkingDirectory $testDirectory -RedirectStandardOutput $stOutFile -RedirectStandardError $stErrFile
+$process.WaitForExit()
+
+Write-Output "Output"
+Get-Content $stOutFile
+
+Write-Output "Errors: "
+Get-Content $stErrFile
+
+if ($process.ExitCode -ne 0)
 {
-    $pwd = $currentDir
+    throw "rspec exited with: $($process.ExitCode)"
 }
