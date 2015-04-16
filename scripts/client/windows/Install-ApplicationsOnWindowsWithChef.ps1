@@ -209,6 +209,34 @@ function Install-ChefClient
     Install-Msi -msiFile "$chefClientInstall" -logFile "$chefInstallLogFile"
 }
 
+function Uninstall-ChefClient
+{
+    [CmdletBinding()]
+    param(
+        [string] $configurationDirectory,
+        [string] $logDirectory
+    )
+
+    # Download chef client. Note that this is obviously hard-coded but for now it will work. Later on we'll make this a configuration option
+    $chefClientInstallFile = "chef-client.msi"
+    $chefClientInstall = Join-Path $configurationDirectory $chefClientInstallFile
+    if (-not (Test-Path $chefClientInstall))
+    {
+        return
+    }
+
+    Write-Output "Uninstalling chef from $chefClientInstall ..."
+    $chefUninstallLogFile = Join-Path $logDirectory "chef.uninstall.log"
+    try
+    {
+        Uninstall-Msi -msiFile "$chefClientInstall" -logFile "$chefUninstallLogFile"
+    }
+    catch
+    {
+        Write-Output ("Failed to uninstall the chef client. Error was " + $_.Exception.ToString())
+    }
+}
+
 Write-Output "Install-ApplicationsOnWindowsWithChef - resourceName: $resourceName"
 Write-Output "Install-ApplicationsOnWindowsWithChef - resourceVersion: $resourceVersion"
 Write-Output "Install-ApplicationsOnWindowsWithChef - configurationDirectory: $configurationDirectory"
@@ -308,18 +336,7 @@ try
 }
 finally
 {
-    Write-Output "Uninstalling chef ..."
-
     # delete chef from the machine
-    $chefUninstallLogFile = Join-Path $logDirectory "chef.uninstall.log"
-    try
-    {
-        Uninstall-Msi -msiFile $chefClientInstall -logFile $chefUninstallLogFile
-    }
-    catch
-    {
-        Write-Output ("Failed to uninstall the chef client. Error was " + $_.Exception.ToString())
-    }
-
+    Uninstall-ChefClient -configurationDirectory $configurationDirectory -logDirectory $logDirectory
     Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction Continue
 }
