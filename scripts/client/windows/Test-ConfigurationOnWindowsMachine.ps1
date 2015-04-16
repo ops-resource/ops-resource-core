@@ -16,7 +16,7 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $testDirectory = "c:\tests",
+    [string] $testDirectory = "c:\verification",
     [string] $logDirectory  = "c:\logs"
 )
 
