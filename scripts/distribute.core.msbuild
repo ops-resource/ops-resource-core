@@ -30,15 +30,17 @@
         <DirOutputConfigurationCookbooksCore Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCore)' == '' ">$(DirOutputConfigurationCookbooks)\ops_resource_core</DirOutputConfigurationCookbooksCore>
         <DirOutputConfigurationCookbooksCoreFiles Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCoreFiles)' == '' ">$(DirOutputConfigurationCookbooksCore)\files</DirOutputConfigurationCookbooksCoreFiles>
         <DirOutputVerification Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerification)' == '' ">$(DirOutput)\verification</DirOutputVerification>
-        <DirOutputVerificationSpec Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationSpec)' == '' ">$(DirOutputVerification)\spec</DirOutputVerificationSpec>
+        <DirOutputVerificationTests Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationTests)' == '' ">$(DirOutputVerification)\tests</DirOutputVerificationTests>
+        <DirOutputVerificationTools Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationTools)' == '' ">$(DirOutputVerification)\tools</DirOutputVerificationTools>
 
         <DirOrigin>$(MSBuildProjectDirectory)</DirOrigin>
         <DirOriginCookbooks>$(DirOrigin)\cookbooks</DirOriginCookbooks>
         <DirOriginScripts>$(DirOrigin)\scripts</DirOriginScripts>
         <DirOriginScriptsClient>$(DirOriginScripts)\client</DirOriginScriptsClient>
         <DirOriginScriptsHost>$(DirOriginScripts)\host</DirOriginScriptsHost>
-        <DirOriginSpec>$(DirOrigin)\spec</DirOriginSpec>
+        <DirOriginTests>$(DirOrigin)\tests</DirOriginTests>
         <DirOriginTemplates>$(DirOrigin)\templates</DirOriginTemplates>
+        <DirOriginTools>$(DirOrigin)\tools</DirOriginTools>
 
         <DirExternalInstallers Condition=" '$(DirExternalInstallers)' == '' ">UNDEFINED</DirExternalInstallers>
         <DirExternalInstallersChef Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersChef)' == '' ">$(DirExternalInstallers)\chef</DirExternalInstallersChef>
@@ -78,7 +80,8 @@
         <CallTarget Targets="_Distribute_Core_Scripts" />
         <CallTarget Targets="_Distribute_Core_Templates" />
         <CallTarget Targets="_Distribute_Core_Cookbooks" />
-        <CallTarget Targets="_Distribute_Core_Specs" />
+        <CallTarget Targets="_Distribute_Core_Test_Tools" />
+        <CallTarget Targets="_Distribute_Core_Tests" />
         <CallTarget Targets="_Distribute_Core_Externals" />
     </Target>
 
@@ -172,19 +175,34 @@
               DestinationFiles="@(CookbookFiles->'$(DirOutputConfigurationCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
-    <Target Name="_Distribute_Core_Specs">
+    <Target Name="_Distribute_Core_Tests">
         <MakeDir Directories="$(DirOutput)"
                  Condition="!Exists('$(DirOutput)')" />
         <MakeDir Directories="$(DirOutputVerification)"
                  Condition="!Exists('$(DirOutputVerification)')" />
-        <MakeDir Directories="$(DirOutputVerificationSpec)"
-                 Condition="!Exists('$(DirOutputVerificationSpec)')" />
+        <MakeDir Directories="$(DirOutputVerificationTests)"
+                 Condition="!Exists('$(DirOutputVerificationTests)')" />
 
         <ItemGroup>
-            <SpecFiles Include="$(DirOriginSpec)\**\*.*" />
+            <TestFiles Include="$(DirOriginTests)\**\*.*" />
         </ItemGroup>
-        <Copy SourceFiles="@(SpecFiles)"
-              DestinationFiles="@(SpecFiles->'$(DirOutputVerificationSpec)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <Copy SourceFiles="@(TestFiles)"
+              DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Distribute_Core_Test_Tools">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputVerification)"
+                 Condition="!Exists('$(DirOutputVerification)')" />
+        <MakeDir Directories="$(DirOutputVerificationTools)"
+                 Condition="!Exists('$(DirOutputVerificationTools)')" />
+
+        <ItemGroup>
+            <ToolsFiles Include="$(DirOriginTools)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ToolsFiles)"
+              DestinationFiles="@(ToolsFiles->'$(DirOutputVerificationTools)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
     <Target Name="_Distribute_Core_Externals"

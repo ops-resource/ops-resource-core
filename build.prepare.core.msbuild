@@ -32,6 +32,8 @@
 
     <Import Project="$(DirMsBuildExtensions)\GetSemanticVersionFromFile.msbuild"
             Condition="Exists('$(DirMsBuildExtensions)\GetSemanticVersionFromFile.msbuild') AND '$(ExistsExtensionsGetSemanticVersionFromFile)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\SearchPackagesDirectoryForToolDirectory.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\SearchPackagesDirectoryForToolDirectory.msbuild') AND '$(ExistsExtensionsSearchPackagesDirectoryForToolDirectory)' != 'true' " />
     <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
             Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
 
@@ -39,7 +41,8 @@
         <CallTarget Targets="_Build_Core_GetVersion" />
         <CallTarget Targets="_Build_Core_GatherScriptFiles" />
         <CallTarget Targets="_Build_Core_GatherCookbooks" />
-        <CallTarget Targets="_Build_Core_GatherSpecs" />
+        <CallTarget Targets="_Build_Core_GatherPesterBinaries" />
+        <CallTarget Targets="_Build_Core_GatherPesterTests" />
         <CallTarget Targets="_Build_Core_GatherTemplates" />
         <CallTarget Targets="_Build_Core_CreateTestFiles" />
     </Target>
@@ -105,21 +108,49 @@
                       Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>
 
-    <Target Name="_Build_Core_GatherSpecs">
+    <Target Name="_Build_Core_GatherPesterBinaries">
+      <MakeDir Directories="$(DirBuild)"
+                 Condition="!Exists('$(DirBuild)')" />
+        <MakeDir Directories="$(DirBuildTemp)"
+                 Condition="!Exists('$(DirBuildTemp)')" />
+        <MakeDir Directories="$(DirBuildTempCore)"
+                 Condition="!Exists('$(DirBuildTempCore)')" />
+        <MakeDir Directories="$(DirBuildTempCoreTools)"
+                 Condition="!Exists('$(DirBuildTempCoreTools)')"/>
+        <MakeDir Directories="$(DirBuildTempCoreToolsPester)"
+                 Condition="!Exists('$(DirBuildTempCoreToolsPester)')"/>
+
+        <SearchPackagesDirectoryForToolDirectory PackagesDir="$(DirPackages)"
+                                                 FileToLocate="Pester.psm1">
+            <Output TaskParameter="Path" PropertyName="ToolsExternalPesterPath" />
+        </SearchPackagesDirectoryForToolDirectory>
+        <Message Text="The Pester module was found at: $(ToolsExternalPesterPath)"
+                 Condition="Exists('$(ToolsExternalPesterPath)') AND '$(ShouldExecute)' == 'true' " />
+        <Error Text="Could not locate the Pester module path. Cannot copy the pester files."
+               Condition="!Exists('$(ToolsExternalPesterPath)') AND '$(ShouldExecute)' == 'true' "/>
+
+        <ItemGroup>
+            <PesterBinaries Include="$(ToolsExternalPesterPath)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(PesterBinaries)"
+              DestinationFiles="@(PesterBinaries->'$(DirBuildTempCoreToolsPester)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Build_Core_GatherPesterTests">
         <MakeDir Directories="$(DirBuild)"
                  Condition="!Exists('$(DirBuild)')" />
         <MakeDir Directories="$(DirBuildTemp)"
                  Condition="!Exists('$(DirBuildTemp)')" />
         <MakeDir Directories="$(DirBuildTempCore)"
                  Condition="!Exists('$(DirBuildTempCore)')" />
-        <MakeDir Directories="$(DirBuildTempCoreSpec)"
-                 Condition="!Exists('$(DirBuildTempCoreSpec)')" />
+        <MakeDir Directories="$(DirBuildTempCoreTest)"
+                 Condition="!Exists('$(DirBuildTempCoreTest)')" />
 
         <ItemGroup>
-            <SpecFiles Include="$(DirSpec)\**\*.*" />
+            <PesterTestFiles Include="$(DirTests)\**\*.*" />
         </ItemGroup>
-        <Copy SourceFiles="@(SpecFiles)"
-              DestinationFiles="@(SpecFiles->'$(DirBuildTempCoreSpec)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <Copy SourceFiles="@(PesterTestFiles)"
+              DestinationFiles="@(PesterTestFiles->'$(DirBuildTempCoreTests)\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
     <Target Name="_Build_Core_GatherTemplates">

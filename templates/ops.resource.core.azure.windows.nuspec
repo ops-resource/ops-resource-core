@@ -19,7 +19,8 @@
         <file src="$DirOutput$\cookbooks\**\*.*"
               exclude="$DirOutput$\cookbooks\**\*_spec.rb"
               target="cookbooks" />
-        <file src="$DirOutput$\spec\**\*.*" target="spec" />
+        <file src="$DirOutput$\tools\**\*.*" target="tools" />
+        <file src="$DirOutput$\tests\**\*.*" target="tests" />
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
         <file src="$DirOutput$\scripts\host\azure\windows\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\host\*.*" target="scripts\host" />

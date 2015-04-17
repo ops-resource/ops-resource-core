@@ -8,5 +8,4 @@ AllCops:
     - 'build/temp/core/cookbooks/windows/**/*'
     - 'build/temp/core/cookbooks/windows_firewall/**/*'
     - 'cookbooks/**/*'
-    - 'spec/**/*'
     - 'packages/**/*'

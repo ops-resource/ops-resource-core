@@ -173,7 +173,9 @@
         <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
         <DirBuildTempCoreCookbooksResourceCore>$(DirBuildTempCoreCookbooks)\ops_resource_core</DirBuildTempCoreCookbooksResourceCore>
-        <DirBuildTempCoreSpec>$(DirBuildTempCore)\spec</DirBuildTempCoreSpec>
+        <DirBuildTempCoreTests>$(DirBuildTempCore)\tests</DirBuildTempCoreTests>
+        <DirBuildTempCoreTools>$(DirBuildTempCore)\tools</DirBuildTempCoreTools>
+        <DirBuildTempCoreToolsPester>$(DirBuildTempCoreTools)\pester</DirBuildTempCoreToolsPester>
 
         <!-- The directory that contains the Chef cookbooks -->
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
@@ -185,8 +187,8 @@
         <!-- The directory that contains all the scripts for the project -->
         <DirScripts Condition=" '$(DirScripts)' == '' ">$(DirWorkspace)\scripts</DirScripts>
 
-        <!-- The directory that contains all the server spec files -->
-        <DirSpec Condition=" '$(DirSpec)' == '' ">$(DirWorkspace)\spec</DirSpec>
+        <!-- The directory that contains all the pester test files -->
+        <DirTests Condition=" '$(DirTests)' == '' ">$(DirWorkspace)\tests</DirTests>
 
         <!-- The directory that contains the template files for the project -->
         <DirTemplates Condition=" '$(DirTemplates)' == '' ">$(DirWorkspace)\templates</DirTemplates>
