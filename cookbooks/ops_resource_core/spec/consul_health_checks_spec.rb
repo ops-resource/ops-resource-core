@@ -39,7 +39,7 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Load.ps1').with(source: 'Test-Load.ps1')
   end
 
-  consul_checks_directory_json_escaped = 'c:\\meta\\consul\\checks'.gsub('\\', '\\\\')
+  consul_checks_directory_json_escaped = 'c:\\\\meta\\\\consul\\\\checks'
   check_server_content = <<-JSON
 {
     "service":

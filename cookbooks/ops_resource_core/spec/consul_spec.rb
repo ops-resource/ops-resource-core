@@ -37,30 +37,24 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_directory(ops_base_path)
   end
 
-  consul_base_path = "#{ops_base_path}\\consul"
+  consul_base_path = 'c:\\ops\\consul'
   it 'creates the consul base directory' do
     expect(chef_run).to create_directory(consul_base_path)
   end
 
-  consul_data_directory = "#{consul_base_path}\\data"
-  it 'creates the consul data directory' do
-    expect(chef_run).to create_directory(consul_data_directory)
-  end
-
-  consul_base_path = 'c:\\ops\\consul'
-  consul_data_directory = "#{consul_base_path}\\data"
+  consul_data_directory = 'c:\\ops\\consul\\data'
   it 'creates the consul data directory' do
     expect(chef_run).to create_directory(consul_data_directory)
   end
 
   meta_directory = 'c:\\meta'
   consul_config_directory = 'c:\\meta\\consul'
-  consul_checks_directory = "#{consul_config_directory}\\checks"
+  consul_checks_directory = 'c:\\meta\\consul\\checks'
   it 'creates the consul checks directory' do
     expect(chef_run).to create_directory(consul_checks_directory)
   end
 
-  consul_bin_directory = "#{consul_base_path}\\bin"
+  consul_bin_directory = 'c:\\ops\\consul\\bin'
   it 'creates the consul bin directory' do
     expect(chef_run).to create_directory(consul_bin_directory)
   end
@@ -73,10 +67,9 @@ describe 'ops_resource_core'  do
   consul_config_datacenter = '${ConsulDataCenterName}'
   consul_config_entry_node_dns = '${ConsulClusterEntryPointAddress}'
   consul_config_recursors = '${ConsulGlobalDnsServerAddress}'
-  consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\')
   consul_default_config_content = <<-JSON
 {
-  "data_dir": "#{consul_data_directory_json_escaped}",
+  "data_dir": "c:\\\\ops\\\\consul\\\\data",
 
   "datacenter": "#{consul_config_datacenter}",
 

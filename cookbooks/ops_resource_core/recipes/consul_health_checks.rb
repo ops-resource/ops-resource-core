@@ -28,7 +28,8 @@ cookbook_file "#{consul_checks_directory}\\#{test_load}" do
 end
 
 consul_config_directory = node['paths']['consul_config']
-consul_checks_directory_json_escaped = consul_checks_directory.gsub('\\', '\\\\')
+# We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
+consul_checks_directory_json_escaped = consul_checks_directory.gsub('\\', '\\\\\\\\')
 file "#{consul_config_directory}\\check_server.json" do
   content <<-JSON
 {
