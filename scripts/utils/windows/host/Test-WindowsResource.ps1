@@ -107,7 +107,7 @@ Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remo
 # Verify that everything is there
 Invoke-Command `
     -Session $session `
-    -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Test-ConfigurationOnWindowsMachine.ps1'), (Join-Path $remoteVerificationDirectory "spec"), $remoteLogDirectory ) `
+    -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Test-ConfigurationOnWindowsMachine.ps1'), $remoteVerificationDirectory, $remoteLogDirectory ) `
     -ScriptBlock {
         param(
             [string] $verificationScript,
@@ -126,10 +126,10 @@ Invoke-Command `
 Write-Verbose "Copying log files from remote resource ..."
 Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
 
-$serverSpecLog = Join-Path $logDirectory 'serverspec.xml'
+$serverSpecLog = Join-Path $logDirectory 'pester.xml'
 if (-not (Test-Path $serverSpecLog))
 {
-    throw "Test failed. No serverspec log produced."
+    throw "Test failed. No pester log produced."
 }
 
 $serverSpecXml = [xml](Get-Content $serverSpecLog)
