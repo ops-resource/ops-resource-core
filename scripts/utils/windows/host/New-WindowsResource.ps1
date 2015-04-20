@@ -176,26 +176,6 @@ if ($session -eq $null)
     throw 'Failed to connect to the remote machine'
 }
 
-Write-Verbose "Connecting to $($session.Name)"
-
-# Make sure that the remote log directory exists because if something goes wrong with the script we try to copy from that directory
-# however the copy action on 'c:\logs' if it doesn't exist somehow then tries to copy to all the folders with the term 'logs' in it from
-# the windows directory.
-Invoke-Command `
-    -Session $session `
-    -ArgumentList @( $remoteLogDirectory ) `
-    -ScriptBlock {
-        param(
-            [string] $logDirectory
-        )
-
-        if (-not (Test-Path $logDirectory))
-        {
-            New-Item -Path $logDirectory -ItemType Directory
-        }
-    } `
-    @commonParameterSwitches
-
 if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
@@ -213,15 +193,34 @@ New-ConsulAttributesFile `
     -clusterEntryPointAddress $clusterEntryPointAddress `
     -globalDnsServerAddress $globalDnsServerAddress
 
-# Create the installer directory on the virtual machine
-Write-Output "Copying configuration files to remote resource ..."
-Copy-FilesToRemoteMachine -session $session -localDirectory $installationDirectory -remoteDirectory $remoteConfigurationDirectory
-
-# Execute the remote installation scripts
-$installationScript = Join-Path $installationDirectory 'Install-ApplicationsOnWindowsWithChef.ps1'
-
+Write-Verbose "Connecting to $($session.Name)"
 try
 {
+    # Make sure that the remote log directory exists because if something goes wrong with the script we try to copy from that directory
+    # however the copy action on 'c:\logs' if it doesn't exist somehow then tries to copy to all the folders with the term 'logs' in it from
+    # the windows directory.
+    Invoke-Command `
+        -Session $session `
+        -ArgumentList @( $remoteLogDirectory ) `
+        -ScriptBlock {
+            param(
+                [string] $logDirectory
+            )
+
+            if (-not (Test-Path $logDirectory))
+            {
+                New-Item -Path $logDirectory -ItemType Directory
+            }
+        } `
+        @commonParameterSwitches
+
+    # Create the installer directory on the virtual machine
+    Write-Output "Copying configuration files to remote resource ..."
+    Copy-FilesToRemoteMachine -session $session -localDirectory $installationDirectory -remoteDirectory $remoteConfigurationDirectory
+
+    # Execute the remote installation scripts
+    $installationScript = Join-Path $installationDirectory 'Install-ApplicationsOnWindowsWithChef.ps1'
+
     Write-Output "Configuring remote resource ..."
     Invoke-Command `
         -Session $session `
