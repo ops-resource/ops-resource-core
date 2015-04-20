@@ -83,59 +83,76 @@ if ($session -eq $null)
 }
 
 Write-Verbose "Connecting to $($session.Name)"
+try
+{
+    # Make sure that the remote log directory exists because if something goes wrong with the script we try to copy from that directory
+    # however the copy action on 'c:\logs' if it doesn't exist somehow then tries to copy to all the folders with the term 'logs' in it from
+    # the windows directory.
+    Invoke-Command `
+        -Session $session `
+        -ArgumentList @( $remoteLogDirectory ) `
+        -ScriptBlock {
+            param(
+                [string] $logDirectory
+            )
 
-# Make sure that the remote log directory exists because if something goes wrong with the script we try to copy from that directory
-# however the copy action on 'c:\logs' if it doesn't exist somehow then tries to copy to all the folders with the term 'logs' in it from
-# the windows directory.
-Invoke-Command `
-    -Session $session `
-    -ArgumentList @( $remoteLogDirectory ) `
-    -ScriptBlock {
-        param(
-            [string] $logDirectory
-        )
+            if (-not (Test-Path $logDirectory))
+            {
+                New-Item -Path $logDirectory -ItemType Directory
+            }
+        } `
+        @commonParameterSwitches
 
-        if (-not (Test-Path $logDirectory))
-        {
-            New-Item -Path $logDirectory -ItemType Directory
-        }
-    } `
-    @commonParameterSwitches
+    Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remoteDirectory $remoteVerificationDirectory
 
-Copy-FilesToRemoteMachine -session $session -localDirectory $testDirectory -remoteDirectory $remoteVerificationDirectory
+    # Verify that everything is there
+    Invoke-Command `
+        -Session $session `
+        -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Test-ConfigurationOnWindowsMachine.ps1'), $remoteVerificationDirectory, $remoteLogDirectory ) `
+        -ScriptBlock {
+            param(
+                [string] $verificationScript,
+                [string] $testDirectory,
+                [string] $logDirectory
+            )
 
-# Verify that everything is there
-Invoke-Command `
-    -Session $session `
-    -ArgumentList @( (Join-Path $remoteVerificationDirectory 'Test-ConfigurationOnWindowsMachine.ps1'), $remoteVerificationDirectory, $remoteLogDirectory ) `
-    -ScriptBlock {
-        param(
-            [string] $verificationScript,
-            [string] $testDirectory,
-            [string] $logDirectory
-        )
+            Write-Output "Test-WindowsResource - verifying remote - verificationScript: $verificationScript"
+            Write-Output "Test-WindowsResource - verifying remote - testDirectory: $testDirectory"
+            Write-Output "Test-WindowsResource - verifying remote - logDirectory: $logDirectory"
 
-        Write-Output "Test-WindowsResource - verifying remote - verificationScript: $verificationScript"
-        Write-Output "Test-WindowsResource - verifying remote - testDirectory: $testDirectory"
-        Write-Output "Test-WindowsResource - verifying remote - logDirectory: $logDirectory"
+            & $verificationScript -testDirectory $testDirectory -logDirectory $logDirectory
+        } `
+        @commonParameterSwitches
+}
+finally
+{
+    try
+    {
+        Write-Verbose "Copying log files from remote resource ..."
+        Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
 
-        & $verificationScript -testDirectory $testDirectory -logDirectory $logDirectory
-    } `
-    @commonParameterSwitches
+        Write-Verbose "Copied log files from remote resource"
+    }
+    catch
+    {
+        Write-Error "Failed to copy log files from remote machine. Error was $($_.Exception.ToString())"
+    }
 
-Write-Verbose "Copying log files from remote resource ..."
-Copy-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory -localDirectory $logDirectory
+    Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteVerificationDirectory
+    Remove-FilesFromRemoteMachine -session $session -remoteDirectory $remoteLogDirectory
+}
 
-$serverSpecLog = Join-Path $logDirectory 'pester.xml'
-if (-not (Test-Path $serverSpecLog))
+$pesterLog = Join-Path $logDirectory 'pester.xml'
+if (-not (Test-Path $pesterLog))
 {
     throw "Test failed. No pester log produced."
 }
 
-$serverSpecXml = [xml](Get-Content $serverSpecLog)
-$tests = $serverSpecXml.testsuite.tests
-$failures = $serverSpecXml.testsuite.failures
-$errors = $serverSpecXml.testsuite.errors
+$pesterXml = [xml](Get-Content $pesterLog)
+$testNode = $pesterXml["test-results"]
+$tests = $testNode.total
+$failures = $testNode.failures
+$errors = $testNode.errors
 
 if (($tests -gt 0) -and ($failures -eq 0) -and ($errors -eq 0))
 {
