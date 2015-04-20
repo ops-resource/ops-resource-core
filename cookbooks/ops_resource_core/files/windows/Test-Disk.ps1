@@ -5,7 +5,6 @@ $criticalAt = 5
 
 $hasError = $false
 $hasWarning = $false
-$diskText = ''
 foreach($disk in $disks)
 {
     if (($disk.ProviderName -eq $null) -or ($disk.ProviderName -eq ''))
