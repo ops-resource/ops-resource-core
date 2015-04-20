@@ -12,7 +12,7 @@ Describe 'Meta installation' {
         It 'has a valid metadata file' {
             $metaFile = 'c:\meta\meta.json'
             $metaFile | Should Exist
-            { ConvertFrom-Json (Get-Content $metaFile) } | Should Not Throw
+            { Get-Content $metaFile | Out-String | ConvertFrom-Json } | Should Not Throw
         }
     }
 }

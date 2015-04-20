@@ -27,7 +27,7 @@ Describe 'Consul installation' {
         It 'has a valid default consul configuration file' {
             $consulConfiguration = 'c:\ops\consul\bin\consul_default.json'
             $consulConfiguration | Should Exist
-            { ConvertFrom-Json (Get-Content $consulConfiguration) } | Should Not Throw
+            { Get-Content $consulConfiguration | Out-String | ConvertFrom-Json } | Should Not Throw
         }
     }
 
@@ -47,7 +47,7 @@ Describe 'Consul installation' {
         It 'has a valid check_server file' {
             $checkServer = 'c:/meta/consul/check_server.json'
             $checkServer | Should Exist
-            { ConvertFrom-Json (Get-Content $checkServer) } | Should Not Throw
+            { Get-Content $checkServer | Out-String | ConvertFrom-Json } | Should Not Throw
         }
     }
 
@@ -55,7 +55,7 @@ Describe 'Consul installation' {
         $service = Get-WmiObject win32_service | Where {$_.name -eq 'consul'} | Select -First 1
         It 'is running as consul_user' {
             $service | Should Not BeNullOrEmpty
-            $service.StartName | Should Be 'consul_user'
+            $service.StartName | Should Be '.\consul_user'
         }
 
         It 'starts automatically' {
@@ -65,7 +65,7 @@ Describe 'Consul installation' {
         It 'responds to queries' {
             $service.Started | Should Be 'True'
 
-            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self'
+            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing
             $json = ConvertFrom-Json -InputObject $consulHttpResponse
             $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
             $consulHttp.Config.Version | Should Be '0.5.0'
