@@ -151,8 +151,8 @@ describe 'ops_resource_core'  do
 
   consul_service_config_content = <<-JSON
 {
-    "install_path": "#{consul_bin_directory}",
-    "config_path": "#{consul_config_directory}",
+    "install_path": "c:\\\\ops\\\\consul\\\\bin",
+    "config_path": "c:\\\\meta\\\\consul",
 }
   JSON
   it 'creates the service_consul.json meta file' do
@@ -172,12 +172,7 @@ describe 'ops_resource_core'  do
     expect(chef_run).to create_cookbook_file("c:\\ops\\consul\\#{set_consul_metadata}").with(source: set_consul_metadata)
   end
 
-  it 'creates the runonce registry value' do
-    expect(chef_run).to create_registry_key('HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce').with(
-      values: [{
-        name: '!SetResourceMetadataInConsul',
-        type: :string,
-        data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
-      }])
+  it 'creates the scheduled task to upload the meta data' do
+    expect(chef_run).to run_powershell_script('scheduled_task_set_consul_meta_data')
   end
 end

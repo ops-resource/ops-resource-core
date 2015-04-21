@@ -242,11 +242,13 @@ end
 
 # Add file to meta directory containing information about consul install
 meta_directory = node['paths']['meta']
+consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
+consul_config_directory_escaped = consul_config_directory.gsub('\\', '\\\\\\\\')
 file "#{meta_directory}\\service_consul.json" do
   content <<-JSON
 {
-    "install_path": "#{consul_bin_directory}",
-    "config_path": "#{consul_config_directory}",
+    "install_path": "#{consul_bin_directory_escaped}",
+    "config_path": "#{consul_config_directory_escaped}",
 }
   JSON
   action :create
@@ -280,11 +282,9 @@ cookbook_file "#{consul_base_path}\\#{set_consul_metadata}" do
 end
 
 # upon reboot connect to the join node and set the meta data for the current resource to be equal to the data in the meta.json file
-registry_key 'HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\RunServicesOnce' do
-  values [{
-    name: '!SetResourceMetadataInConsul',
-    type: :string,
-    data: "powershell.exe -NoProfile -NonInteractive -NoLogo -File #{consul_base_path}\\#{set_consul_metadata} -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name}"
-  }]
-  action :create
+powershell_script 'scheduled_task_set_consul_meta_data' do
+  code <<-POWERSHELL
+    $trigger = New-JobTrigger -AtStartup -RandomDelay 00:00:30
+    Register-ScheduledJob -Name #{set_consul_metadata} -Trigger $trigger -ScriptBlock { "#{consul_base_path}\\#{set_consul_metadata}" -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name} -Verbose *> 'c:\\Scheduled.log' }
+  POWERSHELL
 end
