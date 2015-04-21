@@ -113,6 +113,12 @@ directory consul_config_directory do
   action :create
 end
 
+consul_config_upload_file = 'Set-ConfigurationInConsulCluster.ps1'
+cookbook_file "#{consul_config_directory}\\#{consul_config_upload_file}" do
+  source consul_config_upload_file
+  action :create
+end
+
 consul_checks_directory = node['paths']['consul_checks']
 directory consul_checks_directory do
   action :create

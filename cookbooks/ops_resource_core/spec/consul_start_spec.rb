@@ -30,4 +30,8 @@ describe 'ops_resource_core'  do
   it 'starts the consul service' do
     expect(chef_run).to start_service('consul')
   end
+
+  it 'uploads the meta data to consul' do
+    expect(chef_run).to run_powershell_script('upload_metadata_to_consul_cluster')
+  end
 end

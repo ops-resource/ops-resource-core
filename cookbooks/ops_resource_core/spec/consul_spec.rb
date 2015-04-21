@@ -49,6 +49,15 @@ describe 'ops_resource_core'  do
 
   meta_directory = 'c:\\meta'
   consul_config_directory = 'c:\\meta\\consul'
+  it 'creates the consul config directory' do
+    expect(chef_run).to create_directory(consul_config_directory)
+  end
+
+  consul_config_upload_file = 'Set-ConfigurationInConsulCluster.ps1'
+  it 'creates Set-ConfigurationInConsulCluster.ps1 in the consul config directory' do
+    expect(chef_run).to create_cookbook_file("#{consul_config_directory}\\#{consul_config_upload_file}").with_source(consul_config_upload_file)
+  end
+
   consul_checks_directory = 'c:\\meta\\consul\\checks'
   it 'creates the consul checks directory' do
     expect(chef_run).to create_directory(consul_checks_directory)
