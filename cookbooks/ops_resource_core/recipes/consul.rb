@@ -273,18 +273,3 @@ powershell_script 'firewall_open_UDP_ports_for_consul' do
     netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
   POWERSHELL
 end
-
-consul_base_path = node['paths']['consul_base']
-set_consul_metadata = 'Set-ConsulMetadata.ps1'
-cookbook_file "#{consul_base_path}\\#{set_consul_metadata}" do
-  source set_consul_metadata
-  action :create
-end
-
-# upon reboot connect to the join node and set the meta data for the current resource to be equal to the data in the meta.json file
-powershell_script 'scheduled_task_set_consul_meta_data' do
-  code <<-POWERSHELL
-    $trigger = New-JobTrigger -AtStartup -RandomDelay 00:00:30
-    Register-ScheduledJob -Name #{set_consul_metadata} -Trigger $trigger -ScriptBlock { "#{consul_base_path}\\#{set_consul_metadata}" -metaFile #{meta_directory}\\meta.json -consulServiceName #{service_name} -Verbose *> 'c:\\Scheduled.log' }
-  POWERSHELL
-end

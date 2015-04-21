@@ -13,10 +13,6 @@ Describe 'Consul installation' {
             'c:\ops\consul\data' | Should Exist
         }
 
-        It 'has the metadata transfer script' {
-            'c:\ops\consul\Set-ConsulMetadata.ps1' | Should Exist
-        }
-
         It 'has the Consul binaries' {
             'c:\ops\consul\bin\consul_service.exe' | Should Exist
             'c:\ops\consul\bin\consul_service.xml' | Should Exist

@@ -166,13 +166,4 @@ describe 'ops_resource_core'  do
   it 'opens the UDP ports for consul in the firewall' do
     expect(chef_run).to run_powershell_script('firewall_open_UDP_ports_for_consul')
   end
-
-  set_consul_metadata = 'Set-ConsulMetadata.ps1'
-  it 'copies the Set-ConsulMetadata.ps1 file' do
-    expect(chef_run).to create_cookbook_file("c:\\ops\\consul\\#{set_consul_metadata}").with(source: set_consul_metadata)
-  end
-
-  it 'creates the scheduled task to upload the meta data' do
-    expect(chef_run).to run_powershell_script('scheduled_task_set_consul_meta_data')
-  end
 end
