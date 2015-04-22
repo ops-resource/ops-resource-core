@@ -1,0 +1,262 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0"
+         DefaultTargets="Distribute_Core_Run"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+    <PropertyGroup>
+        <!-- Defines whether the current script file has been loaded / imported or not -->
+        <ExistsDistributeCore>true</ExistsDistributeCore>
+
+        <!-- The full path to the settings file that contains all the settings for the build process -->
+        <BuildPropertyFile Condition=" '$(BuildPropertyFile)' == '' ">UNDEFINED</BuildPropertyFile>
+    </PropertyGroup>
+
+    <Import Project="$(BuildPropertyFile)"
+            Condition="Exists('$(BuildPropertyFile)') AND '$(ExistsSettings)' != 'true' " />
+
+    <PropertyGroup>
+        <!-- Build flags -->
+        <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
+        <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
+
+        <!-- Properties -->
+        <ConsulDatacenter Condition=" '$(ConsulDatacenter)' == '' ">UNDEFINED</ConsulDatacenter>
+        <ConsulEntryPointDns Condition=" '$(ConsulEntryPointDns)' == '' ">UNDEFINED</ConsulEntryPointDns>
+        <ConsulDnsServerUrl Condition=" '$(ConsulDnsServerUrl)' == '' ">UNDEFINED</ConsulDnsServerUrl>
+
+        <!-- Directories -->
+        <DirOutput Condition=" '$(DirOutput)' == '' ">UNDEFINED</DirOutput>
+        <DirOutputConfiguration Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfiguration)' == '' ">$(DirOutput)\configuration</DirOutputConfiguration>
+        <DirOutputConfigurationCookbooks Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooks)' == '' ">$(DirOutputConfiguration)\cookbooks</DirOutputConfigurationCookbooks>
+        <DirOutputConfigurationCookbooksCore Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCore)' == '' ">$(DirOutputConfigurationCookbooks)\ops_resource_core</DirOutputConfigurationCookbooksCore>
+        <DirOutputConfigurationCookbooksCoreFiles Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputConfigurationCookbooksCoreFiles)' == '' ">$(DirOutputConfigurationCookbooksCore)\files</DirOutputConfigurationCookbooksCoreFiles>
+        <DirOutputVerification Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerification)' == '' ">$(DirOutput)\verification</DirOutputVerification>
+        <DirOutputVerificationTests Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationTests)' == '' ">$(DirOutputVerification)\tests</DirOutputVerificationTests>
+        <DirOutputVerificationTools Condition=" '$(DirOutput)' != 'UNDEFINED' AND '$(DirOutputVerificationTools)' == '' ">$(DirOutputVerification)\tools</DirOutputVerificationTools>
+
+        <DirOrigin>$(MSBuildProjectDirectory)</DirOrigin>
+        <DirOriginCookbooks>$(DirOrigin)\cookbooks</DirOriginCookbooks>
+        <DirOriginScripts>$(DirOrigin)\scripts</DirOriginScripts>
+        <DirOriginScriptsClient>$(DirOriginScripts)\client</DirOriginScriptsClient>
+        <DirOriginScriptsHost>$(DirOriginScripts)\host</DirOriginScriptsHost>
+        <DirOriginTests>$(DirOrigin)\tests</DirOriginTests>
+        <DirOriginTemplates>$(DirOrigin)\templates</DirOriginTemplates>
+        <DirOriginTools>$(DirOrigin)\tools</DirOriginTools>
+
+        <DirExternalInstallers Condition=" '$(DirExternalInstallers)' == '' ">UNDEFINED</DirExternalInstallers>
+        <DirExternalInstallersChef Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersChef)' == '' ">$(DirExternalInstallers)\chef</DirExternalInstallersChef>
+        <DirExternalInstallersConsul Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersConsul)' == '' ">$(DirExternalInstallers)\consul</DirExternalInstallersConsul>
+        <DirExternalInstallersWinSw Condition=" '$(DirExternalInstallers)' != 'UNDEFINED' AND '$(DirExternalInstallersWinSw)' == '' ">$(DirExternalInstallers)\winsw</DirExternalInstallersWinSw>
+
+        <!-- Files -->
+        <!-- The file that contains the dependencies for the non-core cookbooks etc. -->
+        <FileNonCoreDependencies Condition=" '$(FileNonCoreDependencies)' == '' ">UNDEFINED</FileNonCoreDependencies>
+
+        <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
+        <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <CookbooksToInvoke Include="ops_resource_core" />
+        <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
+    </ItemGroup>
+
+    <Import Project="$(MSBuildProjectDirectory)\dependencies.msbuild"
+            Condition="Exists('$(MSBuildProjectDirectory)\dependencies.msbuild') AND '$(ExistsDistributeCoreDependencies)' != 'true' " />
+    <Import Project="$(FileNonCoreDependencies)"
+            Condition="Exists('$(FileNonCoreDependencies)')" />
+
+    <Import Project="$(DirMsBuildShared)\shared.templatetokens.msbuild"
+            Condition="Exists('$(DirMsBuildShared)\shared.templatetokens.msbuild') AND '$(ExistsSharedTemplateTokens)' != 'true' " />
+
+    <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\TemplateText.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\TemplateText.msbuild') AND '$(ExistsExtensionsTemplateText)' != 'true' " />
+    <Import Project="$(DirMsBuildExtensions)\Unzip.msbuild"
+            Condition="Exists('$(DirMsBuildExtensions)\Unzip.msbuild') AND '$(ExistsExtensionsUnzip)' != 'true' " />
+
+    <Target Name="Distribute_Core_Run" DependsOnTargets="_Distribute_Core_DisplayInfo">
+        <CallTarget Targets="_Distribute_Core_VerifyInputs" />
+        <CallTarget Targets="_Distribute_Core_Scripts" />
+        <CallTarget Targets="_Distribute_Core_Templates" />
+        <CallTarget Targets="_Distribute_Core_Cookbooks" />
+        <CallTarget Targets="_Distribute_Core_Test_Tools" />
+        <CallTarget Targets="_Distribute_Core_Tests" />
+        <CallTarget Targets="_Distribute_Core_Externals" />
+    </Target>
+
+    <Target Name="_Distribute_Core_DisplayInfo">
+        <Message Text="Project directory structure:" />
+        <Message Text="The origin is located at:                                            $(DirOrigin)" />
+        <Message Text="The directory containing the cookbooks is located at:                $(DirOriginCookbooks)" />
+        <Message Text="The directory containing the scripts is located at:                  $(DirOriginScripts)" />
+        <Message Text="The directory containing the templates is located at:                $(DirOriginTemplates)" />
+        <Message Text="The directory containing the external installer files is located at: $(DirExternalInstallers)" />
+        <Message Text=" " />
+
+        <Message Text="Jenkins master configuration template file is located at: $(FileMasterConfigTemplate)" />
+        <Message Text="Jenkins master configuration file is located at:          $(FileMasterConfig)" />
+        <Message Text="Jenkins master build script is located at:                $(FileMasterScript)" />
+        <Message Text=" " />
+    </Target>
+
+    <Target Name="_Distribute_Core_VerifyInputs">
+        <Error Text="The output directory has not been defined!"
+               Condition=" '$(DirOutput)' == 'UNDEFINED' " />
+    </Target>
+
+    <Target Name="_Distribute_Core_Scripts">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputConfiguration)"
+                 Condition="!Exists('$(DirOutputConfiguration)')" />
+        <MakeDir Directories="$(DirOutputVerification)"
+                 Condition="!Exists('$(DirOutputVerification)')" />
+
+        <ItemGroup>
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\New*.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\Consul.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\WinRm.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(HostConfigurationScriptFiles)"
+              DestinationFiles="@(HostConfigurationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <ClientConfigurationScriptFiles Include="$(DirOriginScriptsClient)\Install*.ps1" />
+            <ClientConfigurationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ClientConfigurationScriptFiles)"
+              DestinationFiles="@(ClientConfigurationScriptFiles->'$(DirOutputConfiguration)\%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <HostVerificationScriptFiles Include="$(DirOriginScriptsHost)\Test*.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(HostVerificationScriptFiles)"
+              DestinationFiles="@(HostVerificationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
+
+        <ItemGroup>
+            <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Test*.ps1" />
+            <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ClientVerificationScriptFiles)"
+              DestinationFiles="@(ClientVerificationScriptFiles->'$(DirOutputVerification)\%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Distribute_Core_Templates"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+
+        <ItemGroup>
+            <TemplateTokens Include="CookbookNames" >
+                <ReplacementValue>@(CookbooksToInvoke)</ReplacementValue>
+            </TemplateTokens>
+        </ItemGroup>
+
+        <TemplateFile Template="$(FileInitializeLocalNetworkScriptTemplate)"
+                      OutputFileName="$(FileInitializeLocalNetworkScriptGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeLocalNetworkScriptTemplate)')"/>
+    </Target>
+
+    <Target Name="_Distribute_Core_Cookbooks"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputConfiguration)"
+                 Condition="!Exists('$(DirOutputConfiguration)')" />
+        <MakeDir Directories="$(DirOutputConfigurationCookbooks)"
+                 Condition="!Exists('$(DirOutputConfigurationCookbooks)')" />
+
+        <ItemGroup>
+            <CookbookFiles Include="$(DirOriginCookbooks)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(CookbookFiles)"
+              DestinationFiles="@(CookbookFiles->'$(DirOutputConfigurationCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Distribute_Core_Tests">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputVerification)"
+                 Condition="!Exists('$(DirOutputVerification)')" />
+        <MakeDir Directories="$(DirOutputVerificationTests)"
+                 Condition="!Exists('$(DirOutputVerificationTests)')" />
+
+        <ItemGroup>
+            <TestFiles Include="$(DirOriginTests)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(TestFiles)"
+              DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Distribute_Core_Test_Tools">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputVerification)"
+                 Condition="!Exists('$(DirOutputVerification)')" />
+        <MakeDir Directories="$(DirOutputVerificationTools)"
+                 Condition="!Exists('$(DirOutputVerificationTools)')" />
+
+        <ItemGroup>
+            <ToolsFiles Include="$(DirOriginTools)\**\*.*" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ToolsFiles)"
+              DestinationFiles="@(ToolsFiles->'$(DirOutputVerificationTools)\%(RecursiveDir)%(Filename)%(Extension)')" />
+    </Target>
+
+    <Target Name="_Distribute_Core_Externals"
+            Outputs="%(ExternalFiles.Identity)"
+            DependsOnTargets="nBuildKit_Shared_TemplateTokens_Initialize"
+            Condition=" '@(ExternalFiles)' != '' ">
+        <MakeDir Directories="$(DirOutput)"
+                 Condition="!Exists('$(DirOutput)')" />
+        <MakeDir Directories="$(DirOutputConfiguration)"
+                 Condition="!Exists('$(DirOutputConfiguration)')" />
+
+        <ItemGroup>
+            <TemplateTokens Include="DestinationConfiguration">
+                <ReplacementValue>$(DirOutputConfiguration)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="DestinationConfigurationCookbooks">
+                <ReplacementValue>$(DirOutputConfigurationCookbooks)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="DestinationVerification">
+                <ReplacementValue>$(DirOutputVerification)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="CookbookName" Condition=" '%(ExternalFiles.CookbookName)' != '' ">
+                <ReplacementValue>%(ExternalFiles.CookbookName)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="RecursiveDir">
+                <ReplacementValue>%(ExternalFiles.RecursiveDir)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="Filename">
+                <ReplacementValue>%(ExternalFiles.Filename)</ReplacementValue>
+            </TemplateTokens>
+            <TemplateTokens Include="Extension">
+                <ReplacementValue>%(ExternalFiles.Extension)</ReplacementValue>
+            </TemplateTokens>
+        </ItemGroup>
+        <TemplateText Template="%(ExternalFiles.Destination)"
+                      Tokens="@(TemplateTokens)">
+            <Output TaskParameter="Result" PropertyName="ExternalFilesForScriptsDestination" />
+        </TemplateText>
+
+        <!--
+            Strip the spaces out of the path because Chef has issues (https://github.com/chef/chef/issues/3170) with
+            spaces in paths.
+        -->
+        <CreateProperty Value='$(ExternalFilesForScriptsDestination.Replace(" ","_"))'>
+            <Output TaskParameter="Value" PropertyName="ExternalFilesForScriptsDestinationWithoutSpaces" />
+        </CreateProperty>
+
+        <CreateProperty Value="$([System.IO.Path]::GetDirectoryName('$(ExternalFilesForScriptsDestinationWithoutSpaces)'))">
+            <Output TaskParameter="Value" PropertyName="DirToCreate" />
+        </CreateProperty>
+        <MakeDir Directories="$(DirToCreate)"
+                 Condition="!Exists('$(DirToCreate)') AND '$(ShouldExecute)' == 'true' " />
+
+        <Copy SourceFiles="%(ExternalFiles.Identity)"
+              DestinationFiles="$(ExternalFilesForScriptsDestinationWithoutSpaces)" />
+    </Target>
+</Project>
