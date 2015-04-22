@@ -3,9 +3,12 @@
     using Pester (https://github.com/pester/Pester).
 #>
 
-Describe 'Consul installation' {
+# Load the consul utilities script
+. $(Join-Path (Split-Path $PSScriptRoot -Parent) 'consul.ps1')
 
-    Context 'The consul install location' {
+Describe 'Consul installation:' {
+
+    Context 'The install location' {
         It 'has the directories' {
             'c:\ops' | Should Exist
             'c:\ops\consul' | Should Exist
@@ -64,6 +67,49 @@ Describe 'Consul installation' {
             $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing
             $json = ConvertFrom-Json -InputObject $response
             $json.Config.Version | Should Be '0.5.0'
+        }
+    }
+
+    Context 'The consul cluster' {
+        $consulLocalAddress = 'http://localhost:8500'
+        $machineName = $env:ComputerName
+        $environment = Get-EnvironmentForLocalNode -consulLocalAddress $consulLocalAddress
+        $baseKeyPath = "resource/$machineName/configuration"
+
+        It 'has the node configuration' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/node").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\meta\meta.json' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
+        }
+
+        It 'has the consul default configuration' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/consul/ops/consul/bin/consul_default.json").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\ops\consul\bin\consul_default.json' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
+        }
+
+        It 'has the check_server configuration' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/consul/meta/consul/check_server.json").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\meta\consul\check_server.json' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
+        }
+
+        It 'has the Test-Disk check' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/consul/meta/consul/checks/test-disk.ps1").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\meta\consul\checks\Test-Disk.ps1' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
+        }
+
+        It 'has the Test-Load check' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/consul/meta/consul/checks/test-load.ps1").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\meta\consul\checks\Test-Load.ps1' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
+        }
+
+        It 'has the Test-Memory configuration' {
+            $content = (Get-ConsulKeyValue -consulLocalAddress $consulLocalAddress -environment $environment -keyPath "$baseKeyPath/consul/meta/consul/checks/test-memory.ps1").Replace(" ", "")
+            $expectedContent = (Get-Content 'c:\meta\consul\checks\Test-Memory.ps1' | Out-String).Replace("`r`n","").Replace(" ", "")
+            $content | Should BeExactly $expectedContent
         }
     }
 }
