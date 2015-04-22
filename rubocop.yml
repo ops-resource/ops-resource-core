@@ -1,0 +1,11 @@
+Metrics/LineLength:
+  Max: 100
+  Enabled: false
+
+AllCops:
+  Exclude:
+    - 'build/temp/core/cookbooks/chef_handler/**/*'
+    - 'build/temp/core/cookbooks/windows/**/*'
+    - 'build/temp/core/cookbooks/windows_firewall/**/*'
+    - 'cookbooks/**/*'
+    - 'packages/**/*'
