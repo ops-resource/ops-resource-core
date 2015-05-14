@@ -82,6 +82,10 @@ describe 'ops_resource_core'  do
 
   "datacenter": "#{consul_config_datacenter}",
 
+  "ports": {
+    "dns": 53
+  },
+
   "retry_join": ["#{consul_config_entry_node_dns}"],
   "retry_interval": "30s",
 
