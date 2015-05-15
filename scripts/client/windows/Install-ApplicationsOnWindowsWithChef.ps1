@@ -156,9 +156,11 @@ function New-MetaFile
         {
             # New cookbook metadata file type
             $path = Join-Path $cookbook.FullName 'metadata.json'
-            $select = Select-String -Path $path -Pattern '"version":'
+            $searchPattern = '"version"'
+            $select = Select-String -Path $path -Pattern $searchPattern
             $line = $select.Line.Trim()
-            $cookbookVersion = $line.SubString($line.IndexOf(" ")).Trim().Trim(',').Trim("'").Trim('"')
+            $startingIndex = $line.IndexOf($searchPattern) + $searchPattern.Length
+            $cookbookVersion = $line.SubString($startingIndex, $line.IndexOf(',', $startingIndex) - $startingIndex).Trim().Trim(@(':', ',', "'", '"', ' ')).Trim()
         }
 
         $cookbookMeta = New-Object psobject
