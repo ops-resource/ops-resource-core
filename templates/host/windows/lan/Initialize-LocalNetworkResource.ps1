@@ -85,44 +85,55 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
-$resourceName = '${ProductName}'
-$resourceVersion = '${VersionSemanticFull}'
-$cookbookNames = '${CookbookNames}'.Split(';')
-
-$installationDirectory = $(Join-Path $PSScriptRoot 'configuration')
-$testDirectory = $(Join-Path $PSScriptRoot 'verification')
-$logDirectory = $(Join-Path $PSScriptRoot 'logs')
-
-$installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
-$verificationScript = Join-Path $PSScriptRoot 'Test-LocalNetworkResource.ps1'
-
-switch ($psCmdlet.ParameterSetName)
+$startTime = [System.DateTimeOffset]::Now
+try
 {
-    'FromUserSpecification' {
-        & $installationScript `
-            -computerName $computerName `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -dataCenterName $dataCenterName `
-            -clusterEntryPointAddress $clusterEntryPointAddress `
-            -globalDnsServerAddress $globalDnsServerAddress `
-            @commonParameterSwitches
+    $resourceName = '${ProductName}'
+    $resourceVersion = '${VersionSemanticFull}'
+    $cookbookNames = '${CookbookNames}'.Split(';')
+
+    $installationDirectory = $(Join-Path $PSScriptRoot 'configuration')
+    $testDirectory = $(Join-Path $PSScriptRoot 'verification')
+    $logDirectory = $(Join-Path $PSScriptRoot 'logs')
+
+    $installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
+    $verificationScript = Join-Path $PSScriptRoot 'Test-LocalNetworkResource.ps1'
+
+    switch ($psCmdlet.ParameterSetName)
+    {
+        'FromUserSpecification' {
+            & $installationScript `
+                -computerName $computerName `
+                -resourceName $resourceName `
+                -resourceVersion $resourceVersion `
+                -cookbookNames $cookbookNames `
+                -installationDirectory $installationDirectory `
+                -logDirectory $logDirectory `
+                -dataCenterName $dataCenterName `
+                -clusterEntryPointAddress $clusterEntryPointAddress `
+                -globalDnsServerAddress $globalDnsServerAddress `
+                @commonParameterSwitches
+        }
+
+        'FromMetaCluster' {
+            & $installationScript `
+                -computerName $computerName `
+                -resourceName $resourceName `
+                -resourceVersion $resourceVersion `
+                -cookbookNames $cookbookNames `
+                -installationDirectory $installationDirectory `
+                -logDirectory $logDirectory `
+                -environmentName $environmentName `
+                @commonParameterSwitches
+        }
     }
 
-    'FromMetaCluster' {
-        & $installationScript `
-            -computerName $computerName `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -environmentName $environmentName `
-            @commonParameterSwitches
-    }
+    & $verificationScript -computerName $computerName -testDirectory $testDirectory -logDirectory $logDirectory @commonParameterSwitches
 }
-
-& $verificationScript -computerName $computerName -testDirectory $testDirectory -logDirectory $logDirectory @commonParameterSwitches
+finally
+{
+    $endTime = [System.DateTimeOffset]::Now
+    Write-Output ("Resource initialization started: " + $startTime)
+    Write-Output ("Resource initialization completed: " + $endTime)
+    Write-Output ("Total time: " + ($endTime - $startTime))
+}
