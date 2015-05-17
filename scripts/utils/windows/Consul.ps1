@@ -1,6 +1,26 @@
 # Load the System.Web assembly otherwise Powershell can't find the System.Web.HttpUtility class
 Add-Type -AssemblyName System.Web
 
+<#
+    .SYNOPSIS
+
+    Converts the base-64 encoded value to the original data.
+
+
+    .DESCRIPTION
+
+    The ConvertFrom-ConsulEncodedValue function converts the base-64 encoded value to the original data.
+
+
+    .PARAMETER encodedValue
+
+    The base-64 encoded data.
+
+
+    .OUTPUTS
+
+    The decoded data.
+#>
 function ConvertFrom-ConsulEncodedValue
 {
     [CmdletBinding()]
@@ -24,6 +44,36 @@ function ConvertFrom-ConsulEncodedValue
     return [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($encodedValue))
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the value for a given key from the key-value storage on a given data center.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulKeyValue function gets the value for a given key from the key-value storage on a given data center.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .PARAMETER keyPath
+
+    The path to the key for which the value is to be retrieved.
+
+
+    .OUTPUTS
+
+    The data that was stored under the given key.
+#>
 function Get-ConsulKeyValue
 {
     [CmdletBinding()]
@@ -63,6 +113,30 @@ function Get-ConsulKeyValue
     return $value
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the URL of the consul meta server.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulMetaServer function gets the URL of the consul meta server.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    A custom object containing the information about the consul meta server. The object contains
+    the following properties:
+
+        DataCenter
+        Http
+#>
 function Get-ConsulMetaServer
 {
     [CmdletBinding()]
@@ -101,6 +175,39 @@ function Get-ConsulMetaServer
     return $result
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the connection information for a given environment.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulTargetEnvironmentData function gets the connection information for a given environment.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    A custom object containing the information about the consul cluser for the given environment. The object
+    contains the following properties:
+
+        DataCenter
+        Http
+        Dns
+        SerfLan
+        SerfWan
+        Server
+#>
 function Get-ConsulTargetEnvironmentData
 {
     [CmdletBinding()]
@@ -177,6 +284,26 @@ function Get-ConsulTargetEnvironmentData
     return $result
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the name of the environment that the local node belongs to.
+
+
+    .DESCRIPTION
+
+    The Get-EnvironmentForLocalNode function gets the name of the environment that the local node belongs to.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    The name of the environment that the local node belongs to.
+#>
 function Get-EnvironmentForLocalNode
 {
     [CmdletBinding()]
@@ -241,6 +368,32 @@ function Get-EnvironmentForLocalNode
     return 'unknown'
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the global DNS recursor address that will be used by consul to resolve DNS queries outside the consul domain.
+
+
+    .DESCRIPTION
+
+    The Get-GlobalDnsAddress function gets the global DNS recursor address that will be used by consul to
+    resolve DNS queries outside the consul domain.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    The IP or address of the DNS server that will be used to by consul to resolve DNS queries from outside the consul domain.
+#>
 function Get-GlobalDnsAddress
 {
     [CmdletBinding()]
@@ -279,6 +432,41 @@ function Get-GlobalDnsAddress
     return $dnsFallback
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the IP address of the node providing the given service.
+
+
+    .DESCRIPTION
+
+    The Get-ResourceNamesForService function gets the IP address of the node providing the given service.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .PARAMETER service
+
+    The name of the service
+
+
+    .PARAMETER tag
+
+    The (optional) tag.
+
+
+    .OUTPUTS
+
+    The IP or address of the node that provides the service.
+#>
 function Get-ResourceNamesForService
 {
     [CmdletBinding()]
