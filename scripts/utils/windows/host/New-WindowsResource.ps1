@@ -183,7 +183,7 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
     $target = Get-ConsulTargetEnvironmentData -environment $environmentName
     $dataCenterName = $target.DataCenter
     $clusterEntryPointAddress = $target.SerfLan
-    $globalDnsServerAddress = Get-GlobalDnsAddress -environment $environmentName
+    $globalDnsServerAddress = Get-DnsFallbackIp -environment $environmentName
 }
 
 # Overwrite the consul.rb attributes file with the attributes for the machine we're about to create
