@@ -598,7 +598,7 @@ function Set-ConsulExternalService
     param(
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByName')]
-        [string] $environment = 'staging',
+        [string] $environment,
 
         [ValidateNotNullOrEmpty()]
         [string] $httpUrl = "http://localhost:8500",
@@ -690,7 +690,7 @@ function Set-ConsulKeyValue
     param(
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByName')]
-        [string] $environment = 'staging',
+        [string] $environment,
 
         [ValidateNotNullOrEmpty()]
         [string] $httpUrl = "http://localhost:8500",
@@ -770,7 +770,7 @@ function Set-ConsulMetaServer
     param(
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByName')]
-        [string] $environment = 'staging',
+        [string] $environment,
 
         [ValidateNotNullOrEmpty()]
         [string] $httpUrl = "http://localhost:8500",
@@ -1003,7 +1003,7 @@ function Set-DnsFallbackIp
     param(
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByName')]
-        [string] $environment = 'staging',
+        [string] $environment,
 
         [ValidateNotNullOrEmpty()]
         [string] $httpUrl = "http://localhost:8500",
