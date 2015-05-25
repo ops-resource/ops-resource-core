@@ -24,7 +24,7 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resource_core'  do
+describe 'ops_resource_core::consul_as_dns'  do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   it 'adds the localhost as the primary DNS address' do
