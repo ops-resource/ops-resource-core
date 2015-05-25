@@ -672,7 +672,7 @@ function Set-ConsulExternalService
 
     .PARAMETER dataCenter
 
-    The URL to the local consul agent.
+    The name of the data center for which the value should be set.
 
 
     .PARAMETER keyPath
@@ -729,6 +729,41 @@ function Set-ConsulKeyValue
     }
 }
 
+<#
+    .SYNOPSIS
+
+    Sets the information about the meta server on a given environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulMetaServer function sets the information about the meta server on a given environment.
+
+
+    .PARAMETER environment
+
+    The name of the environment on which the meta information should be set.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for which the value should be set.
+
+
+    .PARAMETER metaDataCenter
+
+    The name of the data center that contains the meta servers.
+
+
+    .PARAMETER metaHttpUrl
+
+    The URL of the entry server of the meta cluster.
+#>
 function Set-ConsulMetaServer
 {
     [CmdletBinding()]
@@ -738,16 +773,11 @@ function Set-ConsulMetaServer
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [Parameter(ParameterSetName='ByName')]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
+        [string] $httpUrl = "http://localhost:8500",
 
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByUrl')]
         [string] $dataCenter,
-
-        [ValidateNotNullOrEmpty()]
-        [Parameter(ParameterSetName='ByUrl')]
-        [string] $httpUrl,
 
         [ValidateNotNullOrEmpty()]
         [string] $metaDataCenter,
@@ -762,14 +792,14 @@ function Set-ConsulMetaServer
         {
             Set-ConsulKeyValue `
                 -environment $environment `
-                -consulLocalAddress $consulLocalAddress `
+                -httpUrl $httpUrl `
                 -keyPath 'environment/meta/datacenter' `
                 -value $metaDataCenter `
                 @commonParameterSwitches
 
             Set-ConsulKeyValue `
                 -environment $environment `
-                -consulLocalAddress $consulLocalAddress `
+                -httpUrl $httpUrl `
                 -keyPath 'environment/meta/http' `
                 -value $metaHttpUrl `
                 @commonParameterSwitches
@@ -791,11 +821,64 @@ function Set-ConsulMetaServer
                 @commonParameterSwitches
         }
     }
-
-    # Go to the local consul node and get the address and the data center for the meta server
-
 }
 
+<#
+    .SYNOPSIS
+
+    Sets the connection information for a given environment as key-value pairs on the meta environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulTargetEnvironmentData function sets the connection information for a given environment
+    as key-value pairs on the meta environment.
+
+
+    .PARAMETER metaDataCenter
+
+    The name of the data center of the meta cluster.
+
+
+    .PARAMETER metaHttpUrl
+
+    The URL to one of the consul agents in the meta cluster.
+
+
+    .PARAMETER targetEnvironment
+
+    The environment for which the connection information should be set.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for the environment.
+
+
+    .PARAMETER httpUrl
+
+    The URL for the HTTP endpoint for the environment.
+
+
+    .PARAMETER dnsUrl
+
+    The URL for the DNS endpoint for the environment.
+
+
+    .PARAMETER serfLanUrl
+
+    The URL for the endpoint used to discover other consul agents in the same environment.
+
+
+    .PARAMETER serfLanUrl
+
+    The URL for the endpoint used to discover other consul agents in different environments.
+
+
+    .PARAMETER serverUrl
+
+    The URL for the endpoint used to connect to the agent.
+#>
 function Set-ConsulTargetEnvironmentData
 {
     [CmdletBinding()]
@@ -832,53 +915,88 @@ function Set-ConsulTargetEnvironmentData
 
     # Set the name of the data center
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/datacenter" `
-        -value $dataCenter `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/datacenter" `
+        -value $dataCenter `
         @commonParameterSwitches
 
     # Set the http URL
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/http" `
-        -value $httpUrl `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/http" `
+        -value $httpUrl `
         @commonParameterSwitches
 
     # Set the DNS URL
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/dns" `
-        -value $dnsUrl `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/dns" `
+        -value $dnsUrl `
         @commonParameterSwitches
 
     # Set the serf_lan URL
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/serf_lan" `
-        -value $serfLanUrl `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/serf_lan" `
+        -value $serfLanUrl `
         @commonParameterSwitches
 
     # Set the serf_wan URL
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/serf_wan" `
-        -value $serfWanUrl `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/serf_wan" `
+        -value $serfWanUrl `
         @commonParameterSwitches
 
     # Set the server URL
     Set-ConsulKeyValue `
-        -keyPath "environment/$lowerCaseEnvironment/server" `
-        -value $serverUrl `
         -dataCenter $metaDatacenter `
         -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/server" `
+        -value $serverUrl `
         @commonParameterSwitches
 }
 
+<#
+    .SYNOPSIS
+
+    Sets the IP address of the DNS fallback server.
+
+
+    .DESCRIPTION
+
+    The Set-DnsFallbackIP function sets the IP address of the DNS fallback server.
+
+
+    .PARAMETER environment
+
+    The name of the environment on which the meta information should be set.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for which the value should be set.
+
+
+    .PARAMETER targetEnvironment
+
+    The environment for which the DNS fallback IP should be set.
+
+
+    .PARAMETER dnsRecursorIP
+
+    The IP address of the DNS server.
+#>
 function Set-DnsFallbackIp
 {
     [CmdletBinding()]
@@ -888,16 +1006,11 @@ function Set-DnsFallbackIp
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [Parameter(ParameterSetName='ByName')]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
+        [string] $httpUrl = "http://localhost:8500",
 
         [ValidateNotNullOrEmpty()]
         [Parameter(ParameterSetName='ByUrl')]
         [string] $dataCenter,
-
-        [ValidateNotNullOrEmpty()]
-        [Parameter(ParameterSetName='ByUrl')]
-        [string] $httpUrl,
 
         [ValidateNotNullOrEmpty()]
         [string] $targetEnvironment,
@@ -913,7 +1026,7 @@ function Set-DnsFallbackIp
         {
             Set-ConsulKeyValue `
                 -environment $environment `
-                -consulLocalAddress $consulLocalAddress `
+                -httpUrl $httpUrl `
                 -keyPath "environment/$lowerCaseEnvironment/dns_fallback" `
                 -value $dnsRecursorIP `
                 @commonParameterSwitches
