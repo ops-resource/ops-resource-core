@@ -1,5 +1,5 @@
 <#
-    This file contains the 'unit tests' for the BuildFunctions.Release script. These tests are executed
+    This file contains the 'verification tests' for the 'meta' section of the ops_resource_core cookbook. These tests are executed
     using Pester (https://github.com/pester/Pester).
 #>
 
