@@ -146,8 +146,11 @@ function Get-ConsulKeyValue
         }
 
     $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+    $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
 
-    $keyUri = "$($server.Http)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($server.DataCenter))"
+    # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+    # available
+    $keyUri = "$($metaServer.Http)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($server.DataCenter))"
 
     $keyResponse = Invoke-WebRequest -Uri $keyUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $keyResponse @commonParameterSwitches
@@ -543,11 +546,14 @@ function Get-ResourceNamesForService
         }
 
     $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+    $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
 
-    $serviceUri = "$($server.Http)/v1/catalog/service/$($service)"
+    # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+    # available
+    $serviceUri = "$($metaServer.Http)/v1/catalog/service/$($service)?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
     if ($tag -ne '')
     {
-        $serviceUri += "?tag=$([System.Web.HttpUtility]::UrlEncode($tag))"
+        $serviceUri += "&tag=$([System.Web.HttpUtility]::UrlEncode($tag))"
     }
 
     $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
@@ -619,7 +625,11 @@ function Set-ConsulExternalService
         "ByName"
         {
             $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $httpUrl @commonParameterSwitches
-            $url = $server.Http
+            $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+
+            # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+            # available
+            $url = $metaServer.Http
             $dc = $server.DataCenter
         }
         "ByUrl"
@@ -711,7 +721,11 @@ function Set-ConsulKeyValue
         "ByName"
         {
             $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $httpUrl @commonParameterSwitches
-            $url = $server.Http
+            $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+
+            # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+            # available
+            $url = $metaServer.Http
             $dc = $server.DataCenter
         }
         "ByUrl"
