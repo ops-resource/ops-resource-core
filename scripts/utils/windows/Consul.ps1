@@ -149,7 +149,7 @@ function Get-ConsulKeyValue
 
     $keyUri = "$($server.Http)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($server.DataCenter))"
 
-    $keyResponse = Invoke-WebRequest -Uri $keyUri -UseBasicParsing @commonParameterSwitches
+    $keyResponse = Invoke-WebRequest -Uri $keyUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $keyResponse @commonParameterSwitches
     $value = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
@@ -202,12 +202,12 @@ function Get-ConsulMetaServer
 
     # Go to the local consul node and get the address and the data center for the meta server
     $consulHttpUri = "$consulLocalAddress/v1/kv/environment/meta/http"
-    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing @commonParameterSwitches
+    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulHttpResponse @commonParameterSwitches
     $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     $consulDataCenterUri = "$consulLocalAddress/v1/kv/environment/meta/datacenter"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing @commonParameterSwitches
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
     $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
@@ -282,37 +282,37 @@ function Get-ConsulTargetEnvironmentData
 
     # Get the name of the datacenter for our environment (e.g. the production environment is in the MyCompany-MyLocation01 datacenter)
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing @commonParameterSwitches
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
     $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the http URL
     $consulHttpUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/http?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing @commonParameterSwitches
+    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulHttpResponse @commonParameterSwitches
     $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the DNS URL
     $consulDnsUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDnsResponse = Invoke-WebRequest -Uri $consulDnsUri -UseBasicParsing @commonParameterSwitches
+    $consulDnsResponse = Invoke-WebRequest -Uri $consulDnsUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDnsResponse @commonParameterSwitches
     $consulDns = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the serf_lan URL
     $consulSerfLanUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/serf_lan?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulSerfLanResponse = Invoke-WebRequest -Uri $consulSerfLanUri -UseBasicParsing @commonParameterSwitches
+    $consulSerfLanResponse = Invoke-WebRequest -Uri $consulSerfLanUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulSerfLanResponse @commonParameterSwitches
     $consulSerfLan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the serf_wan URL
     $consulSerfWanUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/serf_wan?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulSerfWanResponse = Invoke-WebRequest -Uri $consulSerfWanUri -UseBasicParsing @commonParameterSwitches
+    $consulSerfWanResponse = Invoke-WebRequest -Uri $consulSerfWanUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulSerfWanResponse @commonParameterSwitches
     $consulSerfWan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the server URL
     $consulServerUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/server?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulServerResponse = Invoke-WebRequest -Uri $consulServerUri -UseBasicParsing @commonParameterSwitches
+    $consulServerResponse = Invoke-WebRequest -Uri $consulServerUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulServerResponse @commonParameterSwitches
     $consulServer = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
@@ -369,7 +369,7 @@ function Get-EnvironmentForLocalNode
 
     # Get the DC for the local node
     $serviceUri = "$($consulLocalAddress)/v1/agent/self"
-    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing @commonParameterSwitches
+    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     if ($serviceResponse.StatusCode -ne 200)
     {
         throw "Server did not return information about the local Consul node."
@@ -382,7 +382,7 @@ function Get-EnvironmentForLocalNode
     # because we can't iterate over http addresses
     $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress @commonParameterSwitches
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/meta/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing @commonParameterSwitches
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
     $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
@@ -391,7 +391,7 @@ function Get-EnvironmentForLocalNode
     }
 
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/production/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing @commonParameterSwitches
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
     $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
@@ -400,7 +400,7 @@ function Get-EnvironmentForLocalNode
     }
 
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/staging/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing @commonParameterSwitches
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
     $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
@@ -468,7 +468,7 @@ function Get-DnsFallbackIp
 
     # Get the DNS server fallback URL
     $dnsFallbackUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns_fallback?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri -UseBasicParsing @commonParameterSwitches
+    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $dnsFallbackResponse @commonParameterSwitches
     $dnsFallback = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
@@ -550,7 +550,7 @@ function Get-ResourceNamesForService
         $serviceUri += "?tag=$([System.Web.HttpUtility]::UrlEncode($tag))"
     }
 
-    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing @commonParameterSwitches
+    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     $json = ConvertFrom-Json -InputObject $serviceResponse @commonParameterSwitches
     $serviceAddress = $json[0].Address
 
@@ -642,7 +642,7 @@ function Set-ConsulExternalService
 "@
 
     $uri = "$($url)/v1/catalog/register?dc=$([System.Web.HttpUtility]::UrlEncode($dc))"
-    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing @commonParameterSwitches
+    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     if ($response.StatusCode -ne 200)
     {
         throw "Failed to add external service [$serviceName - $serviceUrl] on [$dc]"
@@ -722,7 +722,7 @@ function Set-ConsulKeyValue
     }
 
     $uri = "$($url)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($dc))"
-    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing @commonParameterSwitches
+    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     if ($response.StatusCode -ne 200)
     {
         throw "Failed to set Key-Value pair [$keyPath] - [$value] on [$dc]"
