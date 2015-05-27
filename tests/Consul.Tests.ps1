@@ -64,7 +64,7 @@ Describe 'Consul installation:' {
         It 'responds to queries' {
             $service.Started | Should Be 'True'
 
-            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing
+            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
             $json = ConvertFrom-Json -InputObject $response
             $json.Config.Version | Should Be '0.5.1'
         }
