@@ -67,7 +67,7 @@ param(
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://$($env:ComputerName):8500"
+    [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"

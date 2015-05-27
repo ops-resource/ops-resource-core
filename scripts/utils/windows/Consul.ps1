@@ -125,7 +125,7 @@ function Get-ConsulKeyValue
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
+        [string] $consulLocalAddress = "http://localhost:8500",
 
         [ValidateNotNullOrEmpty()]
         [string] $keyPath
@@ -185,7 +185,7 @@ function Get-ConsulMetaServer
     [CmdletBinding()]
     param(
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
 
     Write-Verbose "Get-ConsulMetaServer - consulLocalAddress: $consulLocalAddress"
@@ -259,7 +259,7 @@ function Get-ConsulTargetEnvironmentData
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
 
     Write-Verbose "Get-ConsulTargetEnvironmentData - environment: $environment"
@@ -352,7 +352,7 @@ function Get-EnvironmentForLocalNode
     [CmdletBinding()]
     param(
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
 
     Write-Verbose "Get-EnvironmentForLocalNode - consulLocalAddress: $consulLocalAddress"
@@ -445,7 +445,7 @@ function Get-DnsFallbackIp
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
 
     Write-Verbose "Get-DnsFallbackIp - environment: $environment"
@@ -518,7 +518,7 @@ function Get-ResourceNamesForService
         [string] $environment = 'staging',
 
         [ValidateNotNullOrEmpty()]
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
+        [string] $consulLocalAddress = "http://localhost:8500",
 
         [ValidateNotNullOrEmpty()]
         [string] $service,
