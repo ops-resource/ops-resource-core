@@ -100,9 +100,10 @@
         <Message Text="The directory containing the external installer files is located at: $(DirExternalInstallers)" />
         <Message Text=" " />
 
-        <Message Text="Jenkins master configuration template file is located at: $(FileMasterConfigTemplate)" />
-        <Message Text="Jenkins master configuration file is located at:          $(FileMasterConfig)" />
-        <Message Text="Jenkins master build script is located at:                $(FileMasterScript)" />
+        <Message Text="External dependencies file is located at:                            $(FileNonCoreDependencies)" />
+        <Message Text="Cookbooks that should be invoked are:                                $(CookbooksToInvoke)" />
+        <Message Text="Install meta:                                                        $(InstallMeta)" />
+        <Message Text="Install consul:                                                      $(InstallConsul)" />
         <Message Text=" " />
     </Target>
 

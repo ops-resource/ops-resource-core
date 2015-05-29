@@ -61,6 +61,11 @@
     The name of the environment to which the remote machine should be added.
 
 
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
     .EXAMPLE
 
     New-WindowsResource -computerName "AKTFSJS01" -installationDirectory "c:\installers" -logDirectory "c:\logs"
@@ -99,7 +104,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development'
+    [string] $environmentName                                   = 'Development',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromMetaCluster')]
+    [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
 Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
@@ -148,7 +157,8 @@ switch ($psCmdlet.ParameterSetName)
             -logDirectory $logDirectory `
             -dataCenterName $dataCenterName `
             -clusterEntryPointAddress $clusterEntryPointAddress `
-            -globalDnsServerAddress $globalDnsServerAddress
+            -globalDnsServerAddress $globalDnsServerAddress `
+            @commonParameterSwitches
     }
 
     'FromMetaCluster' {
@@ -160,5 +170,7 @@ switch ($psCmdlet.ParameterSetName)
             -installationDirectory $installationDirectory `
             -logDirectory $logDirectory `
             -environmentName $environmentName `
+            -consulLocalAddress $consulLocalAddress `
+            @commonParameterSwitches
     }
 }

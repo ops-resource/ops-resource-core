@@ -36,7 +36,7 @@ try
             $machineName = [System.Net.Dns]::GetHostName()
             $uri = "http://localhost:8500/v1/kv/resource/$machineName/configuration/$($pair.Value)"
             Write-Output "Uploading to $uri"
-            $response = Invoke-WebRequest -Uri $uri -Method Put -Body $content -UseBasicParsing
+            $response = Invoke-WebRequest -Uri $uri -Method Put -Body $content -UseBasicParsing -UseDefaultCredentials
             Write-Output "Upload: $($response.StatusDescription)"
         }
         catch
