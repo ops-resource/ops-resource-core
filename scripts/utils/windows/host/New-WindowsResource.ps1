@@ -71,6 +71,11 @@
     The name of the environment to which the remote machine should be added.
 
 
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
     .EXAMPLE
 
     New-WindowsResource -session $session -installationDirectory "c:\installers" -logDirectory "c:\logs"
@@ -115,7 +120,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development'
+    [string] $environmentName                                   = 'Development',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromMetaCluster')]
+    [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
 function New-ConsulAttributesFile
@@ -180,10 +189,10 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
 
-    $target = Get-ConsulTargetEnvironmentData -environment $environmentName
+    $target = Get-ConsulTargetEnvironmentData -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
     $dataCenterName = $target.DataCenter
     $clusterEntryPointAddress = $target.SerfLan
-    $globalDnsServerAddress = Get-GlobalDnsAddress -environment $environmentName
+    $globalDnsServerAddress = Get-DnsFallbackIp -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
 }
 
 # Overwrite the consul.rb attributes file with the attributes for the machine we're about to create
@@ -191,7 +200,8 @@ New-ConsulAttributesFile `
     -consulAttributePath $(Join-Path (Join-Path (Join-Path (Join-Path $installationDirectory 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb') `
     -dataCenterName $dataCenterName `
     -clusterEntryPointAddress $clusterEntryPointAddress `
-    -globalDnsServerAddress $globalDnsServerAddress
+    -globalDnsServerAddress $globalDnsServerAddress `
+    @commonParameterSwitches
 
 Write-Verbose "Connecting to $($session.Name)"
 try

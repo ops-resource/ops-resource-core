@@ -1,5 +1,5 @@
 <#
-    This file contains the 'unit tests' for the BuildFunctions.Release script. These tests are executed
+    This file contains the 'verification tests' for the 'consul' section of the ops_resource_core cookbook. These tests are executed
     using Pester (https://github.com/pester/Pester).
 #>
 
@@ -64,7 +64,7 @@ Describe 'Consul installation:' {
         It 'responds to queries' {
             $service.Started | Should Be 'True'
 
-            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing
+            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
             $json = ConvertFrom-Json -InputObject $response
             $json.Config.Version | Should Be '0.5.1'
         }

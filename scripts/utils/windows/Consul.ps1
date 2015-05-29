@@ -1,33 +1,218 @@
 # Load the System.Web assembly otherwise Powershell can't find the System.Web.HttpUtility class
 Add-Type -AssemblyName System.Web
 
+<#
+    .SYNOPSIS
+
+    Converts the base-64 encoded value to the original data.
+
+
+    .DESCRIPTION
+
+    The ConvertFrom-ConsulEncodedValue function converts the base-64 encoded value to the original data.
+
+
+    .PARAMETER encodedValue
+
+    The base-64 encoded data.
+
+
+    .OUTPUTS
+
+    The decoded data.
+#>
 function ConvertFrom-ConsulEncodedValue
 {
     [CmdletBinding()]
     param(
+        [ValidateNotNullOrEmpty()]
         [string] $encodedValue
     )
+
+    Write-Verbose "ConvertFrom-ConsulEncodedValue - encodedValue: $encodedValue"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
 
     return [System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($encodedValue))
 }
 
+<#
+    .SYNOPSIS
+
+    Converts the value into a base-64 encoded string.
+
+
+    .DESCRIPTION
+
+    The ConvertTo-ConsulEncodedValue function converts the value into a base-64 encoded string.
+
+
+    .PARAMETER encodedValue
+
+    The input data.
+
+
+    .OUTPUTS
+
+    The base-64 encoded data.
+#>
+function ConvertTo-ConsulEncodedValue
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string] $value
+    )
+
+    Write-Verbose "ConvertTo-ConsulEncodedValue - value: $value"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
+
+    return [System.Convert]::ToBase64String([System.Text.Encoding]::ASCII.GetBytes($value))
+}
+
+<#
+    .SYNOPSIS
+
+    Gets the value for a given key from the key-value storage on a given data center.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulKeyValue function gets the value for a given key from the key-value storage on a given data center.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .PARAMETER keyPath
+
+    The path to the key for which the value is to be retrieved.
+
+
+    .OUTPUTS
+
+    The data that was stored under the given key.
+#>
+function Get-ConsulKeyValue
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string] $environment = 'staging',
+
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
+        [string] $keyPath
+    )
+
+    Write-Verbose "Get-ConsulKeyValue - environment: $environment"
+    Write-Verbose "Get-ConsulKeyValue - consulLocalAddress: $consulLocalAddress"
+    Write-Verbose "Get-ConsulKeyValue - keyPath: $keyPath"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
+
+    $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+    $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+
+    # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+    # available
+    $keyUri = "$($metaServer.Http)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($server.DataCenter))"
+
+    $keyResponse = Invoke-WebRequest -Uri $keyUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $keyResponse @commonParameterSwitches
+    $value = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
+
+    return $value
+}
+
+<#
+    .SYNOPSIS
+
+    Gets the URL of the consul meta server.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulMetaServer function gets the URL of the consul meta server.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    A custom object containing the information about the consul meta server. The object contains
+    the following properties:
+
+        DataCenter
+        Http
+#>
 function Get-ConsulMetaServer
 {
     [CmdletBinding()]
     param(
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
+
+    Write-Verbose "Get-ConsulMetaServer - consulLocalAddress: $consulLocalAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
 
     # Go to the local consul node and get the address and the data center for the meta server
     $consulHttpUri = "$consulLocalAddress/v1/kv/environment/meta/http"
-    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulHttpResponse
-    $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulHttpResponse @commonParameterSwitches
+    $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     $consulDataCenterUri = "$consulLocalAddress/v1/kv/environment/meta/datacenter"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse
-    $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
+    $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     $result = New-Object psobject
     Add-Member -InputObject $result -MemberType NoteProperty -Name DataCenter -Value $consulDataCenter
@@ -36,54 +221,103 @@ function Get-ConsulMetaServer
     return $result
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the connection information for a given environment.
+
+
+    .DESCRIPTION
+
+    The Get-ConsulTargetEnvironmentData function gets the connection information for a given environment.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    A custom object containing the information about the consul cluser for the given environment. The object
+    contains the following properties:
+
+        DataCenter
+        Http
+        Dns
+        SerfLan
+        SerfWan
+        Server
+#>
 function Get-ConsulTargetEnvironmentData
 {
     [CmdletBinding()]
     param(
+        [ValidateNotNullOrEmpty()]
         [string] $environment = 'staging',
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
+
+    Write-Verbose "Get-ConsulTargetEnvironmentData - environment: $environment"
+    Write-Verbose "Get-ConsulTargetEnvironmentData - consulLocalAddress: $consulLocalAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
 
     $lowerCaseEnvironment = $environment.ToLower()
 
     # Go to the local consul node and get the address and the data center for the meta server
-    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress @commonParameterSwitches
 
     # Get the name of the datacenter for our environment (e.g. the production environment is in the MyCompany-MyLocation01 datacenter)
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse
-    $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
+    $consulDataCenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the http URL
     $consulHttpUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/http?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulHttpResponse
-    $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulHttpResponse = Invoke-WebRequest -Uri $consulHttpUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulHttpResponse @commonParameterSwitches
+    $consulHttp = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the DNS URL
     $consulDnsUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDnsResponse = Invoke-WebRequest -Uri $consulDnsUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDnsResponse
-    $consulDns = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDnsResponse = Invoke-WebRequest -Uri $consulDnsUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDnsResponse @commonParameterSwitches
+    $consulDns = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the serf_lan URL
     $consulSerfLanUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/serf_lan?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulSerfLanResponse = Invoke-WebRequest -Uri $consulSerfLanUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulSerfLanResponse
-    $consulSerfLan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulSerfLanResponse = Invoke-WebRequest -Uri $consulSerfLanUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulSerfLanResponse @commonParameterSwitches
+    $consulSerfLan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the serf_wan URL
     $consulSerfWanUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/serf_wan?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulSerfWanResponse = Invoke-WebRequest -Uri $consulSerfWanUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulSerfWanResponse
-    $consulSerfWan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulSerfWanResponse = Invoke-WebRequest -Uri $consulSerfWanUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulSerfWanResponse @commonParameterSwitches
+    $consulSerfWan = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     # Get the server URL
     $consulServerUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/server?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulServerResponse = Invoke-WebRequest -Uri $consulServerUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulServerResponse
-    $consulServer = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulServerResponse = Invoke-WebRequest -Uri $consulServerUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulServerResponse @commonParameterSwitches
+    $consulServer = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
 
     $result = New-Object psobject
     Add-Member -InputObject $result -MemberType NoteProperty -Name DataCenter -Value $consulDataCenter
@@ -96,71 +330,82 @@ function Get-ConsulTargetEnvironmentData
     return $result
 }
 
-function Get-GlobalDnsAddress
-{
-    [CmdletBinding()]
-    param(
-        [string] $environment = 'staging',
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
-    )
+<#
+    .SYNOPSIS
 
-    $lowerCaseEnvironment = $environment.ToLower()
+    Gets the name of the environment that the local node belongs to.
 
-    # Go to the local consul node and get the address and the data center for the meta server
-    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
 
-    # Get the DNS server fallback URL
-    $dnsFallbackUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns_fallback?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $dnsFallbackResponse
-    $dnsFallback = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    .DESCRIPTION
 
-    return $dnsFallback
-}
+    The Get-EnvironmentForLocalNode function gets the name of the environment that the local node belongs to.
 
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    The name of the environment that the local node belongs to.
+#>
 function Get-EnvironmentForLocalNode
 {
     [CmdletBinding()]
     param(
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500"
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500"
     )
+
+    Write-Verbose "Get-EnvironmentForLocalNode - consulLocalAddress: $consulLocalAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
 
     # Get the DC for the local node
     $serviceUri = "$($consulLocalAddress)/v1/agent/self"
-    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing
+    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
     if ($serviceResponse.StatusCode -ne 200)
     {
         throw "Server did not return information about the local Consul node."
     }
 
-    $json = ConvertFrom-Json -InputObject $serviceResponse
+    $json = ConvertFrom-Json -InputObject $serviceResponse @commonParameterSwitches
     $dataCenter = $json.Config.Datacenter
 
     # Go to the meta node and find out which DC belongs to which environment. Note that we're doing this the nasty way
     # because we can't iterate over http addresses
-    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress @commonParameterSwitches
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/meta/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse
-    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
+    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
     {
         return 'meta'
     }
 
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/production/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse
-    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
+    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
     {
         return 'production'
     }
 
     $consulDataCenterUri = "$($meta.Http)/v1/kv/environment/staging/datacenter?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
-    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse
-    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $consulDataCenterResponse = Invoke-WebRequest -Uri $consulDataCenterUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $consulDataCenterResponse @commonParameterSwitches
+    $metaDatacenter = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
     if ($metaDataCenter -eq $dataCenter)
     {
         return 'staging'
@@ -169,47 +414,645 @@ function Get-EnvironmentForLocalNode
     return 'unknown'
 }
 
+<#
+    .SYNOPSIS
+
+    Gets the DNS recursor address that will be used by consul to resolve DNS queries outside the consul domain.
+
+
+    .DESCRIPTION
+
+    The Get-DnsFallbackIp function gets the DNS recursor address that will be used by consul to
+    resolve DNS queries outside the consul domain.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .OUTPUTS
+
+    The IP or address of the DNS server that will be used to by consul to resolve DNS queries from outside the consul domain.
+#>
+function Get-DnsFallbackIp
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string] $environment = 'staging',
+
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500"
+    )
+
+    Write-Verbose "Get-DnsFallbackIp - environment: $environment"
+    Write-Verbose "Get-DnsFallbackIp - consulLocalAddress: $consulLocalAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
+
+    $lowerCaseEnvironment = $environment.ToLower()
+
+    # Go to the local consul node and get the address and the data center for the meta server
+    $meta = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+
+    # Get the DNS server fallback URL
+    $dnsFallbackUri = "$($meta.Http)/v1/kv/environment/$lowerCaseEnvironment/dns_fallback?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
+    $dnsFallbackResponse = Invoke-WebRequest -Uri $dnsFallbackUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $dnsFallbackResponse @commonParameterSwitches
+    $dnsFallback = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value @commonParameterSwitches
+
+    return $dnsFallback
+}
+
+<#
+    .SYNOPSIS
+
+    Gets the IP address of the node providing the given service.
+
+
+    .DESCRIPTION
+
+    The Get-ResourceNamesForService function gets the IP address of the node providing the given service.
+
+
+    .PARAMETER environment
+
+    The name of the environment for which the key value should be returned.
+
+
+    .PARAMETER consulLocalAddress
+
+    The URL to the local consul agent.
+
+
+    .PARAMETER service
+
+    The name of the service
+
+
+    .PARAMETER tag
+
+    The (optional) tag.
+
+
+    .OUTPUTS
+
+    The IP or address of the node that provides the service.
+#>
 function Get-ResourceNamesForService
 {
     [CmdletBinding()]
     param(
+        [ValidateNotNullOrEmpty()]
         [string] $environment = 'staging',
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
+
+        [ValidateNotNullOrEmpty()]
+        [string] $consulLocalAddress = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
         [string] $service,
+
+        [ValidateNotNull()]
         [string] $tag = ''
     )
 
-    $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress
+    Write-Verbose "Get-ResourceNamesForService - environment: $environment"
+    Write-Verbose "Get-ResourceNamesForService - consulLocalAddress: $consulLocalAddress"
+    Write-Verbose "Get-ResourceNamesForService - service: $service"
+    Write-Verbose "Get-ResourceNamesForService - tag: $tag"
 
-    $serviceUri = "$($server.Http)/v1/catalog/service/$($service)"
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $PSBoundParameters.ContainsKey('Debug');
+            ErrorAction = "Stop"
+        }
+
+    $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+    $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+
+    # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+    # available
+    $serviceUri = "$($metaServer.Http)/v1/catalog/service/$($service)?dc=$([System.Web.HttpUtility]::UrlEncode($meta.DataCenter))"
     if ($tag -ne '')
     {
-        $serviceUri += "?tag=$([System.Web.HttpUtility]::UrlEncode($tag))"
+        $serviceUri += "&tag=$([System.Web.HttpUtility]::UrlEncode($tag))"
     }
 
-    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $serviceResponse
+    $serviceResponse = Invoke-WebRequest -Uri $serviceUri -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    $json = ConvertFrom-Json -InputObject $serviceResponse @commonParameterSwitches
     $serviceAddress = $json[0].Address
 
     return $serviceAddress
 }
 
-function Get-ConsulKeyValue
+<#
+    .SYNOPSIS
+
+    Adds an external service to the given consul environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulExternalService function adds an external service to the given consul environment
+
+
+    .PARAMETER environment
+
+    The name of the environment to which the external service should be added.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The URL to the local consul agent.
+
+
+    .PARAMETER serviceName
+
+    The name of the service that should be added.
+
+
+    .PARAMETER serviceUrl
+
+    The URL of the service that should be added.
+#>
+function Set-ConsulExternalService
 {
     [CmdletBinding()]
     param(
-        [string] $environment = 'staging',
-        [string] $consulLocalAddress = "http://$($env:ComputerName):8500",
-        [string] $keyPath
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByName')]
+        [string] $environment,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $httpUrl = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByUrl')]
+        [string] $dataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $serviceName,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $serviceUrl
     )
 
-    $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $consulLocalAddress
+    switch ($PsCmdlet.ParameterSetName)
+    {
+        "ByName"
+        {
+            $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $httpUrl @commonParameterSwitches
+            $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
 
-    $keyUri = "$($server.Http)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($server.DataCenter))"
+            # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+            # available
+            $url = $metaServer.Http
+            $dc = $server.DataCenter
+        }
+        "ByUrl"
+        {
+            $url = $httpUrl
+            $dc = $dataCenter
+        }
+    }
 
-    $keyResponse = Invoke-WebRequest -Uri $keyUri -UseBasicParsing
-    $json = ConvertFrom-Json -InputObject $keyResponse
-    $value = ConvertFrom-ConsulEncodedValue -encodedValue $json.Value
+    $value = @"
+{
+  "Datacenter": "$dataCenter",
+  "Node": "$serviceName",
+  "Address": "$serviceUrl",
+  "Service": {
+    "Service": "$serviceName",
+    "Address": "$serviceUrl"
+  }
+}
+"@
 
-    return $value
+    $uri = "$($url)/v1/catalog/register?dc=$([System.Web.HttpUtility]::UrlEncode($dc))"
+    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    if ($response.StatusCode -ne 200)
+    {
+        throw "Failed to add external service [$serviceName - $serviceUrl] on [$dc]"
+    }
+}
+
+<#
+    .SYNOPSIS
+
+    Sets a key-value pair on the given consul environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulKeyValue function sets a key-value pair on the given consul environment.
+
+
+    .PARAMETER environment
+
+    The name of the environment on which the key value should be set.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for which the value should be set.
+
+
+    .PARAMETER keyPath
+
+    The path to the key that should be set
+
+
+    .PARAMETER value
+
+    The value that should be set.
+#>
+function Set-ConsulKeyValue
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByName')]
+        [string] $environment,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $httpUrl = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByUrl')]
+        [string] $dataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $keyPath,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $value
+    )
+
+    switch ($PsCmdlet.ParameterSetName)
+    {
+        "ByName"
+        {
+            $server = Get-ConsulTargetEnvironmentData -environment $environment -consulLocalAddress $httpUrl @commonParameterSwitches
+            $metaServer = Get-ConsulMetaServer -consulLocalAddress $consulLocalAddress
+
+            # Always call out to the meta server because we assume that the meta server is the only one that will be publicly
+            # available
+            $url = $metaServer.Http
+            $dc = $server.DataCenter
+        }
+        "ByUrl"
+        {
+            $url = $httpUrl
+            $dc = $dataCenter
+        }
+    }
+
+    $uri = "$($url)/v1/kv/$($keyPath)?dc=$([System.Web.HttpUtility]::UrlEncode($dc))"
+    $response = Invoke-WebRequest -Uri $uri -Method Put -Body $value -UseBasicParsing -UseDefaultCredentials @commonParameterSwitches
+    if ($response.StatusCode -ne 200)
+    {
+        throw "Failed to set Key-Value pair [$keyPath] - [$value] on [$dc]"
+    }
+}
+
+<#
+    .SYNOPSIS
+
+    Sets the information about the meta server on a given environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulMetaServer function sets the information about the meta server on a given environment.
+
+
+    .PARAMETER environment
+
+    The name of the environment on which the meta information should be set.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for which the value should be set.
+
+
+    .PARAMETER metaDataCenter
+
+    The name of the data center that contains the meta servers.
+
+
+    .PARAMETER metaHttpUrl
+
+    The URL of the entry server of the meta cluster.
+#>
+function Set-ConsulMetaServer
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByName')]
+        [string] $environment,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $httpUrl = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByUrl')]
+        [string] $dataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $metaDataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $metaHttpUrl
+    )
+
+    switch ($PsCmdlet.ParameterSetName)
+    {
+        "ByName"
+        {
+            Set-ConsulKeyValue `
+                -environment $environment `
+                -httpUrl $httpUrl `
+                -keyPath 'environment/meta/datacenter' `
+                -value $metaDataCenter `
+                @commonParameterSwitches
+
+            Set-ConsulKeyValue `
+                -environment $environment `
+                -httpUrl $httpUrl `
+                -keyPath 'environment/meta/http' `
+                -value $metaHttpUrl `
+                @commonParameterSwitches
+        }
+        "ByUrl"
+        {
+            Set-ConsulKeyValue `
+                -dataCenter $datacenter `
+                -httpUrl $httpUrl `
+                -keyPath 'environment/meta/datacenter' `
+                -value $metaDataCenter `
+                @commonParameterSwitches
+
+            Set-ConsulKeyValue `
+                -dataCenter $datacenter `
+                -httpUrl $httpUrl `
+                -keyPath 'environment/meta/http' `
+                -value $metaHttpUrl `
+                @commonParameterSwitches
+        }
+    }
+}
+
+<#
+    .SYNOPSIS
+
+    Sets the connection information for a given environment as key-value pairs on the meta environment.
+
+
+    .DESCRIPTION
+
+    The Set-ConsulTargetEnvironmentData function sets the connection information for a given environment
+    as key-value pairs on the meta environment.
+
+
+    .PARAMETER metaDataCenter
+
+    The name of the data center of the meta cluster.
+
+
+    .PARAMETER metaHttpUrl
+
+    The URL to one of the consul agents in the meta cluster.
+
+
+    .PARAMETER targetEnvironment
+
+    The environment for which the connection information should be set.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for the environment.
+
+
+    .PARAMETER httpUrl
+
+    The URL for the HTTP endpoint for the environment.
+
+
+    .PARAMETER dnsUrl
+
+    The URL for the DNS endpoint for the environment.
+
+
+    .PARAMETER serfLanUrl
+
+    The URL for the endpoint used to discover other consul agents in the same environment.
+
+
+    .PARAMETER serfLanUrl
+
+    The URL for the endpoint used to discover other consul agents in different environments.
+
+
+    .PARAMETER serverUrl
+
+    The URL for the endpoint used to connect to the agent.
+#>
+function Set-ConsulTargetEnvironmentData
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [string] $metaDataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $metaHttpUrl,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $targetEnvironment = 'staging',
+
+        [ValidateNotNullOrEmpty()]
+        [string] $dataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $httpUrl,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $dnsUrl,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $serfLanUrl,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $serfWanUrl,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $serverUrl
+    )
+
+    $lowerCaseEnvironment = $targetEnvironment.ToLower()
+
+    # Set the name of the data center
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/datacenter" `
+        -value $dataCenter `
+        @commonParameterSwitches
+
+    # Set the http URL
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/http" `
+        -value $httpUrl `
+        @commonParameterSwitches
+
+    # Set the DNS URL
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/dns" `
+        -value $dnsUrl `
+        @commonParameterSwitches
+
+    # Set the serf_lan URL
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/serf_lan" `
+        -value $serfLanUrl `
+        @commonParameterSwitches
+
+    # Set the serf_wan URL
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/serf_wan" `
+        -value $serfWanUrl `
+        @commonParameterSwitches
+
+    # Set the server URL
+    Set-ConsulKeyValue `
+        -dataCenter $metaDatacenter `
+        -httpUrl $metaHttpUrl `
+        -keyPath "environment/$lowerCaseEnvironment/server" `
+        -value $serverUrl `
+        @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
+    Sets the IP address of the DNS fallback server.
+
+
+    .DESCRIPTION
+
+    The Set-DnsFallbackIP function sets the IP address of the DNS fallback server.
+
+
+    .PARAMETER environment
+
+    The name of the environment on which the meta information should be set.
+
+
+    .PARAMETER httpUrl
+
+    The URL to one of the consul agents. Defaults to the localhost address.
+
+
+    .PARAMETER dataCenter
+
+    The name of the data center for which the value should be set.
+
+
+    .PARAMETER targetEnvironment
+
+    The environment for which the DNS fallback IP should be set.
+
+
+    .PARAMETER dnsRecursorIP
+
+    The IP address of the DNS server.
+#>
+function Set-DnsFallbackIp
+{
+    [CmdletBinding()]
+    param(
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByName')]
+        [string] $environment,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $httpUrl = "http://localhost:8500",
+
+        [ValidateNotNullOrEmpty()]
+        [Parameter(ParameterSetName='ByUrl')]
+        [string] $dataCenter,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $targetEnvironment,
+
+        [ValidateNotNullOrEmpty()]
+        [string] $dnsRecursorIP
+    )
+
+    $lowerCaseEnvironment = $targetEnvironment.ToLower()
+    switch ($PsCmdlet.ParameterSetName)
+    {
+        "ByName"
+        {
+            Set-ConsulKeyValue `
+                -environment $environment `
+                -httpUrl $httpUrl `
+                -keyPath "environment/$lowerCaseEnvironment/dns_fallback" `
+                -value $dnsRecursorIP `
+                @commonParameterSwitches
+        }
+        "ByUrl"
+        {
+            Set-ConsulKeyValue `
+                -dataCenter $dataCenter `
+                -httpUrl $httpUrl `
+                -keyPath "environment/$lowerCaseEnvironment/dns_fallback" `
+                -value $dnsRecursorIP `
+                @commonParameterSwitches
+        }
+    }
 }

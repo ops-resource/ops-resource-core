@@ -10,11 +10,13 @@
         <ExternalFiles Include="$(DirExternalInstallers)\chef\chef-windows-11.18.6-1.windows.msi">
             <Destination>${DestinationConfiguration}\chef-client.msi</Destination>
         </ExternalFiles>
-        <ExternalFiles Include="$(DirExternalInstallers)\consul\consul-0.5.1-x86.exe">
+        <ExternalFiles Include="$(DirExternalInstallers)\consul\bin\windows\consul-0.5.1-x86.exe"
+                       Condition=" '$(InstallConsul)' == 'true' ">
             <CookbookName>ops_resource_core</CookbookName>
             <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\consul.exe</Destination>
         </ExternalFiles>
-        <ExternalFiles Include="$(DirExternalInstallers)\winsw\winsw-1.17-bin.exe">
+        <ExternalFiles Include="$(DirExternalInstallers)\winsw\winsw-1.17-bin.exe"
+                       Condition=" '$(InstallConsul)' == 'true' ">
             <CookbookName>ops_resource_core</CookbookName>
             <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\winsw.exe</Destination>
         </ExternalFiles>

@@ -18,6 +18,9 @@
         <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
+        <InstallMeta Condition=" '$(InstallMeta)' == '' ">true</InstallMeta>
+        <InstallConsul Condition=" '$(InstallConsul)' == '' ">true</InstallConsul>
+
         <!-- Properties -->
         <ConsulDatacenter Condition=" '$(ConsulDatacenter)' == '' ">UNDEFINED</ConsulDatacenter>
         <ConsulEntryPointDns Condition=" '$(ConsulEntryPointDns)' == '' ">UNDEFINED</ConsulEntryPointDns>
@@ -56,6 +59,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <CookbooksToInvoke Include="ops_resource_core::meta"
+                           Condition=" '$(InstallMeta)' == 'true' " />
+        <CookbooksToInvoke Include="ops_resource_core::consul"
+                           Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
     </ItemGroup>
 
@@ -93,9 +100,10 @@
         <Message Text="The directory containing the external installer files is located at: $(DirExternalInstallers)" />
         <Message Text=" " />
 
-        <Message Text="Jenkins master configuration template file is located at: $(FileMasterConfigTemplate)" />
-        <Message Text="Jenkins master configuration file is located at:          $(FileMasterConfig)" />
-        <Message Text="Jenkins master build script is located at:                $(FileMasterScript)" />
+        <Message Text="External dependencies file is located at:                            $(FileNonCoreDependencies)" />
+        <Message Text="Cookbooks that should be invoked are:                                $(CookbooksToInvoke)" />
+        <Message Text="Install meta:                                                        $(InstallMeta)" />
+        <Message Text="Install consul:                                                      $(InstallConsul)" />
         <Message Text=" " />
     </Target>
 
@@ -183,10 +191,13 @@
                  Condition="!Exists('$(DirOutputVerificationTests)')" />
 
         <ItemGroup>
-            <TestFiles Include="$(DirOriginTests)\**\*.*" />
+            <TestFiles Include="$(DirOriginTests)\Meta.Tests.ps1"
+                       Condition=" '$(InstallMeta)' == 'true' " />
+            <TestFiles Include="$(DirOriginTests)\Consul.Tests.ps1"
+                       Condition=" '$(InstallConsul)' == 'true' " />
         </ItemGroup>
         <Copy SourceFiles="@(TestFiles)"
-              DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(RecursiveDir)%(Filename)%(Extension)')" />
+              DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(Filename)%(Extension)')" />
     </Target>
 
     <Target Name="_Distribute_Core_Test_Tools">
