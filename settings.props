@@ -46,6 +46,17 @@
         ${VersionNBuildKit}      - The semantic version of nBuildKit that was used for the current build
     -->
     <!-- Overrides for the project specific properties -->
+    <!-- Overrides for the VCS specific properties -->
+    <PropertyGroup>
+        <!-- The user name of the user who owns the repository on GitHub -->
+        <GitHubUserName Condition=" '$(GitHubUserName)' == '' ">pvandervelde</GitHubUserName>
+
+        <!-- The repository that contains the source code for the current product -->
+        <GitHubRepositoryName Condition=" '$(GitHubRepositoryName)' == '' ">$(GitHubUserName)\ops-resource-core</GitHubRepositoryName>
+
+        <!-- Repository information -->
+        <GitRemoteRepository Condition=" '$(GitRemoteRepository)' == '' ">https://%GitHubToken%:@github.com/$(GitHubUserName)/ops-resource-core.git</GitRemoteRepository>
+    </PropertyGroup>
     <PropertyGroup>
         <!--
             The name of the product. This is used for:
@@ -97,7 +108,7 @@
         <!--
             The URL of the company website
         -->
-        <CompanyUrl Condition=" '$(CompanyUrl)' == '' ">http://petrikvandervelde.nl</CompanyUrl>
+        <CompanyUrl Condition=" '$(CompanyUrl)' == '' ">https://github.com/$(GitHubUserName)/ops-resource-core</CompanyUrl>
 
         <!--
             The email address that is specified in the documentation.
@@ -105,17 +116,6 @@
         <EmailDocumentation Condition=" '$(EmailDocumentation)' == '' ">UNDEFINED</EmailDocumentation>
     </PropertyGroup>
 
-    <!-- Overrides for the VCS specific properties -->
-    <PropertyGroup>
-        <!-- The user name of the user who owns the repository on GitHub -->
-        <GitHubUserName Condition=" '$(GitHubUserName)' == '' ">pvandervelde</GitHubUserName>
-
-        <!-- The repository that contains the source code for the current product -->
-        <GitHubRepositoryName Condition=" '$(GitHubRepositoryName)' == '' ">$(GitHubUserName)\ops-resource-core</GitHubRepositoryName>
-
-        <!-- Repository information -->
-        <GitRemoteRepository Condition=" '$(GitRemoteRepository)' == '' ">https://%GitHubToken%:@github.com/$(GitHubUserName)/ops-resource-core.git</GitRemoteRepository>
-    </PropertyGroup>
 
 
 
