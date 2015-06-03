@@ -154,6 +154,12 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
     "dns": 53
   },
 
+  "dns_config" : {
+    "allow_stale" : true,
+    "max_stale" : "5s",
+    "node_ttl" : "30s"
+  },
+
   "retry_join": ["#{consul_config_entry_node_dns}"],
   "retry_interval": "30s",
 
