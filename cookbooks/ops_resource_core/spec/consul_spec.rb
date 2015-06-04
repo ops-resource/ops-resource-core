@@ -27,6 +27,11 @@ end
 describe 'ops_resource_core::consul'  do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
+  log_path = 'c:\\logs'
+  it 'creates the logs base directory' do
+    expect(chef_run).to create_directory(logs_path)
+  end
+
   it 'creates the consul user' do
     expect(chef_run).to create_user('consul_user')
     expect(chef_run).to modify_group('Performance Monitor Users').with(members: ['consul_user'])
@@ -45,6 +50,11 @@ describe 'ops_resource_core::consul'  do
   consul_data_directory = 'c:\\ops\\consul\\data'
   it 'creates the consul data directory' do
     expect(chef_run).to create_directory(consul_data_directory)
+  end
+
+  consul_logs_directory = 'c:\\logs\\consul'
+  it 'creates the consul logs directory' do
+    expect(chef_run).to create_directory(consul_logs_directory)
   end
 
   meta_directory = 'c:\\meta'
@@ -98,7 +108,9 @@ describe 'ops_resource_core::consul'  do
   "recursors": ["#{consul_config_recursors}"],
 
   "disable_remote_exec": true,
-  "disable_update_check": true
+  "disable_update_check": true,
+
+  "log_level" : "debug"
 }
   JSON
   consul_config_file = 'consul_default.json'
@@ -146,8 +158,11 @@ describe 'ops_resource_core::consul'  do
     <executable>#{consul_bin_directory}\\consul.exe</executable>
     <arguments>agent -config-file=#{consul_bin_directory}\\#{consul_config_file} -config-dir=#{consul_config_directory}</arguments>
 
-    <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
-    <logmode>rotate</logmode>
+    <logpath>#{consul_logs_directory}</logpath>
+    <log mode="roll-by-size">
+        <sizeThreshold>10240</sizeThreshold>
+        <keepFiles>8</keepFiles>
+    </log>
     <onfailure action="restart"/>
 </service>
   XML
