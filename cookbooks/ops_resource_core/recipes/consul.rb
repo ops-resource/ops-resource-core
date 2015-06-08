@@ -11,6 +11,11 @@ include_recipe 'windows'
 include_recipe 'windows_firewall'
 
 log_directory = node['paths']['log']
+directory log_directory do
+  rights :read, 'Everyone', applies_to_children: true
+  rights :modify, 'Administrators', applies_to_children: true
+  action :create
+end
 
 service_name = node['service']['consul']
 win_service_name = 'consul_service'
@@ -108,6 +113,12 @@ directory consul_data_directory do
   action :create
 end
 
+consul_logs_directory = node['paths']['consul_logs']
+directory consul_logs_directory do
+  rights :modify, consul_username, applies_to_children: true, applies_to_self: false
+  action :create
+end
+
 consul_config_directory = node['paths']['consul_config']
 directory consul_config_directory do
   action :create
@@ -154,13 +165,21 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
     "dns": 53
   },
 
+  "dns_config" : {
+    "allow_stale" : true,
+    "max_stale" : "5s",
+    "node_ttl" : "30s"
+  },
+
   "retry_join": ["#{consul_config_entry_node_dns}"],
   "retry_interval": "30s",
 
   "recursors": ["#{consul_config_recursors}"],
 
   "disable_remote_exec": true,
-  "disable_update_check": true
+  "disable_update_check": true,
+
+  "log_level" : "debug"
 }
   JSON
 end
@@ -209,8 +228,11 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
     <executable>#{consul_bin_directory}\\consul.exe</executable>
     <arguments>agent -config-file=#{consul_bin_directory}\\#{consul_config_file} -config-dir=#{consul_config_directory}</arguments>
 
-    <!-- interactive flag causes the empty black Java window to be displayed. I'm still debugging this. <interactive /> -->
-    <logmode>rotate</logmode>
+    <logpath>#{consul_logs_directory}</logpath>
+    <log mode="roll-by-size">
+        <sizeThreshold>10240</sizeThreshold>
+        <keepFiles>8</keepFiles>
+    </log>
     <onfailure action="restart"/>
 </service>
     XML
