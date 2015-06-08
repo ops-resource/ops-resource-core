@@ -27,7 +27,7 @@ end
 describe 'ops_resource_core::consul'  do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
-  log_path = 'c:\\logs'
+  logs_path = 'c:\\logs'
   it 'creates the logs base directory' do
     expect(chef_run).to create_directory(logs_path)
   end

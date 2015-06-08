@@ -115,6 +115,7 @@ end
 
 consul_logs_directory = node['paths']['consul_logs']
 directory consul_logs_directory do
+  rights :modify, consul_username, applies_to_children: true, applies_to_self: false
   action :create
 end
 
