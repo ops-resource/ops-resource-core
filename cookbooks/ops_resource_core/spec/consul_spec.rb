@@ -99,7 +99,10 @@ describe 'ops_resource_core::consul'  do
   "dns_config" : {
     "allow_stale" : true,
     "max_stale" : "5s",
-    "node_ttl" : "30s"
+    "node_ttl" : "30s",
+    "service_ttl": {
+      "*": "30s"
+    }
   },
 
   "retry_join": ["#{consul_config_entry_node_dns}"],
