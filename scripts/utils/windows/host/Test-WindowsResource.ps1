@@ -26,12 +26,12 @@
 
     .PARAMETER remoteVerificationDirectory
 
-    The full path to the directory on the remote machine where the verification files should be placed. Defaults to 'c:\verification'.
+    The full path to the directory on the remote machine where the verification files should be placed. Defaults to 'c:\temp\verification'.
 
 
     .PARAMETER remoteLogDirectory
 
-    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\logs'.
+    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\temp\logs'.
 
 
     .EXAMPLE
@@ -43,8 +43,8 @@ param(
     [System.Management.Automation.Runspaces.PSSession] $session = $(throw 'Please provide a Powershell remoting session that can be used to connect to the machine for which the configuration needs to be verified.'),
     [string] $testDirectory                                     = $(Join-Path $PSScriptRoot "verification"),
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot "logs"),
-    [string] $remoteVerificationDirectory                       = 'c:\verification',
-    [string] $remoteLogDirectory                                = 'c:\logs'
+    [string] $remoteVerificationDirectory                       = 'c:\temp\verification',
+    [string] $remoteLogDirectory                                = 'c:\temp\logs'
 )
 
 Write-Verbose "Test-WindowsResource - session: $($session.Name)"
