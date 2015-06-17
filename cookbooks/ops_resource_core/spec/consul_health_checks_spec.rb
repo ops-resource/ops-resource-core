@@ -57,21 +57,8 @@ describe 'ops_resource_core::consul_health_checks'  do
             "name": "Disk",
             "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Disk.ps1",
             "interval": "60s",
-            "notes": "Critical 5% free, warning 10% free"
-        },
-        {
-            "id": "memory",
-            "name": "Memory",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Memory.ps1",
-            "interval": "60s",
-            "notes": "Critical 5% free, warning 10% free"
-        },
-        {
-            "id": "load",
-            "name": "Load",
-            "script": "powershell.exe -NoProfile -NonInteractive -NoLogo -InputFormat Text -OutputFormat Text -File #{consul_checks_directory_json_escaped}\\\\Test-Load.ps1",
-            "interval": "60s",
-            "notes": "Critical 95%, warning 90%"
+            "notes": "Critical 5% free, warning 10% free",
+            "service_id" : "node_meta"
         }
     ]
 }
