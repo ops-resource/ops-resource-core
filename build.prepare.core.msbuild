@@ -90,6 +90,21 @@
         </ItemGroup>
         <Copy SourceFiles="@(ScriptFiles)"
               DestinationFiles="@(ScriptFiles->'$(DirBuildTempCoreScripts)\%(RecursiveDir)%(Filename)%(Extension)')" />
+
+        <SearchPackagesDirectoryForToolDirectory PackagesDir="$(DirPackages)"
+                                                 FileToLocate="Consul.ps1">
+            <Output TaskParameter="Path" PropertyName="ToolsExternalConsulPowershellPath" />
+        </SearchPackagesDirectoryForToolDirectory>
+        <Message Text="The consul powershell scripts were found at: $(ToolsExternalConsulPowershellPath)"
+                 Condition="Exists('$(ToolsExternalConsulPowershellPath)') AND '$(ShouldExecute)' == 'true' " />
+        <Error Text="Could not locate the consul powershell scripts. Cannot copy the consul powershell scripts."
+               Condition="!Exists('$(ToolsExternalConsulPowershellPath)') AND '$(ShouldExecute)' == 'true' "/>
+
+        <ItemGroup>
+            <ConsulPowershellFiles Include="$(ToolsExternalConsulPowershellPath)\*.ps1" />
+        </ItemGroup>
+        <Copy SourceFiles="@(ConsulPowershellFiles)"
+              DestinationFiles="@(ConsulPowershellFiles->'$(DirBuildTempCoreScripts)\utils\windows\%(RecursiveDir)%(Filename)%(Extension)')" />
     </Target>
 
     <Target Name="_Build_Core_GatherCookbooks"
