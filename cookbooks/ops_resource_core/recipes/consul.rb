@@ -167,10 +167,10 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
 
   "dns_config" : {
     "allow_stale" : true,
-    "max_stale" : "5s",
-    "node_ttl" : "30s",
+    "max_stale" : "150s",
+    "node_ttl" : "300s",
     "service_ttl": {
-      "*": "30s"
+      "*": "300s"
     }
   },
 
