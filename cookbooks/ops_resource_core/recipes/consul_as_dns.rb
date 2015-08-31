@@ -25,3 +25,25 @@ powershell_script 'localhost_as_primary_dns' do
     Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $serverDnsAddresses -Verbose
   POWERSHELL
 end
+
+# Disable the caching of negative DNS responses because that would stop Consul from working as a DNS for a period of time
+# if there is a failed DNS request (e.g. the Consul machine is busy or something)
+registry_key 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Dnscache\\Parameters' do
+  values [
+    {
+      name: 'NegativeCacheTime',
+      type: :dword,
+      data: 0x0
+    },
+    {
+      name: 'NetFailureCacheTime',
+      type: :dword,
+      data: 0x0
+    },
+    {
+      name: 'NegativeSOACacheTime',
+      type: :dword,
+      data: 0x0
+    }]
+  action :create
+end

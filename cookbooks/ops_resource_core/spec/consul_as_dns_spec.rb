@@ -30,4 +30,24 @@ describe 'ops_resource_core::consul_as_dns'  do
   it 'adds the localhost as the primary DNS address' do
     expect(chef_run).to run_powershell_script('localhost_as_primary_dns')
   end
+
+  it 'disables the DNS caching of negative responses' do
+    expect(chef_run).to create_registry_key('HKLM\\SYSTEM\\CurrentControlSet\\Services\\Dnscache\\Parameters').with(
+      values: [
+        {
+          name: 'NegativeCacheTime',
+          type: :dword,
+          data: 0x0
+        },
+        {
+          name: 'NetFailureCacheTime',
+          type: :dword,
+          data: 0x0
+        },
+        {
+          name: 'NegativeSOACacheTime',
+          type: :dword,
+          data: 0x0
+        }])
+  end
 end
