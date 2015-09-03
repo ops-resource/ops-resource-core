@@ -31,23 +31,25 @@ describe 'ops_resource_core::consul_as_dns'  do
     expect(chef_run).to run_powershell_script('localhost_as_primary_dns')
   end
 
+  # Note the data values are the MD5 hash of the value '0'. For some reason Chef processes the
+  # values before it gets to the test which means chef stores the MD5 hash, not the actual number.
   it 'disables the DNS caching of negative responses' do
     expect(chef_run).to create_registry_key('HKLM\\SYSTEM\\CurrentControlSet\\Services\\Dnscache\\Parameters').with(
       values: [
         {
           name: 'NegativeCacheTime',
           type: :dword,
-          data: 0x0
+          data: 'cfcd208495d565ef66e7dff9f98764da'
         },
         {
           name: 'NetFailureCacheTime',
           type: :dword,
-          data: 0x0
+          data: 'cfcd208495d565ef66e7dff9f98764da'
         },
         {
           name: 'NegativeSOACacheTime',
           type: :dword,
-          data: 0x0
+          data: 'cfcd208495d565ef66e7dff9f98764da'
         }])
   end
 end
