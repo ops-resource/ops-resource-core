@@ -50,6 +50,11 @@ describe 'ops_resource_core::consul_as_dns'  do
           name: 'NegativeSOACacheTime',
           type: :dword,
           data: 'cfcd208495d565ef66e7dff9f98764da'
+        },
+        {
+          name: 'MaxNegativeCacheTtl',
+          type: :dword,
+          data: 'cfcd208495d565ef66e7dff9f98764da'
         }])
   end
 end

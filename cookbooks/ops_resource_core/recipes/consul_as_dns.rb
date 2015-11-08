@@ -44,6 +44,11 @@ registry_key 'HKLM\\SYSTEM\\CurrentControlSet\\Services\\Dnscache\\Parameters' d
       name: 'NegativeSOACacheTime',
       type: :dword,
       data: 0x0
+    },
+    {
+      name: 'MaxNegativeCacheTtl',
+      type: :dword,
+      data: 0x0
     }]
   action :create
 end
