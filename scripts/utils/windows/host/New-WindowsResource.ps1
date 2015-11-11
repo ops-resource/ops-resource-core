@@ -43,12 +43,12 @@
 
     .PARAMETER remoteConfigurationDirectory
 
-    The full path to the directory on the remote machine where the configuration files should be placed. Defaults to 'c:\configuration'.
+    The full path to the directory on the remote machine where the configuration files should be placed. Defaults to 'c:\temp\configuration'.
 
 
     .PARAMETER remoteLogDirectory
 
-    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\logs'.
+    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\temp\logs'.
 
 
     .PARAMETER dataCenterName
@@ -101,10 +101,10 @@ param(
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
 
     [Parameter(Mandatory = $false)]
-    [string] $remoteConfigurationDirectory                      = 'c:\configuration',
+    [string] $remoteConfigurationDirectory                      = 'c:\temp\configuration',
 
     [Parameter(Mandatory = $false)]
-    [string] $remoteLogDirectory                                = 'c:\logs',
+    [string] $remoteLogDirectory                                = 'c:\temp\logs',
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
