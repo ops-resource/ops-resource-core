@@ -23,7 +23,7 @@ file "#{consul_config_directory}\\check_server.json" do
 {
     "service":
     {
-        "name": "NodeMeta",
+        "name": "nodemeta",
         "id": "node_meta",
         "tags":
         [
