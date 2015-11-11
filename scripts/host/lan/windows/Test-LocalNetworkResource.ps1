@@ -82,7 +82,7 @@ if (-not (Test-Path $logDirectory))
 
 if ($authenticateWithCredSSP)
 {
-    $session = New-PSSession -ComputerName $computerName -Authentication CredSSP -Credential $credential
+    $session = New-PSSession -ComputerName $computerName -Authentication Credssp -Credential $credential
 }
 else
 {
