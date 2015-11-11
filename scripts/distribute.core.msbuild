@@ -71,15 +71,15 @@
     <Import Project="$(FileNonCoreDependencies)"
             Condition="Exists('$(FileNonCoreDependencies)')" />
 
-    <Import Project="$(DirMsBuildShared)\shared.templatetokens.msbuild"
-            Condition="Exists('$(DirMsBuildShared)\shared.templatetokens.msbuild') AND '$(ExistsSharedTemplateTokens)' != 'true' " />
+    <Import Project="$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild"
+            Condition="Exists('$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild') AND '$(ExistsSharedTemplateTokens)' != 'true' " />
 
-    <Import Project="$(DirMsBuildExtensions)\TemplateFile.msbuild"
-            Condition="Exists('$(DirMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
-    <Import Project="$(DirMsBuildExtensions)\TemplateText.msbuild"
-            Condition="Exists('$(DirMsBuildExtensions)\TemplateText.msbuild') AND '$(ExistsExtensionsTemplateText)' != 'true' " />
-    <Import Project="$(DirMsBuildExtensions)\Unzip.msbuild"
-            Condition="Exists('$(DirMsBuildExtensions)\Unzip.msbuild') AND '$(ExistsExtensionsUnzip)' != 'true' " />
+    <Import Project="$(DirNBuildKitMsBuildExtensions)\TemplateFile.msbuild"
+            Condition="Exists('$(DirNBuildKitMsBuildExtensions)\TemplateFile.msbuild') AND '$(ExistsExtensionsTemplateFile)' != 'true' " />
+    <Import Project="$(DirNBuildKitMsBuildExtensions)\TemplateText.msbuild"
+            Condition="Exists('$(DirNBuildKitMsBuildExtensions)\TemplateText.msbuild') AND '$(ExistsExtensionsTemplateText)' != 'true' " />
+    <Import Project="$(DirNBuildKitMsBuildExtensions)\Unzip.msbuild"
+            Condition="Exists('$(DirNBuildKitMsBuildExtensions)\Unzip.msbuild') AND '$(ExistsExtensionsUnzip)' != 'true' " />
 
     <Target Name="Distribute_Core_Run" DependsOnTargets="_Distribute_Core_DisplayInfo">
         <CallTarget Targets="_Distribute_Core_VerifyInputs" />
@@ -104,6 +104,11 @@
         <Message Text="Cookbooks that should be invoked are:                                $(CookbooksToInvoke)" />
         <Message Text="Install meta:                                                        $(InstallMeta)" />
         <Message Text="Install consul:                                                      $(InstallConsul)" />
+        <Message Text=" " />
+
+        <Message Text="The directory containing the nBuildKit files is located at:          $(DirNBuildKitMsBuild)"/>
+        <Message Text="The directory containing the nBuildKit scripts is located at:        $(DirNBuildKitMsBuildExtensions)"/>
+        <Message Text="The directory containing the nBuildKit templates is located at:      $(DirNBuildKitMsBuildTemplates)"/>
         <Message Text=" " />
     </Target>
 
