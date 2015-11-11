@@ -31,14 +31,6 @@ describe 'ops_resource_core::consul_health_checks'  do
     expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Disk.ps1').with(source: 'Test-Disk.ps1')
   end
 
-  it 'copies the Test-Memory.ps1 file' do
-    expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Memory.ps1').with(source: 'Test-Memory.ps1')
-  end
-
-  it 'copies the Test-Load.ps1 file' do
-    expect(chef_run).to create_cookbook_file('c:\\meta\\consul\\checks\\Test-Load.ps1').with(source: 'Test-Load.ps1')
-  end
-
   consul_checks_directory_json_escaped = 'c:\\\\meta\\\\consul\\\\checks'
   check_server_content = <<-JSON
 {

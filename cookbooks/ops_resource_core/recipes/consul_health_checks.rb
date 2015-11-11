@@ -15,18 +15,6 @@ cookbook_file "#{consul_checks_directory}\\#{test_disk}" do
   action :create
 end
 
-test_memory = 'Test-Memory.ps1'
-cookbook_file "#{consul_checks_directory}\\#{test_memory}" do
-  source test_memory
-  action :create
-end
-
-test_load = 'Test-Load.ps1'
-cookbook_file "#{consul_checks_directory}\\#{test_load}" do
-  source test_load
-  action :create
-end
-
 consul_config_directory = node['paths']['consul_config']
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
 consul_checks_directory_json_escaped = consul_checks_directory.gsub('\\', '\\\\\\\\')
