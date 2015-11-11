@@ -9,6 +9,16 @@
     The Test-LocalNetworkResource script verifies that a given windows machine is configured correctly.
 
 
+    .PARAMETER credential
+
+    The credential that should be used to connect to the remote machine.
+
+
+    .PARAMETER authenticateWithCredSSP
+
+    A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
+
+
     .PARAMETER computerName
 
     The name of the machine for which the configuration should be verified.
@@ -30,11 +40,22 @@
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
-    [string] $computerName  = $(throw "Please specify the name of the machine that should be configured as a Jenkins slave."),
-    [string] $testDirectory = $(Join-Path $PSScriptRoot "verification"),
-    [string] $logDirectory  = $(Join-Path $PSScriptRoot "logs")
+    [Parameter(Mandatory = $true)]
+    [PSCredential] $credential       = $(throw 'Please provide the credential object that should be used to connect to the remote machine.'),
+
+    [Parameter(Mandatory = $false)]
+    [switch] $authenticateWithCredSSP,
+
+    [Parameter(Mandatory = $true)]
+    [string] $computerName           = $(throw "Please specify the name of the machine that should be configured as a Jenkins slave."),
+
+    [string] $testDirectory          = $(Join-Path $PSScriptRoot "verification"),
+
+    [string] $logDirectory           = $(Join-Path $PSScriptRoot "logs")
 )
 
+Write-Verbose "Test-LocalNetworkResource - credential: $credential"
+Write-Verbose "Test-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Test-LocalNetworkResource - computerName: $computerName"
 Write-Verbose "Test-LocalNetworkResource - testDirectory: $testDirectory"
 Write-Verbose "Test-LocalNetworkResource - logDirectory: $logDirectory"
@@ -59,7 +80,15 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-PSSession -ComputerName $computerName
+if ($authenticateWithCredSSP)
+{
+    $session = New-PSSession -ComputerName $computerName -Authentication CredSSP -Credential $credential
+}
+else
+{
+    $session = New-PSSession -ComputerName $computerName -Credential $credential
+}
+
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"

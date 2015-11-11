@@ -10,6 +10,16 @@
     The New-WindowsResource script takes all the actions necessary to configure the machine.
 
 
+    .PARAMETER credential
+
+    The credential that should be used to connect to the remote machine.
+
+
+    .PARAMETER authenticateWithCredSSP
+
+    A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
+
+
     .PARAMETER computerName
 
     The name of the machine that should be set up.
@@ -73,6 +83,12 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
+    [PSCredential] $credential                                  = $(throw 'Please provide the credential object that should be used to connect to the remote machine.'),
+
+    [Parameter(Mandatory = $false)]
+    [switch] $authenticateWithCredSSP,
+
+    [Parameter(Mandatory = $true)]
     [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
 
     [Parameter(Mandatory = $false)]
@@ -111,12 +127,28 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
+Write-Verbose "New-LocalNetworkResource - credential: $credential"
+Write-Verbose "New-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
 Write-Verbose "New-LocalNetworkResource - resourceName: $resourceName"
 Write-Verbose "New-LocalNetworkResource - resourceVersion: $resourceVersion"
 Write-Verbose "New-LocalNetworkResource - cookbookNames: $cookbookNames"
 Write-Verbose "New-LocalNetworkResource - installationDirectory: $installationDirectory"
 Write-Verbose "New-LocalNetworkResource - logDirectory: $logDirectory"
+
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        Write-Verbose "New-LocalNetworkResource - dataCenterName: $dataCenterName"
+        Write-Verbose "New-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
+        Write-Verbose "New-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
+    }
+
+    'FromMetaCluster' {
+        Write-Verbose "New-LocalNetworkResource - environmentName: $environmentName"
+        Write-Verbose "New-LocalNetworkResource - consulLocalAddress: $consulLocalAddress"
+    }
+}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -138,7 +170,15 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-PSSession -ComputerName $computerName
+if ($authenticateWithCredSSP)
+{
+    $session = New-PSSession -ComputerName $computerName -Authentication CredSSP -Credential $credential
+}
+else
+{
+    $session = New-PSSession -ComputerName $computerName -Credential $credential
+}
+
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"
