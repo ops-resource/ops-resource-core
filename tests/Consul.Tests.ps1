@@ -39,8 +39,6 @@ Describe 'Consul installation:' {
 
         It 'has the Consul checks' {
             'c:\meta\consul\checks\Test-Disk.ps1' | Should Exist
-            'c:\meta\consul\checks\Test-Load.ps1' | Should Exist
-            'c:\meta\consul\checks\Test-Memory.ps1' | Should Exist
         }
 
         It 'has a valid check_server file' {
