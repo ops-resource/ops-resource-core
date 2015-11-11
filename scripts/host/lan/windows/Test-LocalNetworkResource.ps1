@@ -36,18 +36,18 @@
 
     .EXAMPLE
 
-    Test-LocalNetworkResource -computerName "AKTFSJS01" -testDirectory "c:\tests" -logDirectory "c:\logs"
+    Test-LocalNetworkResource -computerName "MyMachine" -testDirectory "c:\tests" -logDirectory "c:\logs"
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
-    [Parameter(Mandatory = $true)]
-    [PSCredential] $credential       = $(throw 'Please provide the credential object that should be used to connect to the remote machine.'),
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
 
     [Parameter(Mandatory = $false)]
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $true)]
-    [string] $computerName           = $(throw "Please specify the name of the machine that should be configured as a Jenkins slave."),
+    [string] $computerName           = $(throw "Please specify the name of the machine that should be configured."),
 
     [string] $testDirectory          = $(Join-Path $PSScriptRoot "verification"),
 
@@ -70,6 +70,9 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
+# Load the helper functions
+. (Join-Path $PSScriptRoot sessions.ps1)
+
 if (-not (Test-Path $testDirectory))
 {
     throw "Unable to find the directory containing the test files. Expected it at: $testDirectory"
@@ -80,15 +83,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-if ($authenticateWithCredSSP)
-{
-    $session = New-PSSession -ComputerName $computerName -Authentication Credssp -Credential $credential
-}
-else
-{
-    $session = New-PSSession -ComputerName $computerName -Credential $credential
-}
-
+$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP $authenticateWithCredSSP @commonParameterSwitches
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"

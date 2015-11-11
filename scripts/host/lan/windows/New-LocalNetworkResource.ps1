@@ -78,12 +78,12 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "AKTFSJS01" -installationDirectory "c:\installers" -logDirectory "c:\logs"
+    New-WindowsResource -computerName "MyMachine" -installationDirectory "c:\installers" -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [PSCredential] $credential                                  = $(throw 'Please provide the credential object that should be used to connect to the remote machine.'),
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
 
     [Parameter(Mandatory = $false)]
     [switch] $authenticateWithCredSSP,
@@ -160,6 +160,9 @@ $commonParameterSwitches =
         ErrorAction = 'Stop'
     }
 
+# Load the helper functions
+. (Join-Path $PSScriptRoot sessions.ps1)
+
 if (-not (Test-Path $installationDirectory))
 {
     throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
@@ -170,15 +173,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-if ($authenticateWithCredSSP)
-{
-    $session = New-PSSession -ComputerName $computerName -Authentication Credssp -Credential $credential
-}
-else
-{
-    $session = New-PSSession -ComputerName $computerName -Credential $credential
-}
-
+$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP $authenticateWithCredSSP @commonParameterSwitches
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"

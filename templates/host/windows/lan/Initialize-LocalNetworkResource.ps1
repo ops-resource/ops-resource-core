@@ -56,8 +56,8 @@
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [PSCredential] $credential                                  = $(throw 'Please provide the credential object that should be used to connect to the remote machine.'),
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
 
     [Parameter(Mandatory = $false)]
     [switch] $authenticateWithCredSSP,
