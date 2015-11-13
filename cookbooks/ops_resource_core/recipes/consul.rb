@@ -44,7 +44,12 @@ powershell_script 'user_grant_service_logon_rights' do
 
     $userName = "#{consul_username}"
 
-    $tempPath = "#{log_directory}"
+    $tempPath = "c:\\temp"
+    if (-not (Test-Path $tempPath))
+    {
+        New-Item -Path $tempPath -ItemType Directory | Out-Null
+    }
+
     $import = Join-Path -Path $tempPath -ChildPath "import.inf"
     if(Test-Path $import)
     {
