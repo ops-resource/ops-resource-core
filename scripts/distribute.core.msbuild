@@ -129,6 +129,7 @@
             <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\New*.ps1" />
             <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\Consul.ps1" />
             <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\WinRm.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\sessions.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(HostConfigurationScriptFiles)"
               DestinationFiles="@(HostConfigurationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
