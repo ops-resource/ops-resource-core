@@ -173,7 +173,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP $authenticateWithCredSSP @commonParameterSwitches
+$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"
