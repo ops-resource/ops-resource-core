@@ -315,7 +315,7 @@ try
     try
     {
         $cookbook = $cookbookNames -join ','
-        & $chefClient --local-mode --override-runlist $cookbook --log_level debug --logfile "$(Join-Path $logDirectory 'chef_client.log')"
+        & $chefClient --local-mode --override-runlist $cookbook --log_level info --logfile "$(Join-Path $logDirectory 'chef_client.log')"
     }
     catch
     {
