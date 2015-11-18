@@ -1,9 +1,9 @@
 #
-# Author:: Seth Chisamore (<schisamo@chef.io>)
-# Cookbook Name:: chef_handlers
-# Attribute:: default
+# Author:: Richard Lavey (richard.lavey@calastone.com)
+# Cookbook Name:: windows
+# Resource:: certificate
 #
-# Copyright 2011-2013, Chef Software, Inc
+# Copyright:: 2015, Calastone Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,13 +18,11 @@
 # limitations under the License.
 #
 
-default["chef_handler"]["root_user"] = "root"
+actions :create, :delete, :acl_add
+default_action :create
 
-case platform
-when "openbsd", "freebsd", "mac_os_x", "mac_os_x_server"
-  default["chef_handler"]["root_group"] = "wheel"
-else
-  default["chef_handler"]["root_group"] = "root"
-end
-
-default["chef_handler"]["handler_path"] = "#{File.expand_path(File.join(Chef::Config[:file_cache_path], '..'))}/handlers"
+attribute :source, kind_of: String, name_attribute: true, required: true
+attribute :pfx_password, kind_of: String
+attribute :private_key_acl, kind_of: Array
+attribute :store_name, kind_of: String, default: 'MY', regex: /^(?:MY|CA|ROOT)$/
+attribute :user_store, kind_of: [TrueClass, FalseClass], default: false

@@ -10,6 +10,16 @@
     The New-WindowsResource script takes all the actions necessary to configure the machine.
 
 
+    .PARAMETER credential
+
+    The credential that should be used to connect to the remote machine.
+
+
+    .PARAMETER authenticateWithCredSSP
+
+    A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
+
+
     .PARAMETER computerName
 
     The name of the machine that should be set up.
@@ -68,10 +78,16 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "AKTFSJS01" -installationDirectory "c:\installers" -logDirectory "c:\logs"
+    New-WindowsResource -computerName "MyMachine" -installationDirectory "c:\installers" -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
+
+    [Parameter(Mandatory = $false)]
+    [switch] $authenticateWithCredSSP,
+
     [Parameter(Mandatory = $true)]
     [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
 
@@ -111,12 +127,28 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
+Write-Verbose "New-LocalNetworkResource - credential: $credential"
+Write-Verbose "New-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
 Write-Verbose "New-LocalNetworkResource - resourceName: $resourceName"
 Write-Verbose "New-LocalNetworkResource - resourceVersion: $resourceVersion"
 Write-Verbose "New-LocalNetworkResource - cookbookNames: $cookbookNames"
 Write-Verbose "New-LocalNetworkResource - installationDirectory: $installationDirectory"
 Write-Verbose "New-LocalNetworkResource - logDirectory: $logDirectory"
+
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        Write-Verbose "New-LocalNetworkResource - dataCenterName: $dataCenterName"
+        Write-Verbose "New-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
+        Write-Verbose "New-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
+    }
+
+    'FromMetaCluster' {
+        Write-Verbose "New-LocalNetworkResource - environmentName: $environmentName"
+        Write-Verbose "New-LocalNetworkResource - consulLocalAddress: $consulLocalAddress"
+    }
+}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -128,6 +160,9 @@ $commonParameterSwitches =
         ErrorAction = 'Stop'
     }
 
+# Load the helper functions
+. (Join-Path $PSScriptRoot sessions.ps1)
+
 if (-not (Test-Path $installationDirectory))
 {
     throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
@@ -138,7 +173,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-PSSession -ComputerName $computerName
+$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"

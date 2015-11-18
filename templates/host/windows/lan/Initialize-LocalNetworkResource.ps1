@@ -10,6 +10,16 @@
     The New-WindowsResource script takes all the actions necessary configure the remote machine.
 
 
+    .PARAMETER credential
+
+    The credential that should be used to connect to the remote machine.
+
+
+    .PARAMETER authenticateWithCredSSP
+
+    A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
+
+
     .PARAMETER computerName
 
     The name of the machine that should be set up.
@@ -46,6 +56,12 @@
 #>
 [CmdletBinding()]
 param(
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
+
+    [Parameter(Mandatory = $false)]
+    [switch] $authenticateWithCredSSP,
+
     [Parameter(Mandatory = $true)]
     [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.'),
 
@@ -70,6 +86,8 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
+Write-Verbose "Initialize-LocalNetworkResource - credential: $credential"
+Write-Verbose "Initialize-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
 switch ($psCmdlet.ParameterSetName)
 {
@@ -112,6 +130,8 @@ try
     {
         'FromUserSpecification' {
             & $installationScript `
+                -credential $credential `
+                -authenticateWithCredSSP:$authenticateWithCredSSP `
                 -computerName $computerName `
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
@@ -126,6 +146,8 @@ try
 
         'FromMetaCluster' {
             & $installationScript `
+                -credential $credential `
+                -authenticateWithCredSSP:$authenticateWithCredSSP `
                 -computerName $computerName `
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
@@ -138,7 +160,13 @@ try
         }
     }
 
-    & $verificationScript -computerName $computerName -testDirectory $testDirectory -logDirectory $logDirectory @commonParameterSwitches
+    & $verificationScript `
+        -credential $credential `
+        -authenticateWithCredSSP:$authenticateWithCredSSP `
+        -computerName $computerName `
+        -testDirectory $testDirectory `
+        -logDirectory $logDirectory `
+        @commonParameterSwitches
 }
 finally
 {

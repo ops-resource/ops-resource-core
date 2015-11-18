@@ -9,6 +9,16 @@
     The Test-LocalNetworkResource script verifies that a given windows machine is configured correctly.
 
 
+    .PARAMETER credential
+
+    The credential that should be used to connect to the remote machine.
+
+
+    .PARAMETER authenticateWithCredSSP
+
+    A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
+
+
     .PARAMETER computerName
 
     The name of the machine for which the configuration should be verified.
@@ -26,15 +36,26 @@
 
     .EXAMPLE
 
-    Test-LocalNetworkResource -computerName "AKTFSJS01" -testDirectory "c:\tests" -logDirectory "c:\logs"
+    Test-LocalNetworkResource -computerName "MyMachine" -testDirectory "c:\tests" -logDirectory "c:\logs"
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
-    [string] $computerName  = $(throw "Please specify the name of the machine that should be configured as a Jenkins slave."),
-    [string] $testDirectory = $(Join-Path $PSScriptRoot "verification"),
-    [string] $logDirectory  = $(Join-Path $PSScriptRoot "logs")
+    [Parameter(Mandatory = $false)]
+    [PSCredential] $credential                                  = $null,
+
+    [Parameter(Mandatory = $false)]
+    [switch] $authenticateWithCredSSP,
+
+    [Parameter(Mandatory = $true)]
+    [string] $computerName           = $(throw "Please specify the name of the machine that should be configured."),
+
+    [string] $testDirectory          = $(Join-Path $PSScriptRoot "verification"),
+
+    [string] $logDirectory           = $(Join-Path $PSScriptRoot "logs")
 )
 
+Write-Verbose "Test-LocalNetworkResource - credential: $credential"
+Write-Verbose "Test-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Test-LocalNetworkResource - computerName: $computerName"
 Write-Verbose "Test-LocalNetworkResource - testDirectory: $testDirectory"
 Write-Verbose "Test-LocalNetworkResource - logDirectory: $logDirectory"
@@ -49,6 +70,9 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
+# Load the helper functions
+. (Join-Path $PSScriptRoot sessions.ps1)
+
 if (-not (Test-Path $testDirectory))
 {
     throw "Unable to find the directory containing the test files. Expected it at: $testDirectory"
@@ -59,7 +83,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-PSSession -ComputerName $computerName
+$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 if ($session -eq $null)
 {
     throw "Failed to connect to $computerName"

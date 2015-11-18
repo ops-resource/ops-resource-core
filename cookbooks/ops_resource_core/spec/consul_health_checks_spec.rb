@@ -36,7 +36,7 @@ describe 'ops_resource_core::consul_health_checks'  do
 {
     "service":
     {
-        "name": "NodeMeta",
+        "name": "nodemeta",
         "id": "node_meta",
         "tags":
         [
