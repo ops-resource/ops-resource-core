@@ -28,6 +28,11 @@
     .PARAMETER containerBaseImage
     
     The name of the container base image on which the container is based.
+    
+    
+    .PARAMETER containerImage
+    
+    The name of the container image that should be created by the current script.
 
 
     .PARAMETER resourceName
@@ -83,7 +88,15 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "MyMachine" -installationDirectory "c:\installers" -logDirectory "c:\logs"
+    New-ContainerImage 
+        -containerHost "MyMachine" 
+        -containerBaseImage 'MyBaseImage'
+        -containerImage 'MyCoolContainer'
+        -resourceName 'MyNewService'
+        -resourceVersion '0.1.0'
+        -cookbookNames @( 'cookbook1', 'cookbook2', 'cookbook3' ) 
+        -installationDirectory "c:\temp\installers" 
+        -logDirectory "c:\temp\logs"
 #>
 [CmdletBinding()]
 param(
@@ -98,6 +111,9 @@ param(
     
     [Parameter(Mandatory = $true)]
     [string] $containerBaseImage                                = $(throw 'Please specify the name of the container base image.'),
+    
+    [Parameter(Mandatory = $true)]
+    [string] $containerImage                                    = $(throw 'Please specify the name of the container image that should be created.')
 
     [Parameter(Mandatory = $false)]
     [string] $resourceName                                      = '',
@@ -139,6 +155,7 @@ Write-Verbose "New-ContainerImage - credential: $credential"
 Write-Verbose "New-ContainerImage - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "New-ContainerImage - containerHost: $containerHost"
 Write-Verbose "New-ContainerImage - containerBaseImage: $containerBaseImage"
+Write-Verbose "New-ContainerImage - containerImage: $containerImage"
 Write-Verbose "New-ContainerImage - resourceName: $resourceName"
 Write-Verbose "New-ContainerImage - resourceVersion: $resourceVersion"
 Write-Verbose "New-ContainerImage - cookbookNames: $cookbookNames"
@@ -168,3 +185,118 @@ $commonParameterSwitches =
         Debug = $PSBoundParameters.ContainsKey('Debug');
         ErrorAction = 'Stop'
     }
+    
+# Load the helper functions
+. (Join-Path $PSScriptRoot sessions.ps1)
+
+if (-not (Test-Path $installationDirectory))
+{
+    throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
+}
+
+if (-not (Test-Path $logDirectory))
+{
+    New-Item -Path $logDirectory -ItemType Directory | Out-Null
+}
+
+$containerHostSession = New-Session -computerName $containerHost -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
+if ($containerHostSession -eq $null)
+{
+    throw "Failed to connect to $containerHost"
+}
+
+# Make sure that the remote log directory exists because if something goes wrong with the script we try to copy from that directory
+# however the copy action on 'c:\logs' if it doesn't exist somehow then tries to copy to all the folders with the term 'logs' in it from
+# the windows directory.
+Invoke-Command `
+    -Session $containerHostSession `
+    -ArgumentList @( $containerBaseImage ) `
+    -ScriptBlock {
+        param(
+            [string] $containerBaseImage
+        )
+
+        # Install the package provider if it's not there
+        if ((Get-PackageProvider -ListAvailable | Where-Object { $_.Name -eq 'ContainerProvider' } | Select-Object -First 1) -eq $null)
+        {
+            Install-PackageProvider -Name ContainerProvider -Force -ForceBootstrap -Verbose   
+        }
+        
+        # download base image if required
+        $existingContainers = Get-ContainerImage | Where-Object { $_.Name -eq $containerBaseImage }
+        if (($existingContainers -eq $null) -or ($existingContainers.Count -eq 0))
+        {
+            Install-ContainerImage -Name $containerBaseImage -Verbose
+        }
+    } `
+    @commonParameterSwitches
+
+# create a new container
+$containerName = [System.Guid]::NewGuid().ToString()
+<#
+$container = New-Container `
+    -Name $containerName `
+    -ContainerImageName $containerBaseImage ` 
+    -ComputerName $containerHost `
+    -Credential $credential `
+    -SwitchName '' `
+    @commonParameterSwitches
+#>
+# At the moment you cannot create a new container remotely because the powershell
+# functions haven't been published. So we'll remote into the host machine first
+Invoke-Command `
+    -Session $containerHostSession `
+    -ArgumentList @( $containerBaseImage ) `
+    -ScriptBlock {
+        param(
+            [string] $containerName,
+            [string] $containerBaseImage
+        )
+        
+        # Assume there is only one VM switch
+        $switch = Get-VmSwitch
+
+        $container = New-Container `
+            -Name $containerName `
+            -ContainerImageName $containerBaseImage ` 
+            -SwitchName $switch.Name `
+            @commonParameterSwitches
+        Start-Container -Container $container @commonParameterSwitches
+        
+        # Install SSL cert of some kind to secure the connection so that we 
+        # can create a session to the container
+    } `
+    @commonParameterSwitches
+
+# note that this isn't going to work. We can't remote into the container from any other
+# machine then the container host
+$newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        & $newWindowsResource `
+            -session $containerSession `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -dataCenterName $dataCenterName `
+            -clusterEntryPointAddress $clusterEntryPointAddress `
+            -globalDnsServerAddress $globalDnsServerAddress `
+            @commonParameterSwitches
+    }
+
+    'FromMetaCluster' {
+        & $newWindowsResource `
+            -session $containerSession `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -environmentName $environmentName `
+            -consulLocalAddress $consulLocalAddress `
+            @commonParameterSwitches
+    }
+}

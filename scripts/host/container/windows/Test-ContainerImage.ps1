@@ -36,7 +36,11 @@
 
     .EXAMPLE
 
-    Test-LocalNetworkResource -computerName "MyMachine" -testDirectory "c:\tests" -logDirectory "c:\logs"
+    Test-ContainerImage 
+        -containerHost "MyMachine"
+        -containerImage 'MyContainerImage'
+        -testDirectory "c:\tests" 
+        -logDirectory "c:\logs"
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
@@ -50,7 +54,7 @@ param(
     [string] $containerHost          = $(throw "Please specify the name of the machine on which the container host."),
     
     [Parameter(Mandatory = $true)]
-    [string] $containerBaseImage     = $(throw 'Please specify the name of the container base image.'),
+    [string] $containerImage         = $(throw 'Please specify the name of the container image that should be tested.'),
 
     [string] $testDirectory          = $(Join-Path $PSScriptRoot "verification"),
 
@@ -60,7 +64,7 @@ param(
 Write-Verbose "Test-ContainerImage - credential: $credential"
 Write-Verbose "Test-ContainerImage - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Test-ContainerImage - containerHost: $containerHost"
-Write-Verbose "Test-ContainerImage - containerBaseImage: $containerBaseImage"
+Write-Verbose "Test-ContainerImage - containerImage: $containerImage"
 Write-Verbose "Test-ContainerImage - testDirectory: $testDirectory"
 Write-Verbose "Test-ContainerImage - logDirectory: $logDirectory"
 
