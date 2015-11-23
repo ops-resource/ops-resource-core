@@ -7,7 +7,7 @@
 
     .DESCRIPTION
 
-    The New-WindowsResource script takes all the actions necessary configure the remote machine.
+    The Initialize-LocalNetworkResource script takes all the actions necessary configure the remote machine.
 
 
     .PARAMETER credential
@@ -52,7 +52,7 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "AKTFSJS01"
+    Initialize-LocalNetworkResource -computerName "MyServer"
 #>
 [CmdletBinding()]
 param(
@@ -63,7 +63,7 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $true)]
-    [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.'),
+    [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
