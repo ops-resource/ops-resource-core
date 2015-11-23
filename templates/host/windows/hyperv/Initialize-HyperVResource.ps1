@@ -1,13 +1,14 @@
 <#
     .SYNOPSIS
 
-    Connects to the remote machine, pushes all the necessary files up to it, executes the Chef cookbook that installs
-    all the required applications and then verifies that all the applications have been installed correctly.
+    Connects to the Hyper-V host machine, creates a new Hyper-V virtual machine, pushes all the necessary files up to the 
+    new Hyper-V virtual machine, executes the Chef cookbook that installs all the required applications and then 
+    verifies that all the applications have been installed correctly.
 
 
     .DESCRIPTION
 
-    The New-WindowsResource script takes all the actions necessary configure the remote machine.
+    The Initialize-HyperVResource script takes all the actions necessary to create and configure a new Hyper-V virtual machine.
 
 
     .PARAMETER credential
@@ -20,9 +21,9 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
-    .PARAMETER computerName
+    .PARAMETER hypervHost
 
-    The name of the machine that should be set up.
+    The name of the machine on which the hyper-v server is located.
 
 
     .PARAMETER dataCenterName
@@ -52,7 +53,7 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "AKTFSJS01"
+    Initialize-HyperVResource hypervhost "MyHyperVServer"
 #>
 [CmdletBinding()]
 param(
@@ -63,7 +64,7 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $true)]
-    [string] $computerName = $(throw 'Please specify the name of the machine that should be configured.'),
+    [string] $hypervHost                                        = $(throw 'Please specify the name of the Hyper-V host on which a new virtual machine should be configured.'),
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -86,19 +87,19 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "Initialize-LocalNetworkResource - credential: $credential"
-Write-Verbose "Initialize-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
-Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
+Write-Verbose "Initialize-HyperVResource - credential: $credential"
+Write-Verbose "Initialize-HyperVResource - authenticateWithCredSSP: $authenticateWithCredSSP"
+Write-Verbose "Initialize-HyperVResource - hypervHost: $hypervHost"
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "Initialize-LocalNetworkResource - dataCenterName: $dataCenterName"
-        Write-Verbose "Initialize-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
-        Write-Verbose "Initialize-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
+        Write-Verbose "Initialize-HyperVResource - dataCenterName: $dataCenterName"
+        Write-Verbose "Initialize-HyperVResource - clusterEntryPointAddress: $clusterEntryPointAddress"
+        Write-Verbose "Initialize-HyperVResource - globalDnsServerAddress: $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "Initialize-LocalNetworkResource - environmentName: $environmentName"
+        Write-Verbose "Initialize-HyperVResource - environmentName: $environmentName"
     }
 }
 
