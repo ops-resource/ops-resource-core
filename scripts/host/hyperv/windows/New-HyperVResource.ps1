@@ -182,17 +182,41 @@ if ($session -eq $null)
     throw "Failed to connect to $hypervHost"
 }
 
-# Create a new Hyper-V virtual machine
+# Create a new Hyper-V virtual machine based on a VHDX Os disk
 # - From scratch. This assumes everything needs to be configured
 #   - OS iso
 #   - Configuration script (configures things like IP address, computer name, AD join, DNS settings)
 #     - Create an unattend.xml file and run that?
 
+# If we have an iso turn it into an OS VHDX first
+if (($osIsoFile -ne $null) -and ($osIsoFile -ne '') -and (Test-Path $osIsoFile))
+{
+    . (Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1')
+    Convert-WindowsImage `
+        -SourcePath $osIsoFile `
+        -VHDPath '' `
+        -WorkingDirectory '' `
+        -SizeBytes '40GB' `
+        -VHDFormat 'VHDX' `
+        -VHDType 'Dynamic' `
+        -VHDPartitionStyle 'GPT' `
+        -BCDinVHD 'VirtualMachine' `
+        -UnattendPath '' `
+        -PassThru `
+        @commonParameterSwitches
+}
 
+New-HypervVm `
+    -vmName $vmName `
+    -osVhdPath $osVhdPath `
+    -vmAdditionalDiskSizesInGb @( 100 ) `
+    -vmNetwork $vmNetwork `
+    -computerName $hypervClient `
+    -administratorName $administratorName `
+    -administratorPassword $administratorPassword `
+    @commonParameterSwitches
 
-
-
-
+$vmSession = New-Session -computerName $hypervClient -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
@@ -200,7 +224,7 @@ switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
         & $newWindowsResource `
-            -session $session `
+            -session $vmSession `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `
@@ -214,7 +238,7 @@ switch ($psCmdlet.ParameterSetName)
 
     'FromMetaCluster' {
         & $newWindowsResource `
-            -session $session `
+            -session $vmSession `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `
