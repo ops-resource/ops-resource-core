@@ -183,37 +183,13 @@ if ($session -eq $null)
 }
 
 # Create a new Hyper-V virtual machine based on a VHDX Os disk
-# - From scratch. This assumes everything needs to be configured
-#   - OS iso
-#   - Configuration script (configures things like IP address, computer name, AD join, DNS settings)
-#     - Create an unattend.xml file and run that?
-
-# If we have an iso turn it into an OS VHDX first
-if (($osIsoFile -ne $null) -and ($osIsoFile -ne '') -and (Test-Path $osIsoFile))
-{
-    . (Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1')
-    Convert-WindowsImage `
-        -SourcePath $osIsoFile `
-        -VHDPath '' `
-        -WorkingDirectory '' `
-        -SizeBytes '40GB' `
-        -VHDFormat 'VHDX' `
-        -VHDType 'Dynamic' `
-        -VHDPartitionStyle 'GPT' `
-        -BCDinVHD 'VirtualMachine' `
-        -UnattendPath '' `
-        -PassThru `
-        @commonParameterSwitches
-}
-
 New-HypervVm `
     -vmName $vmName `
     -osVhdPath $osVhdPath `
     -vmAdditionalDiskSizesInGb @( 100 ) `
-    -vmNetwork $vmNetwork `
-    -computerName $hypervClient `
-    -administratorName $administratorName `
-    -administratorPassword $administratorPassword `
+    -vmNetworkSwitch $vmNetwork `
+    -vmStoragePath '' `
+    -vhdStoragePath '' `
     @commonParameterSwitches
 
 $vmSession = New-Session -computerName $hypervClient -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
