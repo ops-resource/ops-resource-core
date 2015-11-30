@@ -12,16 +12,26 @@
     .PARAMETER osIsoFile
 
     The full path to the ISO file that contains the windows installation.
-    
-    
+
+
     .PARAMTER unattendPath
-    
+
     The full path to the unattended file that contains the parameters for an unattended setup.
-    
-    
+
+
     .PARAMETER vhdPath
-    
-    The full path to where the VHDX file should be output. 
+
+    The full path to where the VHDX file should be output.
+
+
+    .PARAMETER convertWindowsImagePath
+
+    The full path to the Convert-WindowsImage script on the local disk.
+
+
+    .PARAMETER convertWindowsImageUrl
+
+    The URL from where the Convert-WindowsImage script can be downloaded.
 #>
 [CmdletBinding()]
 param(
@@ -30,14 +40,38 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string] $unattendPath,
-    
+
     [Parameter(Mandatory = $true)]
-    [string] $vhdPath
+    [string] $vhdPath,
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'UseLocalConvertScript')]
+    [string] $convertWindowsImagePath = $(Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1'),
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'DownloadConvertScript')]
+    [string] $convertWindowsImageUrl = 'https://gallery.technet.microsoft.com/scriptcenter/Convert-WindowsImageps1-0fe23a8f/file/59237/7/Convert-WindowsImage.ps1',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'DownloadConvertScript')]
+    [string] $tempPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString()))
 )
 
-Write-Verbose "New-StandardVhdFromWindowsIso - osIsoFile $osIsoFile"
-Write-Verbose "New-StandardVhdFromWindowsIso - unattendPath $unattendPath"
-Write-Verbose "New-StandardVhdFromWindowsIso - vhdPath $vhdPath"
+Write-Verbose "New-StandardVhdFromWindowsIso - osIsoFile = $osIsoFile"
+Write-Verbose "New-StandardVhdFromWindowsIso - unattendPath = $unattendPath"
+Write-Verbose "New-StandardVhdFromWindowsIso - vhdPath = $vhdPath"
+
+switch ($psCmdlet.ParameterSetName)
+{
+    'UseLocalConvertScript' {
+        Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImagePath = $convertWindowsImagePath"
+    }
+
+    'DownloadConvertScript' {
+        Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImageUrl = $convertWindowsImageUrl"
+        Write-Verbose "New-StandardVhdFromWindowsIso - tempPath = $tempPath"
+    }
+}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -49,7 +83,23 @@ $commonParameterSwitches =
         ErrorAction = 'Stop'
     }
 
-. (Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1')
+if ($psCmdLet.ParameterSetName -eq 'DownloadConvertScript')
+{
+    if (-not (Test-Path $tempPath))
+    {
+        New-Item -Path $tempPath -ItemType Directory | Out-Null
+    }
+
+    $convertWindowsImagePath = Join-Path $tempPath 'Convert-WindowsImage.ps1'
+    Invoke-WebRequest `
+        -Uri $convertWindowsImageUrl `
+        -UseBasicParsing `
+        -Method Get `
+        -OutFile $convertWindowsImagePath `
+        @commonParameterSwitches
+}
+
+. $convertWindowsImagePath
 Convert-WindowsImage `
     -SourcePath $osIsoFile `
     -VHDPath $vhdPath `
