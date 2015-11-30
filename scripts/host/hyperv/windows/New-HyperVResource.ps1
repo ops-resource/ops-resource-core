@@ -78,9 +78,9 @@
 
     .EXAMPLE
 
-    New-HyperVResource 
-        -hypervHost "MyHost" 
-        -installationDirectory "c:\installers" 
+    New-HyperVResource
+        -hypervHost "MyHost"
+        -installationDirectory "c:\installers"
         -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
@@ -130,26 +130,26 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "New-HyperVResource - credential: $credential"
-Write-Verbose "New-HyperVResource - authenticateWithCredSSP: $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - hypervHost $hypervHost"
-Write-Verbose "New-HyperVResource - resourceName: $resourceName"
-Write-Verbose "New-HyperVResource - resourceVersion: $resourceVersion"
-Write-Verbose "New-HyperVResource - cookbookNames: $cookbookNames"
-Write-Verbose "New-HyperVResource - installationDirectory: $installationDirectory"
-Write-Verbose "New-HyperVResource - logDirectory: $logDirectory"
+Write-Verbose "New-HyperVResource - credential = $credential"
+Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
+Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
+Write-Verbose "New-HyperVResource - resourceName = $resourceName"
+Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
+Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
+Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
+Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-HyperVResource - dataCenterName: $dataCenterName"
-        Write-Verbose "New-HyperVResource - clusterEntryPointAddress: $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVResource - globalDnsServerAddress: $globalDnsServerAddress"
+        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
+        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-HyperVResource - environmentName: $environmentName"
-        Write-Verbose "New-HyperVResource - consulLocalAddress: $consulLocalAddress"
+        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
+        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -194,6 +194,8 @@ New-HypervVm `
 
 $vmSession = New-Session -computerName $hypervClient -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 
+# Once the system is running we need to delete any cached answer files that may exist
+# They should be found in %WINDIR%\panther
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
 switch ($psCmdlet.ParameterSetName)
