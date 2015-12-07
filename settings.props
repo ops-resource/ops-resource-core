@@ -1212,6 +1212,13 @@
             <ExcludedDependencies>
             </ExcludedDependencies>
         </NuGetPackageSpecs>
+        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.hyperv.windows.nuspec">
+            <ShouldBuildSymbols>false</ShouldBuildSymbols>
+            <IncludedDependencies>
+            </IncludedDependencies>
+            <ExcludedDependencies>
+            </ExcludedDependencies>
+        </NuGetPackageSpecs>
         <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.lan.windows.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
