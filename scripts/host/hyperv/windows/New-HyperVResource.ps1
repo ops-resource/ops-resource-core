@@ -164,6 +164,7 @@ $commonParameterSwitches =
     }
 
 # Load the helper functions
+. (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 
 if (-not (Test-Path $installationDirectory))
@@ -176,14 +177,9 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-Session -computerName $hypervHost -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
-if ($session -eq $null)
-{
-    throw "Failed to connect to $hypervHost"
-}
-
 # Create a new Hyper-V virtual machine based on a VHDX Os disk
 New-HypervVm `
+    -hypervHost $hypervHost `
     -vmName $vmName `
     -osVhdPath $osVhdPath `
     -vmAdditionalDiskSizesInGb @( 100 ) `
