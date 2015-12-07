@@ -44,11 +44,11 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $vhdPath,
 
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
                ParameterSetName = 'UseLocalConvertScript')]
     [string] $convertWindowsImagePath = $(Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1'),
 
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
                ParameterSetName = 'DownloadConvertScript')]
     [string] $convertWindowsImageUrl = 'https://gallery.technet.microsoft.com/scriptcenter/Convert-WindowsImageps1-0fe23a8f/file/59237/7/Convert-WindowsImage.ps1',
 
