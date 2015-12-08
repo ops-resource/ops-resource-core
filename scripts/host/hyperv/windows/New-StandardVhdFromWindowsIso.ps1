@@ -112,7 +112,7 @@ Convert-WindowsImage `
     -SourcePath $osIsoFile `
     -Edition $osEdition `
     -VHDPath $vhdPath `
-    -SizeBytes '40GB' `
+    -SizeBytes 40GB `
     -VHDFormat 'VHDX' `
     -VHDType 'Dynamic' `
     -VHDPartitionStyle 'GPT' `
