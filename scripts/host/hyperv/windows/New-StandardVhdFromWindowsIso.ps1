@@ -14,6 +14,11 @@
     The full path to the ISO file that contains the windows installation.
 
 
+    .PARAMETER osEdition
+
+    The SKU or edition of the operating system that should be taken from the ISO and applied to the disk.
+
+
     .PARAMTER unattendPath
 
     The full path to the unattended file that contains the parameters for an unattended setup.
@@ -37,6 +42,9 @@
 param(
     [Parameter(Mandatory = $true)]
     [string] $osIsoFile = $(throw 'Please specify the full path of the windows install ISO file.'),
+
+    [Parameter(Mandatory = $false)]
+    [string] $osEdition = '',
 
     [Parameter(Mandatory = $true)]
     [string] $unattendPath,
@@ -102,6 +110,7 @@ if ($psCmdLet.ParameterSetName -eq 'DownloadConvertScript')
 . $convertWindowsImagePath
 Convert-WindowsImage `
     -SourcePath $osIsoFile `
+    -Edition $osEdition `
     -VHDPath $vhdPath `
     -SizeBytes '40GB' `
     -VHDFormat 'VHDX' `
