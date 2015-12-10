@@ -93,16 +93,16 @@ function New-HypervVm
         [Parameter(Mandatory = $true)]
         [string] $osVhdPath,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [int[]] $vmAdditionalDiskSizesInGb,
 
         [Parameter(Mandatory = $true)]
         [string] $vmNetworkSwitch,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string] $vmStoragePath,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter(Mandatory = $false)]
         [string] $vhdStoragePath
     )
 
@@ -123,22 +123,45 @@ function New-HypervVm
             ErrorAction = 'Stop'
         }
 
-    $vm = New-Vm `
-        -Name $vmName `
-        -Path $vmStoragePath `
-        -VHDPath $osVhdPath `
-        -MemoryStartupBytes $(2 * 1024 * 1024 * 1024) `
-        -SwitchName $vmNetworkSwitch `
-        -Generation 2 `
-        -BootDevice 'VHD' `
-        -ComputerName $hypervHost `
-        @commonParameterSwitches
+    $vmMemoryInBytes = 2 * 1024 * 1024 * 1024
+    if (($vmStoragePath -ne $null) -and ($vmStoragePath -ne ''))
+    {
+        $vm = New-Vm `
+            -Name $vmName `
+            -Path $vmStoragePath `
+            -VHDPath $osVhdPath `
+            -MemoryStartupBytes $vmMemoryInBytes `
+            -SwitchName $vmNetworkSwitch `
+            -Generation 2 `
+            -BootDevice 'VHD' `
+            -ComputerName $hypervHost `
+            -Confirm:$false
+            @commonParameterSwitches
+    }
+    else
+    {
+        $vm = New-Vm `
+            -Name $vmName `
+            -MemoryStartupBytes $vmMemoryInBytes `
+            -SwitchName $vmNetworkSwitch `
+            -Generation 2 `
+            -BootDevice 'VHD' `
+            -ComputerName $hypervHost `
+            -Confirm:$false
+            @commonParameterSwitches
+    }
 
      $vm |
         Set-Vm `
             -ProcessorCount 1 `
+            -Confirm:$false
             -Passthru `
             @commonParameterSwitches
+
+    if ($vmAdditionalDiskSizesInGb -eq $null)
+    {
+        $vmAdditionalDiskSizesInGb = [int[]](@())
+    }
 
     for ($i = 0; $i -lt $vmAdditionalDiskSizesInGb.Length; $i++)
     {
