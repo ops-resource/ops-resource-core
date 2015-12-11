@@ -156,7 +156,7 @@ $ErrorActionPreference = 'Stop'
 $commonParameterSwitches =
     @{
         Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $PSBoundParameters.ContainsKey('Debug');
+        Debug = $false;
         ErrorAction = 'Stop'
     }
 

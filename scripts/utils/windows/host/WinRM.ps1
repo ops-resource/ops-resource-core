@@ -375,7 +375,7 @@ function Copy-FilesToRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 
@@ -444,7 +444,7 @@ function Copy-FilesFromRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 
@@ -524,7 +524,7 @@ function Remove-FilesFromRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 

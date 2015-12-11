@@ -1,8 +1,8 @@
 <#
     .SYNOPSIS
 
-    Connects to the Hyper-V host machine, creates a new Hyper-V virtual machine, pushes all the necessary files up to the 
-    new Hyper-V virtual machine, executes the Chef cookbook that installs all the required applications and then 
+    Connects to the Hyper-V host machine, creates a new Hyper-V virtual machine, pushes all the necessary files up to the
+    new Hyper-V virtual machine, executes the Chef cookbook that installs all the required applications and then
     verifies that all the applications have been installed correctly.
 
 
@@ -109,7 +109,7 @@ $ErrorActionPreference = 'Stop'
 $commonParameterSwitches =
     @{
         Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $PSBoundParameters.ContainsKey('Debug');
+        Debug = $false;
         ErrorAction = "Stop"
     }
 
