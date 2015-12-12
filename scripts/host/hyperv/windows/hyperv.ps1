@@ -182,3 +182,56 @@ function New-HypervVm
     }
 }
 
+<#
+    .SYNOPSIS
+
+    Starts a Hyper-V VM and waits for the guest operating system to be started.
+
+
+    .DESCRIPTION
+
+    The Start-VMAndWaitForGuestOSToBeStarted function starts a Hyper-V VM and waits for the
+    guest operating system to be started.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER vmHost
+
+    The name of the VM host machine.
+#>
+function Start-VMAndWaitForGuestOSToBeStarted
+{
+    [CmdLetBinding()]
+    param(
+        [string] $vmName,
+        [string] $vmHost
+    )
+
+    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmName = $vmName"
+    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmHost = $vmHost"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Start-VM `
+        -Name $vmName `
+        -ComputerName $vmHost `
+        @commonParameterSwitches
+
+    do
+    {
+        Start-Sleep -milliseconds 100
+    }
+    until ((Get-VMIntegrationService -VMName $vmToStart -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
+}
