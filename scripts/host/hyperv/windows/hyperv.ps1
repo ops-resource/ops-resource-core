@@ -160,14 +160,14 @@ function New-HypervVm
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
-            -Confirm:$false
+            -Confirm:$false `
             @commonParameterSwitches
     }
 
      $vm |
         Set-Vm `
             -ProcessorCount 1 `
-            -Confirm:$false
+            -Confirm:$false `
             -Passthru `
             @commonParameterSwitches
 
