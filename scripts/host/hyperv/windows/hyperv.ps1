@@ -123,19 +123,32 @@ function New-HypervVm
             ErrorAction = 'Stop'
         }
 
+    # Make sure we have a local path to the VHD file
+    $osVhdLocalPath = $osVhdPath
+    if ($osVhdLocalPath.StartsWith("$([System.IO.Path]::DirectorySeparatorChar)$([System.IO.Path]::DirectorySeparatorChar)"))
+    {
+        $uncServerPath = "\\$($hypervHost)\"
+        $shareRoot = $osVhdLocalPath.SubString($uncServerPath.Length, $osVhdLocalPath.IndexOf('\', $uncServerPath.Length) - $uncServerPath.Length)
+
+        $shareList = Get-WmiObject -Class Win32_Share -ComputerName $hypervHost @commonParameterSwitches
+        $localShareRoot = $shareList | Where-Object { $_.Name -eq $shareRoot} | Select-Object -ExpandProperty Path
+
+        $osVhdLocalPath = $osVhdLocalPath.Replace((Join-Path $uncServerPath $shareRoot), $localShareRoot)
+    }
+
     $vmMemoryInBytes = 2 * 1024 * 1024 * 1024
     if (($vmStoragePath -ne $null) -and ($vmStoragePath -ne ''))
     {
         $vm = New-Vm `
             -Name $vmName `
             -Path $vmStoragePath `
-            -VHDPath $osVhdPath `
+            -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
             -SwitchName $vmNetworkSwitch `
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
-            -Confirm:$false
+            -Confirm:$false `
             @commonParameterSwitches
     }
     else
