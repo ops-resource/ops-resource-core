@@ -69,14 +69,6 @@ function Get-DriveLetter
     .PARAMETER vhdStoragePath
 
     The full path of the directory where the virtual hard drive files should be stored.
-
-
-    .EXAMPLE
-    Example of how to use this cmdlet
-
-
-    .EXAMPLE
-    Another example of how to use this cmdlet
 #>
 function New-HypervVm
 {
