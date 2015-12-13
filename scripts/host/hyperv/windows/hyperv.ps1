@@ -147,6 +147,7 @@ function New-HypervVm
     {
         $vm = New-Vm `
             -Name $vmName `
+            -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
             -SwitchName $vmNetworkSwitch `
             -Generation 2 `
@@ -238,5 +239,5 @@ function Start-VMAndWaitForGuestOSToBeStarted
     {
         Start-Sleep -milliseconds 100
     }
-    until ((Get-VMIntegrationService -VMName $vmToStart -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
+    until ((Get-VMIntegrationService -VMName $vmName -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
 }
