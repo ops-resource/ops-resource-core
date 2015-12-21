@@ -249,6 +249,7 @@ function New-HypervVmOnDomain
 {
     [CmdletBinding()]
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUsePSCredentialType")]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
