@@ -554,3 +554,28 @@ function Start-VMAndWaitForGuestOSToBeStarted
     }
     until ((Get-VMIntegrationService -VMName $vmName -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
 }
+
+function Wait-VmShutdown
+{
+    [CmdletBinding()]
+    param(
+        [string] $vmName
+    )
+
+    $TimeoutCounter = 0
+    $continue = $true
+    while ($continue)
+    {
+        Start-Sleep -Seconds 1
+        $continue = ((Get-WmiObject -Namespace root\virtualization\v2 -Class Msvm_ComputerSystem -ComputerName $VMObject.ComputerName -Filter "Name = '$($VMObject.VMId.Guid.ToString().ToUpper())'").EnabledState -ne $VMStateTurnedOff)
+        if($Timeout -and $continue)
+        {
+            $TimeoutCounter++
+            if($TimeoutCounter -ge $Timeout)
+            {
+                $false
+                return
+            }
+        }
+    }
+}

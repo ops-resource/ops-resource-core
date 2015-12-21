@@ -121,14 +121,14 @@ switch ($psCmdlet.ParameterSetName)
             -Uri $convertWindowsImageUrl `
             -UseBasicParsing `
             -Method Get `
-            -OutFile $(Join-Path $scriptPath 'Convert-WindowsImage.ps1) `
+            -OutFile $(Join-Path $scriptPath 'Convert-WindowsImage.ps1') `
             @commonParameterSwitches
 
         Invoke-WebRequest `
             -Uri $applyWindowsUpdateUrl `
             -UseBasicParsing `
             -Method Get `
-            -OutFile $(Join-Path $scriptPath 'Apply-WindowsUpdate.ps1) `
+            -OutFile $(Join-Path $scriptPath 'Apply-WindowsUpdate.ps1') `
             @commonParameterSwitches
     }
 }
@@ -152,23 +152,30 @@ Convert-WindowsImage `
 
 # Grab all the update packages for the given OS
 
+$osName = ''
+switch([System.IO.Path]::GetFileNameWithoutExtension($osIsoFile))
+{
+    'win10' {
+        $osName = 'Windows 10'
+    }
 
+    'win2012r2' {
+        $osName = 'Windows Server 2012 R2'
+    }
 
-
-# MAKE SURE WE GET THE OS NAME CORRECT!!!!!
-
-
-
+    'win2016' {
+        $osName = 'Windows Server 2016'
+    }
+}
 
 $applyWindowsUpdatePath `
     -VhdPath $vhdPath `
     -MountDir (Join-Path $tempPath 'VhdMount') `
     -WsusServerName $wsusServer `
     -WsusServerPort 8530 `
-    -WsusTargetGroupName "Windows Server 2012 R2" `
+    -WsusTargetGroupName $osName `
     -WsusContentPath "\\$($wsusServer)\WsusContent" `
     @commonParameterSwitches
-
 
 # Create a new Hyper-V virtual machine based on a VHDX Os disk
 $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
