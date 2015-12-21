@@ -58,13 +58,20 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $hypervHost,
 
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'UseLocalConvertScript')]
-    [string] $convertWindowsImagePath = $(Join-Path $PSScriptRoot 'Convert-WindowsImage.ps1'),
+    [Parameter(Mandatory = $true)]
+    [string] $wsusServer,
 
     [Parameter(Mandatory = $false,
-               ParameterSetName = 'DownloadConvertScript')]
+               ParameterSetName = 'UseLocalConvertScript')]
+    [string] $scriptPath = $PSScriptRoot,
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'DownloadScripts')]
     [string] $convertWindowsImageUrl = 'https://gallery.technet.microsoft.com/scriptcenter/Convert-WindowsImageps1-0fe23a8f/file/59237/7/Convert-WindowsImage.ps1',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'DownloadScripts')]
+    [string] $applyWindowsUpdateUrl = 'https://gallery.technet.microsoft.com/Offline-Servicing-of-VHDs-df776bda/file/104350/1/Apply-WindowsUpdate.ps1',
 
     [Parameter(Mandatory = $true)]
     [string] $tempPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString()))
@@ -77,11 +84,12 @@ Write-Verbose "New-StandardVhdFromWindowsIso - vhdPath = $vhdPath"
 switch ($psCmdlet.ParameterSetName)
 {
     'UseLocalConvertScript' {
-        Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImagePath = $convertWindowsImagePath"
+        Write-Verbose "New-StandardVhdFromWindowsIso - scriptPath = $scriptPath"
     }
 
-    'DownloadConvertScript' {
+    'DownloadScripts' {
         Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImageUrl = $convertWindowsImageUrl"
+        Write-Verbose "New-StandardVhdFromWindowsIso - applyWindowsUpdateUrl = $applyWindowsUpdateUrl"
         Write-Verbose "New-StandardVhdFromWindowsIso - tempPath = $tempPath"
     }
 }
@@ -104,43 +112,29 @@ if (-not (Test-Path $tempPath))
     New-Item -Path $tempPath -ItemType Directory | Out-Null
 }
 
-if ($psCmdLet.ParameterSetName -eq 'DownloadConvertScript')
+switch ($psCmdlet.ParameterSetName)
 {
-    $convertWindowsImagePath = Join-Path $tempPath 'Convert-WindowsImage.ps1'
-    Invoke-WebRequest `
-        -Uri $convertWindowsImageUrl `
-        -UseBasicParsing `
-        -Method Get `
-        -OutFile $convertWindowsImagePath `
-        @commonParameterSwitches
+    'DownloadScripts' {
+        $scriptPath = $tempPath
+
+        Invoke-WebRequest `
+            -Uri $convertWindowsImageUrl `
+            -UseBasicParsing `
+            -Method Get `
+            -OutFile $(Join-Path $scriptPath 'Convert-WindowsImage.ps1) `
+            @commonParameterSwitches
+
+        Invoke-WebRequest `
+            -Uri $applyWindowsUpdateUrl `
+            -UseBasicParsing `
+            -Method Get `
+            -OutFile $(Join-Path $scriptPath 'Apply-WindowsUpdate.ps1) `
+            @commonParameterSwitches
+    }
 }
 
-# Grab all the update packages for the given OS
-$patchDirectory = Join-Path $tempPath 'patches'
-if (-not (Test-Path $patchDirectory))
-{
-    New-Item -Path $patchDirectory -ItemType Directory | Out-Null
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+$convertWindowsImagePath = Join-Path $scriptPath 'Convert-WindowsImage.ps1'
+$applyWindowsUpdatePath = Join-Path $scriptPath 'Apply-WindowsUpdate.ps1'
 
 . $convertWindowsImagePath
 Convert-WindowsImage `
@@ -155,6 +149,26 @@ Convert-WindowsImage `
     -Package $patchDirectory `
     -UnattendPath $unattendPath `
     @commonParameterSwitches
+
+# Grab all the update packages for the given OS
+
+
+
+
+# MAKE SURE WE GET THE OS NAME CORRECT!!!!!
+
+
+
+
+$applyWindowsUpdatePath `
+    -VhdPath $vhdPath `
+    -MountDir (Join-Path $tempPath 'VhdMount') `
+    -WsusServerName $wsusServer `
+    -WsusServerPort 8530 `
+    -WsusTargetGroupName "Windows Server 2012 R2" `
+    -WsusContentPath "\\$($wsusServer)\WsusContent" `
+    @commonParameterSwitches
+
 
 # Create a new Hyper-V virtual machine based on a VHDX Os disk
 $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
@@ -336,23 +350,11 @@ try
     Remove-Item -Path "$($driveLetter):\unattend.xml" -Force -Verbose
 
     # Clean up all the user profiles except for the default one
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    $userProfileDirectories = Get-ChildItem -Path "$($driveLetter):\Users\*" -Directory -Exclude 'Default', 'Public'
+    foreach($userProfileDirectory in $userProfileDirectories)
+    {
+        Remove-Item -Path $userProfileDirectory.FullName -Recurse -Force @commonParameterSwitches
+    }
 
     # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
     # but saves a considerable amount of disk space.
