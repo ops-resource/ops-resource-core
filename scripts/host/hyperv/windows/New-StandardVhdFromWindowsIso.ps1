@@ -24,19 +24,44 @@
     The full path to the unattended file that contains the parameters for an unattended setup.
 
 
+    .PARAMETER machineName
+
+    The name of the machine that will be created.
+
+
+    .PARAMETER localAdminCredential
+
+    The credential for the local administrator on the new machine.
+
+
     .PARAMETER vhdPath
 
     The full path to where the VHDX file should be output.
 
 
-    .PARAMETER convertWindowsImagePath
+    .PARAMETER hypervHost
 
-    The full path to the Convert-WindowsImage script on the local disk.
+    The name of the Hyper-V host machine on which a temporary VM can be created.
+
+
+    .PARAMETER scriptPath
+
+    The full path to the directory that contains the Convert-WindowsImage and the Apply-WindowsUpdate scripts.
 
 
     .PARAMETER convertWindowsImageUrl
 
     The URL from where the Convert-WindowsImage script can be downloaded.
+
+
+    .PARAMETER applyWindowsUpdateUrl
+
+    The URL from where the Apply-WindowsUpdate script can be downloaded.
+
+
+    .PARAMETER tempPath
+
+    The full path to the directory in which temporary files can be stored.
 #>
 [CmdletBinding()]
 param(
@@ -51,6 +76,9 @@ param(
 
     [Parameter(Mandatory = $true)]
     [string] $machineName,
+
+    [Parameter(Mandatory = $true)]
+    [PSCredential] $localAdminCredential,
 
     [Parameter(Mandatory = $true)]
     [string] $vhdPath,
@@ -116,25 +144,30 @@ switch ($psCmdlet.ParameterSetName)
 {
     'DownloadScripts' {
         $scriptPath = $tempPath
-
-        Invoke-WebRequest `
-            -Uri $convertWindowsImageUrl `
-            -UseBasicParsing `
-            -Method Get `
-            -OutFile $(Join-Path $scriptPath 'Convert-WindowsImage.ps1') `
-            @commonParameterSwitches
-
-        Invoke-WebRequest `
-            -Uri $applyWindowsUpdateUrl `
-            -UseBasicParsing `
-            -Method Get `
-            -OutFile $(Join-Path $scriptPath 'Apply-WindowsUpdate.ps1') `
-            @commonParameterSwitches
     }
 }
 
 $convertWindowsImagePath = Join-Path $scriptPath 'Convert-WindowsImage.ps1'
+if (-not (Test-Path $convertWindowsImagePath))
+{
+    Invoke-WebRequest `
+        -Uri $convertWindowsImageUrl `
+        -UseBasicParsing `
+        -Method Get `
+        -OutFile $convertWindowsImagePath `
+        @commonParameterSwitches
+}
+
 $applyWindowsUpdatePath = Join-Path $scriptPath 'Apply-WindowsUpdate.ps1'
+if (-not (Test-Path $applyWindowsUpdatePath))
+{
+    Invoke-WebRequest `
+        -Uri $applyWindowsUpdateUrl `
+        -UseBasicParsing `
+        -Method Get `
+        -OutFile $(Join-Path $scriptPath 'Apply-WindowsUpdate.ps1') `
+        @commonParameterSwitches
+}
 
 . $convertWindowsImagePath
 Convert-WindowsImage `
@@ -178,11 +211,12 @@ $applyWindowsUpdatePath `
     @commonParameterSwitches
 
 # Create a new Hyper-V virtual machine based on a VHDX Os disk
-$vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
 if ((Get-VM -ComputerName $hypervHost | Where-Object { $_.Name -eq $machineName}).Count -gt 0)
 {
     Stop-VM $machineName -ComputerName $hypervHost -TurnOff -Confirm:$false -Passthru | Remove-VM -ComputerName $hypervHost -Force -Confirm:$false
 }
+
+$vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
 
 New-HypervVm `
     -hypervHost $hypervHost `
@@ -198,70 +232,77 @@ Start-VMAndWaitForGuestOSToBeStarted `
 
 # The guest OS may be up and running, but that doesn't mean we can connect to the
 # machine through powershell remoting, so ...
-Wait-WinRM `
+$timeOutInSeconds = 900
+$waitResult = Wait-WinRM `
     -computerName $machineName `
+    -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
-# Make sure it's up ...
-
-
-
-
-
-
+if (-not $waitResult)
+{
+    throw "Waiting for $machineName to start past the given timeout of $timeOutInSeconds"
+}
 
 # Reboot the machine so that all updates are properly installed
-Restart-Computer -ComputerName $machineName -Wait -For Powershell -Timeout 300 -Delay 2
+Restart-Computer -ComputerName $machineName -Wait -For Powershell -Timeout $timeOutInSeconds -Delay 5
 
-try
-{
-    # Because the machine isn't on the domain we won't be able to remote into it easily
-    # Neither machine trusts the other one, so we'll have to add the new machine to the
-    # trustedhosts list
+# Because the machine isn't on the domain we won't be able to remote into it easily
+# Neither machine trusts the other one
+# In this case we assume that the machine has been added to the trusted host list
+#
+# The WinRM service on the VM should be up. If it's not we're doomed anyway.
+$vmSession = New-PSSession `
+    -computerName $machineName `
+    -credential $localAdminCredential `
+    @commonParameterSwitches
 
+# sysprep
+# Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
+# run (i.e. it exits without doing any work). So this needs to be done from the local machine
+# that is about to be sysprepped.
+$cmd = 'Write-Output "Executing $sysPrepScript on VM"; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:"c:\unattend.xml"'
+$sysprepCmd = Join-Path $tempPath 'sysprep.ps1'
 
+$remoteDirectory = "c:\sysprep"
+Set-Content -Value $cmd -Path $sysprepCmd
+Copy-FilesToRemoteMachine -session $vmSession -remoteDirectory $remoteDirectory -localDirectory $tempDir
 
+Write-Verbose "Starting sysprep ..."
+Invoke-Command `
+    -Session $vmSession `
+    -ArgumentList @( (Join-Path $remoteDirectory (Split-Path -Leaf $sysprepCmd)) ) `
+    -ScriptBlock {
+        param(
+            [string] $sysPrepScript = ''
+        )
 
+        # Clean up unattend file if it is there
+        if (Test-Path "$ENV:SystemDrive\Unattend.xml")
+        {
+            Remove-Item -Force -Verbose "$ENV:SystemDrive\Unattend.xml"
+        }
 
+        # Clean up output file from the windows image convert script if it is there
+        if (Test-Path "$ENV:SystemDrive\Convert-WindowsImageInfo.txt")
+        {
+            Remove-Item -Force -Verbose "$ENV:SystemDrive\Convert-WindowsImageInfo.txt"
+        }
 
-
-
-
-    # The WinRM service on the VM should be up. If it's not we're doomed anyway.
-    $vmSession = New-Session -computerName $machineName @commonParameterSwitches
-
-    # sysprep
-    # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
-    # run (i.e. it exits without doing any work). So this needs to be done from the local machine
-    # that is about to be sysprepped.
-    $cmd = 'Write-Output "Executing $sysPrepScript on VM"; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:"c:\unattend.xml"'
-    $sysprepCmd = Join-Path $tempPath 'sysprep.ps1'
-
-    $remoteDirectory = "c:\sysprep"
-    Set-Content -Value $cmd -Path $sysprepCmd
-    Copy-FilesToRemoteMachine -session $vmSession -remoteDirectory $remoteDirectory -localDirectory $tempDir
-
-    Write-Verbose "Starting sysprep ..."
-    Invoke-Command `
-        -Session $vmSession `
-        -ArgumentList @( (Join-Path $remoteDirectory (Split-Path -Leaf $sysprepCmd)) ) `
-        -ScriptBlock {
-            param(
-                [string] $sysPrepScript = ''
-            )
-
-            # Clean up unattend file if it is there
-            if (Test-Path "$ENV:SystemDrive\Unattend.xml")
+        # Remove Unattend entries from the autorun key if they exist
+        foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
+        {
+            if ($regvalue -like "Unattend*")
             {
-                Remove-Item -Force -Verbose "$ENV:SystemDrive\Unattend.xml"
+                # could be multiple unattend* entries
+                foreach ($unattendvalue in $regvalue)
+                {
+                    Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue  -Verbose
+                }
             }
+        }
 
-            # Clean up output file from the windows image convert script if it is there
-            if (Test-Path "$ENV:SystemDrive\Convert-WindowsImageInfo.txt")
-            {
-                Remove-Item -Force -Verbose "$ENV:SystemDrive\Convert-WindowsImageInfo.txt"
-            }
-
+        # logon script
+        $logonScript = {
             # Remove Unattend entries from the autorun key if they exist
             foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
             {
@@ -270,76 +311,48 @@ try
                     # could be multiple unattend* entries
                     foreach ($unattendvalue in $regvalue)
                     {
-                        Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue  -Verbose
+                        Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue -Verbose
                     }
                 }
             }
 
-            # logon script
-            $logonScript = {
-                # Remove Unattend entries from the autorun key if they exist
-                foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
-                {
-                    if ($regvalue -like "Unattend*")
-                    {
-                        # could be multiple unattend* entries
-                        foreach ($unattendvalue in $regvalue)
-                        {
-                            Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue -Verbose
-                        }
-                    }
-                }
-
-                # Clean up unattend file if it is there
-                if (Test-Path "$ENV:SystemDrive\Unattend.xml")
-                {
-                    Remove-Item -Force "$ENV:SystemDrive\Unattend.xml";
-                }
-
-                # Clean up logon file if it is there
-                if (Test-Path "$ENV:SystemDrive\Logon.ps1")
-                {
-                    Remove-Item -Force "$ENV:SystemDrive\Logon.ps1";
-                }
-
-                # Clean up temp
-                if(Test-Path "$ENV:SystemDrive\Temp")
-                {
-                    Remove-Item -Force -Recurse "$ENV:SystemDrive\Temp";
-                }
+            # Clean up unattend file if it is there
+            if (Test-Path "$ENV:SystemDrive\Unattend.xml")
+            {
+                Remove-Item -Force "$ENV:SystemDrive\Unattend.xml";
             }
 
-            $logonScript | Out-String | Out-File -FilePath "$($driveLetter):\Logon.ps1"
+            # Clean up logon file if it is there
+            if (Test-Path "$ENV:SystemDrive\Logon.ps1")
+            {
+                Remove-Item -Force "$ENV:SystemDrive\Logon.ps1";
+            }
 
-            & "$sysPrepScript"
-        } `
-        -Verbose `
-        -ErrorAction Continue
-}
-finally
-{
-    # Remove the machine from the trustedhosts list
+            # Clean up temp
+            if(Test-Path "$ENV:SystemDrive\Temp")
+            {
+                Remove-Item -Force -Recurse "$ENV:SystemDrive\Temp";
+            }
+        }
 
+        $logonScript | Out-String | Out-File -FilePath "$($driveLetter):\Logon.ps1"
 
-
-
-
-
-
-
-
-
-}
+        & "$sysPrepScript"
+    } `
+    -Verbose `
+    -ErrorAction Continue
 
 # Wait till machine is stopped
+$waitResult = Wait-VmStopped `
+    -vmName $machineName `
+    -vmHost $hypervHost `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
 
-
-
-
-
-
-
-
+if (-not $waitResult)
+{
+    throw "VM $machineName failed to shut down within $timeOutInSeconds seconds."
+}
 
 # Delete VM but keep VHDX
 Remove-VM `

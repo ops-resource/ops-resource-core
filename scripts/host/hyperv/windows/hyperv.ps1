@@ -555,27 +555,83 @@ function Start-VMAndWaitForGuestOSToBeStarted
     until ((Get-VMIntegrationService -VMName $vmName -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
 }
 
-function Wait-VmShutdown
+<#
+    .SYNOPSIS
+
+    Waits for a Hyper-V VM to be in the off state.
+
+
+    .DESCRIPTION
+
+    The Wait-VmStopped function waits for a Hyper-V VM to enter the off state.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER vmHost
+
+    The name of the VM host machine.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for VM to enter
+    the off state.
+#>
+function Wait-VmStopped
 {
     [CmdletBinding()]
     param(
-        [string] $vmName
+        [string] $vmName,
+
+        [string] $vmHost,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 900 #seconds
     )
 
-    $TimeoutCounter = 0
-    $continue = $true
-    while ($continue)
+    Write-Verbose "Wait-VmStopped - vmName = $vmName"
+    Write-Verbose "Wait-VmStopped - vmHost = $vmHost"
+    Write-Verbose "Wait-VmStopped - timeOutInSeconds = $timeOutInSeconds"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    process
     {
-        Start-Sleep -Seconds 1
-        $continue = ((Get-WmiObject -Namespace root\virtualization\v2 -Class Msvm_ComputerSystem -ComputerName $VMObject.ComputerName -Filter "Name = '$($VMObject.VMId.Guid.ToString().ToUpper())'").EnabledState -ne $VMStateTurnedOff)
-        if($Timeout -and $continue)
+        $endTime = (Get-Date) + (New-TimeSpan -Seconds $timeOutInSeconds)
+        while ($true)
         {
-            $TimeoutCounter++
-            if($TimeoutCounter -ge $Timeout)
+            if ((Get-Date) -ge $endTime)
             {
-                $false
-                return
+                return $false
             }
+
+            try
+            {
+                $vm = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
+                if ($vm.State -eq 'Off')
+                {
+                    return $true
+                }
+            }
+            catch
+            {
+                # Ignore everything ...
+            }
+
+            Start-Sleep -seconds 3
         }
     }
 }
