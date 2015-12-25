@@ -74,7 +74,7 @@ function New-HypervVm
 {
     [CmdletBinding()]
     [OutputType([void])]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
     Param
     (
         [Parameter(Mandatory = $false)]
@@ -248,8 +248,8 @@ function New-HypervVm
 function New-HypervVmOnDomain
 {
     [CmdletBinding()]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUseShouldProcessForStateChangingFunctions")]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute("PSUsePSCredentialType")]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUsePSCredentialType', '')]
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -527,11 +527,16 @@ function Start-VMAndWaitForGuestOSToBeStarted
     [CmdLetBinding()]
     param(
         [string] $vmName,
-        [string] $vmHost
+        [string] $vmHost,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 900 #seconds
     )
 
     Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmName = $vmName"
     Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmHost = $vmHost"
+    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - timeOutInSeconds = $timeOutInSeconds"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -548,11 +553,22 @@ function Start-VMAndWaitForGuestOSToBeStarted
         -ComputerName $vmHost `
         @commonParameterSwitches
 
+    $startTime = Get-Date
+    $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
     do
     {
-        Start-Sleep -milliseconds 100
+        if ((Get-Date) -ge $endTime)
+        {
+            Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
+            return $false
+        }
+
+        Write-Verbose "Waiting for VM $vmName to be ready for use [total wait time so far: $((Get-Date) - $startTime)] ..."
+        Start-Sleep -seconds 5
     }
     until ((Get-VMIntegrationService -VMName $vmName -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
+
+    return $true
 }
 
 <#
@@ -610,14 +626,17 @@ function Wait-VmStopped
 
     process
     {
-        $endTime = (Get-Date) + (New-TimeSpan -Seconds $timeOutInSeconds)
+        $startTime = Get-Date
+        $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
         while ($true)
         {
             if ((Get-Date) -ge $endTime)
             {
+                Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
                 return $false
             }
 
+            Write-Verbose "Waiting for VM $vmName to shut down [total wait time so far: $((Get-Date) - $startTime)] ..."
             try
             {
                 $vm = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
@@ -628,10 +647,10 @@ function Wait-VmStopped
             }
             catch
             {
-                # Ignore everything ...
+                Write-Verbose "Could not connect to $vmName. Error was $($_.Exception.Message)"
             }
 
-            Start-Sleep -seconds 3
+            Start-Sleep -seconds 5
         }
     }
 }

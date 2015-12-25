@@ -581,8 +581,11 @@ function Wait-WinRM
     [cmdletbinding()]
     param
     (
-        [Parameter(ValueFromPipeline=$true)]
+        [Parameter(ParameterSetName = 'FromName')]
         [string] $computerName,
+
+        [Parameter(ParameterSetName = 'FromIP')]
+        [string] $ipAddress,
 
         [Parameter()]
         [System.Management.Automation.PSCredential] $credential = $null,
@@ -592,23 +595,38 @@ function Wait-WinRM
         [int] $timeOutInSeconds = 900 #seconds
     )
 
+    $name = ''
+    switch ($psCmdlet.ParameterSetName)
+    {
+        'FromName' {
+            $name = $computerName
+        }
+
+        'FromIP' {
+            $name = $ipAddress
+        }
+    }
+
     process
     {
-        $endTime = (Get-Date) + (New-TimeSpan -Seconds $timeOutInSeconds)
+        $startTime = Get-Date
+        $endTime = ($startTime) + (New-TimeSpan -Seconds $timeOutInSeconds)
         while ($true)
         {
             if ((Get-Date) -ge $endTime)
             {
+                Write-Verbose "Failed to connect to $name in the alotted time of $timeOutInSeconds"
                 return $false
             }
 
+            Write-Verbose "Trying to connect to $name [total wait time so far: $((Get-Date) - $startTime)] ..."
             $inverr = $null
             try
             {
                 if ($credential)
                 {
                     Invoke-Command `
-                        -ComputerName $computerName `
+                        -ComputerName $name `
                         -ScriptBlock { Get-Process } `
                         -Credential $credential `
                         -ErrorAction SilentlyContinue `
@@ -617,7 +635,7 @@ function Wait-WinRM
                 else
                 {
                     Invoke-Command `
-                        -ComputerName $computerName `
+                        -ComputerName $name `
                         -ScriptBlock { Get-Process } `
                         -ErrorAction SilentlyContinue `
                         -ErrorVariable inverr | out-null
@@ -631,9 +649,10 @@ function Wait-WinRM
             catch
             {
                 # Ignore everything ...
+                Write-Verbose "Could not connect to $name. Error was $($_.Exception.Message)"
             }
 
-            Start-Sleep -seconds 3
+            Start-Sleep -seconds 5
         }
     }
 }

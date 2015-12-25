@@ -44,6 +44,16 @@
     The name of the Hyper-V host machine on which a temporary VM can be created.
 
 
+    .PARAMETER wsusServer
+
+    The name of the WSUS server that can be used to download updates from.
+
+
+    .PARAMETER wsusTargetGroup
+
+    The name of the WSUS computer target group that should be used to determine which updates should be installed.
+
+
     .PARAMETER scriptPath
 
     The full path to the directory that contains the Convert-WindowsImage and the Apply-WindowsUpdate scripts.
@@ -87,18 +97,21 @@ param(
     [string] $hypervHost,
 
     [Parameter(Mandatory = $true)]
+    [string] $staticMacAddress = '00155d026501',
+
+    [Parameter(Mandatory = $true)]
     [string] $wsusServer,
 
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'UseLocalConvertScript')]
+    [Parameter(Mandatory = $true)]
+    [string] $wsusTargetGroup,
+
+    [Parameter(Mandatory = $false)]
     [string] $scriptPath = $PSScriptRoot,
 
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'DownloadScripts')]
+    [Parameter(Mandatory = $false)]
     [string] $convertWindowsImageUrl = 'https://gallery.technet.microsoft.com/scriptcenter/Convert-WindowsImageps1-0fe23a8f/file/59237/7/Convert-WindowsImage.ps1',
 
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'DownloadScripts')]
+    [Parameter(Mandatory = $false)]
     [string] $applyWindowsUpdateUrl = 'https://gallery.technet.microsoft.com/Offline-Servicing-of-VHDs-df776bda/file/104350/1/Apply-WindowsUpdate.ps1',
 
     [Parameter(Mandatory = $true)]
@@ -106,21 +119,17 @@ param(
 )
 
 Write-Verbose "New-StandardVhdFromWindowsIso - osIsoFile = $osIsoFile"
+Write-Verbose "New-StandardVhdFromWindowsIso - osEdition = $osEdition"
 Write-Verbose "New-StandardVhdFromWindowsIso - unattendPath = $unattendPath"
+Write-Verbose "New-StandardVhdFromWindowsIso - machineName = $machineName"
 Write-Verbose "New-StandardVhdFromWindowsIso - vhdPath = $vhdPath"
-
-switch ($psCmdlet.ParameterSetName)
-{
-    'UseLocalConvertScript' {
-        Write-Verbose "New-StandardVhdFromWindowsIso - scriptPath = $scriptPath"
-    }
-
-    'DownloadScripts' {
-        Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImageUrl = $convertWindowsImageUrl"
-        Write-Verbose "New-StandardVhdFromWindowsIso - applyWindowsUpdateUrl = $applyWindowsUpdateUrl"
-        Write-Verbose "New-StandardVhdFromWindowsIso - tempPath = $tempPath"
-    }
-}
+Write-Verbose "New-StandardVhdFromWindowsIso - hypervHost = $hypervHost"
+Write-Verbose "New-StandardVhdFromWindowsIso - wsusServer = $wsusServer"
+Write-Verbose "New-StandardVhdFromWindowsIso - wsusTargetGroup = $wsusTargetGroup"
+Write-Verbose "New-StandardVhdFromWindowsIso - scriptPath = $scriptPath"
+Write-Verbose "New-StandardVhdFromWindowsIso - convertWindowsImageUrl = $convertWindowsImageUrl"
+Write-Verbose "New-StandardVhdFromWindowsIso - applyWindowsUpdateUrl = $applyWindowsUpdateUrl"
+Write-Verbose "New-StandardVhdFromWindowsIso - tempPath = $tempPath"
 
 $ErrorActionPreference = 'Stop'
 
@@ -138,13 +147,6 @@ $commonParameterSwitches =
 if (-not (Test-Path $tempPath))
 {
     New-Item -Path $tempPath -ItemType Directory | Out-Null
-}
-
-switch ($psCmdlet.ParameterSetName)
-{
-    'DownloadScripts' {
-        $scriptPath = $tempPath
-    }
 }
 
 $convertWindowsImagePath = Join-Path $scriptPath 'Convert-WindowsImage.ps1'
@@ -179,34 +181,22 @@ Convert-WindowsImage `
     -VHDType 'Dynamic' `
     -VHDPartitionStyle 'GPT' `
     -BCDinVHD 'VirtualMachine' `
-    -Package $patchDirectory `
     -UnattendPath $unattendPath `
     @commonParameterSwitches
 
 # Grab all the update packages for the given OS
-
-$osName = ''
-switch([System.IO.Path]::GetFileNameWithoutExtension($osIsoFile))
+$mountPath = Join-Path $tempPath 'VhdMount'
+if (-not (Test-Path $mountPath))
 {
-    'win10' {
-        $osName = 'Windows 10'
-    }
-
-    'win2012r2' {
-        $osName = 'Windows Server 2012 R2'
-    }
-
-    'win2016' {
-        $osName = 'Windows Server 2016'
-    }
+    New-Item -Path $mountPath -ItemType Directory | Out-Null
 }
 
-$applyWindowsUpdatePath `
+& $applyWindowsUpdatePath `
     -VhdPath $vhdPath `
-    -MountDir (Join-Path $tempPath 'VhdMount') `
+    -MountDir $mountPath `
     -WsusServerName $wsusServer `
     -WsusServerPort 8530 `
-    -WsusTargetGroupName $osName `
+    -WsusTargetGroupName $wsusTargetGroup `
     -WsusContentPath "\\$($wsusServer)\WsusContent" `
     @commonParameterSwitches
 
@@ -225,17 +215,16 @@ New-HypervVm `
     -vmNetworkSwitch $vmSwitch.Name `
     @commonParameterSwitches
 
-Start-VMAndWaitForGuestOSToBeStarted `
+# Ensure that the VM has a specific Mac address so that it will get a known IP address
+# That IP address will be added to the trustedhosts list so that we can remote into
+# the machine without having it be attached to the domain.
+Get-VM -Name $machineName |
+    Get-VMNetworkAdapter |
+    Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress
+
+$waitResult = Start-VMAndWaitForGuestOSToBeStarted `
     -vmName $machineName `
     -vmHost $hypervHost `
-    @commonParameterSwitches
-
-# The guest OS may be up and running, but that doesn't mean we can connect to the
-# machine through powershell remoting, so ...
-$timeOutInSeconds = 900
-$waitResult = Wait-WinRM `
-    -computerName $machineName `
-    -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
 if (-not $waitResult)
@@ -243,8 +232,25 @@ if (-not $waitResult)
     throw "Waiting for $machineName to start past the given timeout of $timeOutInSeconds"
 }
 
-# Reboot the machine so that all updates are properly installed
-Restart-Computer -ComputerName $machineName -Wait -For Powershell -Timeout $timeOutInSeconds -Delay 5
+# Get the IPv4 address for the VM
+$ipAddress = Get-VM -Name $machineName -ComputerName $hypervHost |
+    Select-Object -ExpandProperty NetworkAdapters |
+    Select-Object -ExpandProperty IPAddresses |
+    Select-Object -First 1
+
+# The guest OS may be up and running, but that doesn't mean we can connect to the
+# machine through powershell remoting, so ...
+$timeOutInSeconds = 900
+$waitResult = Wait-WinRM `
+    -ipAddress $ipAddress `
+    -credential $localAdminCredential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+if (-not $waitResult)
+{
+    throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
+}
 
 # Because the machine isn't on the domain we won't be able to remote into it easily
 # Neither machine trusts the other one
@@ -252,7 +258,30 @@ Restart-Computer -ComputerName $machineName -Wait -For Powershell -Timeout $time
 #
 # The WinRM service on the VM should be up. If it's not we're doomed anyway.
 $vmSession = New-PSSession `
-    -computerName $machineName `
+    -computerName $ipAddress `
+    -credential $localAdminCredential `
+    @commonParameterSwitches
+
+# Reboot the machine so that all updates are properly installed
+Invoke-Command `
+    -Session $vmSession `
+    -ScriptBlock { Restart-Computer -Force }
+
+$timeOutInSeconds = 900
+$waitResult = Wait-WinRM `
+    -ipAddress $ipAddress `
+    -credential $localAdminCredential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+if (-not $waitResult)
+{
+    throw "Waiting for $machineName to be restarted has timed out with timeout of $timeOutInSeconds"
+}
+
+# The WinRM service on the VM should be up. If it's not we're doomed anyway.
+$vmSession = New-PSSession `
+    -computerName $ipAddress `
     -credential $localAdminCredential `
     @commonParameterSwitches
 
