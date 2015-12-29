@@ -1,6 +1,42 @@
 <#
     .SYNOPSIS
 
+    Dismounts the VHDX drive from the operating system.
+
+
+    .DESCRIPTION
+
+    The Dismount-Vhdx function dismounts the VHDX drive from the operating system.
+
+
+    .PARAMETER vhdPath
+
+    The full path to the VHDX file that has been mounted.
+#>
+function Dismount-Vhdx
+{
+    [CmdletBinding()]
+    param(
+        [string] $vhdPath
+    )
+
+    Write-Verbose "Dismount-Vhdx - vhdPath = $vhdPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Dismount-DiskImage -ImagePath $vhdPath @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
     Gets the drive letter for the drive with the given drive number
 
 
@@ -28,6 +64,60 @@ function Get-DriveLetter
 
     # The first drive is C which is ASCII 67
     return [char]($driveNumber + 67)
+}
+
+<#
+    .SYNOPSIS
+
+    Mounts the VHDX drive in the operating system and returns the drive letter for the new drive.
+
+
+    .DESCRIPTION
+
+    The Mount-Vhdx function mounts the VHDX drive in the operating system and returns the
+    drive letter for the new drive.
+
+
+    .PARAMETER vhdPath
+
+    The full path to the VHDX file that has been mounted.
+
+
+    .OUTPUTS
+
+    The drive letter for the newly mounted drive.
+#>
+function Mount-Vhdx
+{
+    [CmdletBinding()]
+    param(
+        [string] $vhdPath
+    )
+
+    Write-Verbose "Mount-Vhdx - vhdPath = $vhdPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    # store all the known drive letters because we can't directly get the drive letter
+    # from the mounting operation so we have to compare the before and after pictures.
+    $before = (Get-Volume).DriveLetter
+
+    # Mounting the drive using Mount-DiskImage instead of Mount-Vhd because for the latter we need Hyper-V to be installed
+    # which we can't do on a VM
+    Mount-DiskImage -ImagePath $vhdPath -StorageType VHDX | Out-Null
+
+    # Get all the current drive letters. The only new one should be the drive we just mounted
+    $after = (Get-Volume).DriveLetter
+    $driveLetter = compare $before $after -Passthru
+
+    return $driveLetter
 }
 
 <#
@@ -158,7 +248,7 @@ function New-HypervVm
             @commonParameterSwitches
     }
 
-     $vm |
+     $vm = $vm |
         Set-Vm `
             -ProcessorCount 1 `
             -Confirm:$false `
@@ -187,6 +277,8 @@ function New-HypervVm
             -VM $vm `
             @commonParameterSwitches
     }
+
+    return $vm
 }
 
 
@@ -465,14 +557,14 @@ if(Test-Path "$ENV:SystemDrive\Temp")
 
     try
     {
-        $driveLetter = (Mount-VHD -Path $vhdxPath -ReadOnly -Passthru | Get-Disk | Get-Partition | Get-Volume).DriveLetter
+        $driveLetter = Mount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
 
         Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
         Set-Content -Path "$($driveLetter):\logon.ps1" -Value $logonContent
     }
     finally
     {
-        Dismount-VHD -Path $vhdxPath @commonParameterSwitches
+        Dismount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
     }
 
     $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
@@ -482,7 +574,7 @@ if(Test-Path "$ENV:SystemDrive\Temp")
         -vmName $machineName `
         -osVhdPath $vhdxPath `
         -vmAdditionalDiskSizesInGb $additionalDrives `
-        -vmNetworkSwitch $vmNetwork `
+        -vmNetworkSwitch $vmSwitch.Name `
         -vmStoragePath '' `
         -vhdStoragePath '' `
         @commonParameterSwitches
