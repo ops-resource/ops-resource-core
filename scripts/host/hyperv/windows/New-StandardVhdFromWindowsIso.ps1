@@ -441,9 +441,7 @@ function New-VmFromVhdAndWaitForBoot
     # Ensure that the VM has a specific Mac address so that it will get a known IP address
     # That IP address will be added to the trustedhosts list so that we can remote into
     # the machine without having it be attached to the domain.
-    $vm |
-        Get-VMNetworkAdapter -ComputerName $hypervHost |
-        Set-VMNetworkAdapter -ComputerName $hypervHost -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
 
     $waitResult = Start-VMAndWaitForGuestOSToBeStarted `
         -vmName $machineName `
@@ -599,6 +597,8 @@ New-VmFromVhdAndWaitForBoot `
     -staticMacAddress $staticMacAddress `
     -bootWaitTimeout $timeOutInSeconds `
     @commonParameterSwitches
+
+
 
 Restart-MachineToApplyPatches `
     -machineName $machineName `
