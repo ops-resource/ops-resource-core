@@ -140,35 +140,6 @@ $commonParameterSwitches =
 
 # -------------------------- Script functions --------------------------------
 
-function Get-IPAddressForVm
-{
-    [CmdletBinding()]
-    param(
-        [string] $machineName,
-        [string] $hypervHost
-    )
-
-    Write-Verbose "Get-IPAddressForVm - machineName = $machineName"
-    Write-Verbose "Get-IPAddressForVm - hypervHost = $hypervHost"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    # Get the IPv4 address for the VM
-    $ipAddress = Get-VM -Name $machineName -ComputerName $hypervHost |
-        Select-Object -ExpandProperty NetworkAdapters |
-        Select-Object -ExpandProperty IPAddresses |
-        Select-Object -First 1
-
-    return $ipAddress
-}
-
 function Invoke-Sysprep
 {
     [CmdletBinding()]
@@ -195,21 +166,32 @@ function Invoke-Sysprep
             ErrorAction = 'Stop'
         }
 
-    $ipAddress = Get-IPAddressForVm -machineName $machineName -hypervHost $hypervHost @commonParameterSwitches
+    $ipAddress = Wait-VmIPAddress `
+        -vmName $machineName `
+        -hypervHost $hypervHost `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+    {
+        throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+    }
 
+    # Because the machine isn't on the domain we won't be able to remote into it easily
+    # Neither machine trusts the other one
+    # In this case we assume that the machine IP has been added to the trusted host list
+    #
     # Wait for the machine to come back up so that we can sysprep it
     $waitResult = Wait-WinRM `
         -ipAddress $ipAddress `
         -credential $localAdminCredential `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
-
     if (-not $waitResult)
     {
         throw "Waiting for $machineName to be restarted has timed out with timeout of $timeOutInSeconds"
     }
 
-    # The WinRM service on the VM should be up. If it's not we're doomed anyway.
+    Write-Verbose "Wait-WinRM completed successfully, making connection to machine $ipAddress ..."
     $vmSession = New-PSSession `
         -computerName $ipAddress `
         -credential $localAdminCredential `
@@ -294,18 +276,18 @@ function Invoke-Sysprep
                 }
 
                 # Clean up temp
-                if(Test-Path "$ENV:SystemDrive\Temp")
+                if (Test-Path "$ENV:SystemDrive\Temp")
                 {
                     Remove-Item -Force -Recurse "$ENV:SystemDrive\Temp";
                 }
 
-                if(Test-Path "$ENV:SystemDrive\Sysprep")
+                if (Test-Path "$ENV:SystemDrive\Sysprep")
                 {
                     Remove-Item -Force -Recurse "$ENV:SystemDrive\Sysprep";
                 }
             }
 
-            $logonScript | Out-String | Out-File -FilePath "$($driveLetter):\Logon.ps1"
+            $logonScript | Out-String | Out-File -FilePath "$ENV:SystemDrive\Logon.ps1"
 
             & "$sysPrepScript"
         } `
@@ -315,7 +297,7 @@ function Invoke-Sysprep
     # Wait till machine is stopped
     $waitResult = Wait-VmStopped `
         -vmName $machineName `
-        -vmHost $hypervHost `
+        -hypervHost $hypervHost `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
 
@@ -443,9 +425,10 @@ function New-VmFromVhdAndWaitForBoot
     # the machine without having it be attached to the domain.
     $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
 
-    $waitResult = Start-VMAndWaitForGuestOSToBeStarted `
+    Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+    $waitResult = Wait-VmGuestOS `
         -vmName $machineName `
-        -vmHost $hypervHost `
+        -hypervHost $hypervHost `
         -timeOutInSeconds $bootWaitTimeout `
         @commonParameterSwitches
 
@@ -479,7 +462,15 @@ function Restart-MachineToApplyPatches
             ErrorAction = 'Stop'
         }
 
-    $ipAddress = Get-IPAddressForVm -machineName $machineName -hypervHost $hypervHost @commonParameterSwitches
+    $ipAddress = Wait-VmIPAddress `
+        -vmName $machineName `
+        -hypervHost $hypervHost `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+    {
+        throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+    }
 
     # The guest OS may be up and running, but that doesn't mean we can connect to the
     # machine through powershell remoting, so ...
@@ -488,26 +479,22 @@ function Restart-MachineToApplyPatches
         -credential $localAdminCredential `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
-
     if (-not $waitResult)
     {
         throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
     }
 
-    # Because the machine isn't on the domain we won't be able to remote into it easily
-    # Neither machine trusts the other one
-    # In this case we assume that the machine IP has been added to the trusted host list
-    #
-    # The WinRM service on the VM should be up. If it's not we're doomed anyway.
-    $vmSession = New-PSSession `
-        -computerName $ipAddress `
-        -credential $localAdminCredential `
+    # Now that we know we can get into the machine we can invoke commands on the machine, so now
+    # we reboot the machine so that all updates are properly installed
+    Restart-Computer `
+        -ComputerName $ipAddress `
+        -Credential $localAdminCredential `
+        -Force `
+        -Wait `
+        -For PowerShell `
+        -Delay 5 `
+        -Timeout $timeOutInSeconds `
         @commonParameterSwitches
-
-    # Reboot the machine so that all updates are properly installed
-    Invoke-Command `
-        -Session $vmSession `
-        -ScriptBlock { Restart-Computer -Force }
 }
 
 function Update-VhdWithWindowsPatches
@@ -597,8 +584,6 @@ New-VmFromVhdAndWaitForBoot `
     -staticMacAddress $staticMacAddress `
     -bootWaitTimeout $timeOutInSeconds `
     @commonParameterSwitches
-
-
 
 Restart-MachineToApplyPatches `
     -machineName $machineName `

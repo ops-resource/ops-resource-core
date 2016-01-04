@@ -595,6 +595,19 @@ function Wait-WinRM
         [int] $timeOutInSeconds = 900 #seconds
     )
 
+    Write-Verbose "Wait-WinRM - computerName = $computerName"
+    Write-Verbose "Wait-WinRM - ipAddress = $ipAddress"
+    Write-Verbose "Wait-WinRM - credential = $credential"
+    Write-Verbose "Wait-WinRM - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+        }
+
     $name = ''
     switch ($psCmdlet.ParameterSetName)
     {
@@ -611,48 +624,65 @@ function Wait-WinRM
     {
         $startTime = Get-Date
         $endTime = ($startTime) + (New-TimeSpan -Seconds $timeOutInSeconds)
-        while ($true)
+
+        # Ignore all errors because we're expecting a fair few of them if we connect to a machine
+        # that isn't ready for the connection
+        $originalErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try
         {
-            if ((Get-Date) -ge $endTime)
+            while ($true)
             {
-                Write-Verbose "Failed to connect to $name in the alotted time of $timeOutInSeconds"
-                return $false
-            }
-
-            Write-Verbose "Trying to connect to $name [total wait time so far: $((Get-Date) - $startTime)] ..."
-            $inverr = $null
-            try
-            {
-                if ($credential)
+                if ((Get-Date) -ge $endTime)
                 {
-                    Invoke-Command `
-                        -ComputerName $name `
-                        -ScriptBlock { Get-Process } `
-                        -Credential $credential `
-                        -ErrorAction SilentlyContinue `
-                        -ErrorVariable inverr | Out-Null
-                }
-                else
-                {
-                    Invoke-Command `
-                        -ComputerName $name `
-                        -ScriptBlock { Get-Process } `
-                        -ErrorAction SilentlyContinue `
-                        -ErrorVariable inverr | out-null
+                    Write-Verbose "Failed to connect to $name in the alotted time of $timeOutInSeconds"
+                    return $false
                 }
 
-                if ($inverr -eq $null)
+                Write-Verbose "Trying to connect to $name [total wait time so far: $((Get-Date) - $startTime)] ..."
+                $inverr = $null
+                try
                 {
-                    return $true
-                }
-            }
-            catch
-            {
-                # Ignore everything ...
-                Write-Verbose "Could not connect to $name. Error was $($_.Exception.Message)"
-            }
+                    if ($credential)
+                    {
+                        Invoke-Command `
+                            -ComputerName $name `
+                            -ScriptBlock { Get-Process } `
+                            -Credential $credential `
+                            -ErrorAction SilentlyContinue `
+                            -ErrorVariable inverr `
+                            @commonParameterSwitches | Out-Null
+                    }
+                    else
+                    {
+                        Invoke-Command `
+                            -ComputerName $name `
+                            -ScriptBlock { Get-Process } `
+                            -ErrorAction SilentlyContinue `
+                            -ErrorVariable inverr `
+                            @commonParameterSwitches | Out-Null
+                    }
 
-            Start-Sleep -seconds 5
+                    if ($inverr -eq $null)
+                    {
+                        Write-Verbose "Connection to $name successful."
+                        return $true
+                    }
+                }
+                catch
+                {
+                    # Ignore everything ...
+                    Write-Verbose "Could not connect to $name. Error was $($_.Exception.Message)"
+                }
+
+                Start-Sleep -seconds 5
+            }
         }
+        finally
+        {
+            $ErrorActionPreference = $originalErrorActionPreference
+        }
+
+        Write-Error "Waiting for $name failed outside the normal failure paths."
     }
 }

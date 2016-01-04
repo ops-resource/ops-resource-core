@@ -69,6 +69,60 @@ function Get-DriveLetter
 <#
     .SYNOPSIS
 
+    Gets the IP address for a given hyper-V VM.
+
+
+    .DESCRIPTION
+
+    The Get-IPAddressForVm function gets the IP address for a given VM.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER hypervHost
+
+    The name of the machine which is the Hyper-V host for the domain.
+
+
+    .OUTPUT
+
+    The letter of the drive.
+#>
+function Get-IPAddressForVm
+{
+    [CmdletBinding()]
+    param(
+        [string] $vmName,
+        [string] $hypervHost
+    )
+
+    Write-Verbose "Get-IPAddressForVm - vmName = $vmName"
+    Write-Verbose "Get-IPAddressForVm - hypervHost = $hypervHost"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    # Get the IPv4 address for the VM
+    $ipAddress = Get-VM -Name $vmName -ComputerName $hypervHost |
+        Select-Object -ExpandProperty NetworkAdapters |
+        Select-Object -ExpandProperty IPAddresses |
+        Select-Object -First 1
+
+    return $ipAddress
+}
+
+<#
+    .SYNOPSIS
+
     Mounts the VHDX drive in the operating system and returns the drive letter for the new drive.
 
 
@@ -293,7 +347,7 @@ function New-HypervVm
     The New-HypervVm function creates a new Hyper-V virtual machine with the provided properties.
 
 
-    .PARAMETER machineName
+    .PARAMETER vmName
 
     The name of the machine that should be created. Will also be used as the name of the VM.
 
@@ -345,7 +399,7 @@ function New-HypervVmOnDomain
     param(
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string] $machineName,
+        [string] $vmName,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -380,7 +434,7 @@ function New-HypervVmOnDomain
         [string] $domainAdministratorPassword
     )
 
-    Write-Verbose "New-HypervVmOnDomain - machineName = $machineName"
+    Write-Verbose "New-HypervVmOnDomain - vmName = $vmName"
     Write-Verbose "New-HypervVmOnDomain - baseVhdx = $baseVhdx"
     Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
     Write-Verbose "New-HypervVmOnDomain - hypervHost = $hypervHost"
@@ -428,7 +482,7 @@ function New-HypervVmOnDomain
                    xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <RegisteredOwner>$registeredOwner</RegisteredOwner>
-            <ComputerName>$machineName</ComputerName>
+            <ComputerName>$vmName</ComputerName>
 
             <!--
                 Set the generic product key for the Win2012 datacenter SKU. This key is only
@@ -552,7 +606,7 @@ if(Test-Path "$ENV:SystemDrive\Temp")
 '@
 
     # Create a copy of the VHDX file and then mount it
-    $vhdxPath = Join-Path $vhdxStoragePath "$($machineName.ToLower()).vhdx"
+    $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
     Copy-Item -Path $baseVhdx -Destination $vhdxPath -Verbose
 
     try
@@ -571,7 +625,7 @@ if(Test-Path "$ENV:SystemDrive\Temp")
 
     New-HypervVm `
         -hypervHost $hypervHost `
-        -vmName $machineName `
+        -vmName $vmName `
         -osVhdPath $vhdxPath `
         -vmAdditionalDiskSizesInGb $additionalDrives `
         -vmNetworkSwitch $vmSwitch.Name `
@@ -579,15 +633,32 @@ if(Test-Path "$ENV:SystemDrive\Temp")
         -vhdStoragePath '' `
         @commonParameterSwitches
 
-    Start-VMAndWaitForGuestOSToBeStarted `
+    Start-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
+
+    $defaultTimeOutInSeconds = 900
+    $waitResult = Wait-VmGuestOS `
         -vmName $vmName `
-        -vmHost $hypervHost `
+        -hypervHost $hypervHost `
+        -timeOutInSeconds $defaultTimeOutInSeconds `
         @commonParameterSwitches
+    if (-not $waitResult)
+    {
+        throw "Waiting for the VM $vmName to start the guest OS time out (timeout: $defaultTimeOutInSeconds seconds)."
+    }
+
+    $ipAddress = Wait-VmIPAddress `
+        -vmName $vmName `
+        -hypervHost $hypervHost `
+        @commonParameterSwitches
+    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+    {
+        throw "Waiting for the VM $vmName to get an IP addres failed with timeout $defaultTimeOutInSeconds seconds."
+    }
 
     # The guest OS may be up and running, but that doesn't mean we can connect to the
     # machine through powershell remoting, so ...
     Wait-WinRM `
-        -computerName $vmName `
+        -computerName  `
         @commonParameterSwitches
 
     # Note that the VM may still not be ready to do work, so we need to something?
@@ -596,13 +667,12 @@ if(Test-Path "$ENV:SystemDrive\Temp")
 <#
     .SYNOPSIS
 
-    Starts a Hyper-V VM and waits for the guest operating system to be started.
+    Waits for the guest operating system to be started.
 
 
     .DESCRIPTION
 
-    The Start-VMAndWaitForGuestOSToBeStarted function starts a Hyper-V VM and waits for the
-    guest operating system to be started.
+    The Wait-VmGuestOS function waits for the guest operating system on a given VM to be started.
 
 
     .PARAMETER vmName
@@ -610,25 +680,36 @@ if(Test-Path "$ENV:SystemDrive\Temp")
     The name of the VM.
 
 
-    .PARAMETER vmHost
+    .PARAMETER hypervHost
 
     The name of the VM host machine.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The amount of time in seconds the function should wait for the guest OS to be started.
+
+
+    .OUTPUTS
+
+    Returns $true if the guest OS was started within the timeout period or $false if the guest OS was not
+    started within the timeout period.
 #>
-function Start-VMAndWaitForGuestOSToBeStarted
+function Wait-VmGuestOS
 {
     [CmdLetBinding()]
     param(
         [string] $vmName,
-        [string] $vmHost,
+        [string] $hypervHost,
 
         [Parameter()]
         [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
         [int] $timeOutInSeconds = 900 #seconds
     )
 
-    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmName = $vmName"
-    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - vmHost = $vmHost"
-    Write-Verbose "Start-VMAndWaitForGuestOSToBeStarted - timeOutInSeconds = $timeOutInSeconds"
+    Write-Verbose "Wait-VmGuestOS - vmName = $vmName"
+    Write-Verbose "Wait-VmGuestOS - hypervHost = $hypervHost"
+    Write-Verbose "Wait-VmGuestOS - timeOutInSeconds = $timeOutInSeconds"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -639,11 +720,6 @@ function Start-VMAndWaitForGuestOSToBeStarted
             Debug = $false;
             ErrorAction = 'Stop'
         }
-
-    Start-VM `
-        -Name $vmName `
-        -ComputerName $vmHost `
-        @commonParameterSwitches
 
     $startTime = Get-Date
     $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
@@ -658,9 +734,82 @@ function Start-VMAndWaitForGuestOSToBeStarted
         Write-Verbose "Waiting for VM $vmName to be ready for use [total wait time so far: $((Get-Date) - $startTime)] ..."
         Start-Sleep -seconds 5
     }
-    until ((Get-VMIntegrationService -VMName $vmName -ComputerName $vmHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
+    until ((Get-VMIntegrationService -VMName $vmName -ComputerName $hypervHost @commonParameterSwitches | Where-Object { $_.name -eq "Heartbeat" }).PrimaryStatusDescription -eq "OK")
 
     return $true
+}
+
+<#
+    .SYNOPSIS
+
+    Waits for the guest operating system on a VM to be provided with an IP address.
+
+
+    .DESCRIPTION
+
+    The Wait-VmIPAddress function waits for the guest operating system on a VM to be provided with an IP address.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER hypervHost
+
+    The name of the VM host machine.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The amount of time in seconds the function should wait for the guest OS to be assigned an IP address.
+
+
+    .OUTPUTS
+
+    Returns the IP address of the VM or $null if no IP address could be obtained within the timeout period.
+#>
+function Wait-VmIPAddress
+{
+    [CmdletBinding()]
+    param(
+        [string] $vmName,
+        [string] $hypervHost,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 900 #seconds
+    )
+
+    Write-Verbose "Wait-VmIPAddress - vmName = $vmName"
+    Write-Verbose "Wait-VmIPAddress - hypervHost = $hypervHost"
+    Write-Verbose "Wait-VmIPAddress - timeOutInSeconds = $timeOutInSeconds"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $startTime = Get-Date
+    $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
+    while ((Get-Date) -le $endTime)
+    {
+        $ipAddress = Get-IPAddressForVm -vmName $vmName -hypervHost $hypervHost @commonParameterSwitches
+        if (($ipAddress -ne $null) -and ($ipAddress -ne ''))
+        {
+            return $ipAddress
+        }
+
+        Write-Verbose "Waiting for VM $vmName to be given an IP address [total wait time so far: $((Get-Date) - $startTime)] ..."
+        Start-Sleep -seconds 5
+    }
+
+    return $null
 }
 
 <#
@@ -679,7 +828,7 @@ function Start-VMAndWaitForGuestOSToBeStarted
     The name of the VM.
 
 
-    .PARAMETER vmHost
+    .PARAMETER hypervHost
 
     The name of the VM host machine.
 
@@ -695,7 +844,7 @@ function Wait-VmStopped
     param(
         [string] $vmName,
 
-        [string] $vmHost,
+        [string] $hypervHost,
 
         [Parameter()]
         [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
@@ -703,7 +852,7 @@ function Wait-VmStopped
     )
 
     Write-Verbose "Wait-VmStopped - vmName = $vmName"
-    Write-Verbose "Wait-VmStopped - vmHost = $vmHost"
+    Write-Verbose "Wait-VmStopped - hypervHost = $hypervHost"
     Write-Verbose "Wait-VmStopped - timeOutInSeconds = $timeOutInSeconds"
 
     # Stop everything if there are errors
@@ -720,29 +869,43 @@ function Wait-VmStopped
     {
         $startTime = Get-Date
         $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
-        while ($true)
+
+        # Ignore all errors because we're expecting a fair few of them if we connect to a machine
+        # that isn't ready for the connection
+        $originalErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try
         {
-            if ((Get-Date) -ge $endTime)
+            while ($true)
             {
-                Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
-                return $false
-            }
-
-            Write-Verbose "Waiting for VM $vmName to shut down [total wait time so far: $((Get-Date) - $startTime)] ..."
-            try
-            {
-                $vm = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
-                if ($vm.State -eq 'Off')
+                if ((Get-Date) -ge $endTime)
                 {
-                    return $true
+                    Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
+                    return $false
                 }
-            }
-            catch
-            {
-                Write-Verbose "Could not connect to $vmName. Error was $($_.Exception.Message)"
-            }
 
-            Start-Sleep -seconds 5
+                Write-Verbose "Waiting for VM $vmName to shut down [total wait time so far: $((Get-Date) - $startTime)] ..."
+                try
+                {
+                    $vm = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
+                    if ($vm.State -eq 'Off')
+                    {
+                        return $true
+                    }
+                }
+                catch
+                {
+                    Write-Verbose "Could not connect to $vmName. Error was $($_.Exception.Message)"
+                }
+
+                Start-Sleep -seconds 5
+            }
         }
+        finally
+        {
+            $ErrorActionPreference = $originalErrorActionPreference
+        }
+
+        Write-Error "Waiting for VM $name to stop failed outside the normal failure paths."
     }
 }
