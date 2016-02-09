@@ -140,6 +140,87 @@ $commonParameterSwitches =
 
 # -------------------------- Script functions --------------------------------
 
+function Get-ConnectionInformationForVm
+{
+    [CmdletBinding()]
+    param(
+        [string] $machineName,
+        [string] $hypervHost,
+        [pscredential] $localAdminCredential,
+        [int] $timeOutInSeconds
+    )
+
+    Write-Verbose "Get-ConnectionInformationForVm - machineName = $machineName"
+    Write-Verbose "Get-ConnectionInformationForVm - hypervHost = $hypervHost"
+    Write-Verbose "Get-ConnectionInformationForVm - localAdminCredential = $localAdminCredential"
+    Write-Verbose "Get-ConnectionInformationForVm - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    # Just because we have a positive connection does not mean that connection will stay there
+    # During initialization the machine will reboot a number of times so it is possible
+    # that we get caught out due to one of these reboots. In that case we'll just try again.
+    $maxRetry = 10
+    $count = 0
+
+    $result = New-Object psObject
+    Add-Member -InputObject $result -MemberType NoteProperty -Name IPAddress -Value $null
+    Add-Member -InputObject $result -MemberType NoteProperty -Name Session -Value $null
+
+    [System.Management.Automation.Runspaces.PSSession]$vmSession = $null
+    while (($vmSession -eq $null) -and ($count -lt $maxRetry))
+    {
+        $count = $count + 1
+
+        try
+        {
+            $ipAddress = Wait-VmIPAddress `
+                -vmName $machineName `
+                -hypervHost $hypervHost `
+                -timeOutInSeconds $timeOutInSeconds `
+                @commonParameterSwitches
+            if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+            {
+                throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+            }
+
+            # The guest OS may be up and running, but that doesn't mean we can connect to the
+            # machine through powershell remoting, so ...
+            $waitResult = Wait-WinRM `
+                -ipAddress $ipAddress `
+                -credential $localAdminCredential `
+                -timeOutInSeconds $timeOutInSeconds `
+                @commonParameterSwitches
+            if (-not $waitResult)
+            {
+                throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
+            }
+
+            Write-Verbose "Wait-WinRM completed successfully, making connection to machine $ipAddress ..."
+            $vmSession = New-PSSession `
+                -computerName $ipAddress `
+                -credential $localAdminCredential `
+                @commonParameterSwitches
+
+            $result.IPAddress = $ipAddress
+            $result.Session = $vmSession
+        }
+        catch
+        {
+            Write-Verbose "Failed to connect to the VM. Most likely due to a VM reboot. Trying another $($maxRetry - $count) times ..."
+        }
+    }
+
+    return $result
+}
+
 function Invoke-Sysprep
 {
     [CmdletBinding()]
@@ -166,55 +247,30 @@ function Invoke-Sysprep
             ErrorAction = 'Stop'
         }
 
-    $ipAddress = Wait-VmIPAddress `
-        -vmName $machineName `
+    $result = Get-ConnectionInformationForVm `
+        -machineName $machineName `
         -hypervHost $hypervHost `
+        -localAdminCredential $localAdminCredential `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
-    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+    if ($result.Session -eq $null)
     {
-        throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+        throw "Failed to connect to $machineName"
     }
 
-    # Because the machine isn't on the domain we won't be able to remote into it easily
-    # Neither machine trusts the other one
-    # In this case we assume that the machine IP has been added to the trusted host list
-    #
-    # Wait for the machine to come back up so that we can sysprep it
-    $waitResult = Wait-WinRM `
-        -ipAddress $ipAddress `
-        -credential $localAdminCredential `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-    if (-not $waitResult)
-    {
-        throw "Waiting for $machineName to be restarted has timed out with timeout of $timeOutInSeconds"
-    }
-
-    Write-Verbose "Wait-WinRM completed successfully, making connection to machine $ipAddress ..."
-    $vmSession = New-PSSession `
-        -computerName $ipAddress `
-        -credential $localAdminCredential `
-        @commonParameterSwitches
+    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
 
     # sysprep
-    # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
-    # run (i.e. it exits without doing any work). So this needs to be done from the local machine
-    # that is about to be sysprepped.
-    $cmd = 'Write-Output "Executing $sysPrepScript on VM"; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:"c:\unattend.xml"'
-    $sysprepCmd = Join-Path $tempPath 'sysprep.ps1'
-
     $remoteDirectory = "c:\sysprep"
-    Set-Content -Value $cmd -Path $sysprepCmd
-    Copy-FilesToRemoteMachine -session $vmSession -remoteDirectory $remoteDirectory -localDirectory $tempPath
+    Copy-FilesToRemoteMachine -session $result.Session -remoteDirectory $remoteDirectory -localDirectory $tempPath
 
     Write-Verbose "Starting sysprep ..."
     Invoke-Command `
-        -Session $vmSession `
-        -ArgumentList @( (Join-Path $remoteDirectory (Split-Path -Leaf $sysprepCmd)) ) `
+        -Session $result.Session `
+        -ArgumentList @( $remoteDirectory ) `
         -ScriptBlock {
             param(
-                [string] $sysPrepScript = ''
+                [string] $configDir = ''
             )
 
             # Clean up unattend file if it is there
@@ -289,7 +345,16 @@ function Invoke-Sysprep
 
             $logonScript | Out-String | Out-File -FilePath "$ENV:SystemDrive\Logon.ps1"
 
-            & "$sysPrepScript"
+            # sysprep
+            # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
+            # run (i.e. it exits without doing any work). So this needs to be done from the local machine
+            # that is about to be sysprepped.
+            $cmd = "Write-Output 'Executing $sysPrepScript on VM'; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:`"$configDir\unattend.xml`""
+            $sysprepCmd = Join-Path $configDir 'sysprep.ps1'
+
+            Set-Content -Value $cmd -Path $sysprepCmd
+
+            & powershell -File "$sysprepCmd"
         } `
         -Verbose `
         -ErrorAction Continue
@@ -462,32 +527,23 @@ function Restart-MachineToApplyPatches
             ErrorAction = 'Stop'
         }
 
-    $ipAddress = Wait-VmIPAddress `
-        -vmName $machineName `
+    $result = Get-ConnectionInformationForVm `
+        -machineName $machineName `
         -hypervHost $hypervHost `
+        -localAdminCredential $localAdminCredential `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
-    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+    if ($result.Session -eq $null)
     {
-        throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+        throw "Failed to connect to $machineName"
     }
 
-    # The guest OS may be up and running, but that doesn't mean we can connect to the
-    # machine through powershell remoting, so ...
-    $waitResult = Wait-WinRM `
-        -ipAddress $ipAddress `
-        -credential $localAdminCredential `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-    if (-not $waitResult)
-    {
-        throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
-    }
+    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
 
     # Now that we know we can get into the machine we can invoke commands on the machine, so now
     # we reboot the machine so that all updates are properly installed
     Restart-Computer `
-        -ComputerName $ipAddress `
+        -ComputerName $result.IPAddress `
         -Credential $localAdminCredential `
         -Force `
         -Wait `
@@ -552,6 +608,55 @@ function Update-VhdWithWindowsPatches
         @commonParameterSwitches
 }
 
+function Wait-MachineCompletesInitialization
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session
+    )
+
+    Write-Verbose "Wait-MachineCompletesInitialization - session = $session"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Write-Verbose "Waiting for machine to complete initialization ..."
+
+    Invoke-Command `
+        -Session $session `
+        -ScriptBlock {
+            function Get-IsMachineInitializing
+            {
+                # Based on the answers from here:
+                # http://serverfault.com/questions/750885/how-to-remotely-detect-windows-has-completed-patch-configuration-after-reboot
+                # We should look for TrustedInstaller and Wuauclt. However it seems that even these disappear before
+                # the initialization is complete. So we added some others based on getting the process list while
+                # the machine was initializing
+                return (Get-Process 'cmd', 'ngen', 'TrustedInstaller', 'windeploy', 'Wuauclt' -ErrorAction SilentlyContinue).Length -ne 0
+            }
+
+            while (Get-IsMachineInitializing)
+            {
+                while (Get-IsMachineInitializing)
+                {
+                    Start-Sleep -Seconds 10 -Verbose
+                }
+
+                # Now wait another 30 seconds to see that nothing else pops back up
+                Write-Verbose "Expecting machine configuration to be complete. Waiting 30 seconds for safety ..."
+                Start-Sleep -Seconds 30 -Verbose
+            }
+
+            Write-Verbose "Installers completed configuration ..."
+        } `
+        @commonParameterSwitches
+}
 
 # -------------------------- Script start --------------------------------
 
@@ -592,6 +697,8 @@ Restart-MachineToApplyPatches `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
+    # Apply missing updates
+
 Invoke-Sysprep `
     -machineName $machineName `
     -hypervHost $hypervHost `
@@ -600,10 +707,11 @@ Invoke-Sysprep `
     -tempPath $tempPath `
     @commonParameterSwitches
 
-# Delete VM but keep VHDX
+# Delete VM
 Remove-VM `
     -computerName $hypervHost `
     -Name $machineName `
+    -Force `
     @commonParameterSwitches
 
 # Optimize the VHDX
@@ -616,7 +724,6 @@ try
     # Remove root level files we don't need anymore
     attrib -s -h "$($driveLetter):\pagefile.sys"
     Remove-Item -Path "$($driveLetter):\pagefile.sys" -Force -Verbose
-    Remove-Item -Path "$($driveLetter):\unattend.xml" -Force -Verbose
 
     # Clean up all the user profiles except for the default one
     $userProfileDirectories = Get-ChildItem -Path "$($driveLetter):\Users\*" -Directory -Exclude 'Default', 'Public'
@@ -628,8 +735,6 @@ try
     # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
     # but saves a considerable amount of disk space.
     dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase
-
-    Optimize-VHD -Path $vhdPath -Mode Full @commonParameterSwitches
 }
 finally
 {
