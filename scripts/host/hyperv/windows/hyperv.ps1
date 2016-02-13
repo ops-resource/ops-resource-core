@@ -865,47 +865,51 @@ function Wait-VmStopped
             ErrorAction = 'Stop'
         }
 
-    process
-    {
-        $startTime = Get-Date
-        $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
+    $startTime = Get-Date
+    $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
+    Write-Verbose "Waiting till: $endTime"
 
-        # Ignore all errors because we're expecting a fair few of them if we connect to a machine
-        # that isn't ready for the connection
-        $originalErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'SilentlyContinue'
+    while ($true)
+    {
+        Write-Verbose "Start of the while loop ..."
+        if ((Get-Date) -ge $endTime)
+        {
+            Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
+            return $false
+        }
+
+        Write-Verbose "Waiting for VM $vmName to shut down [total wait time so far: $((Get-Date) - $startTime)] ..."
         try
         {
-            while ($true)
+            Write-Verbose "Getting VM state ..."
+            $integrationServices = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches | Get-VMIntegrationService
+
+            $offCount = 0
+            foreach($service in $integrationServices)
             {
-                if ((Get-Date) -ge $endTime)
+                Write-Verbose "vm $vmName integration service $($service.Name) is at state $($service.PrimaryStatusDescription)"
+                if (($service.PrimaryStatusDescription -eq $null) -or ($service.PrimaryStatusDescription -eq ''))
                 {
-                    Write-Verbose "The VM $vmName failed to shut down in the alotted time of $timeOutInSeconds"
-                    return $false
+                    $offCount = $offCount + 1
                 }
-
-                Write-Verbose "Waiting for VM $vmName to shut down [total wait time so far: $((Get-Date) - $startTime)] ..."
-                try
-                {
-                    $vm = Get-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
-                    if ($vm.State -eq 'Off')
-                    {
-                        return $true
-                    }
-                }
-                catch
-                {
-                    Write-Verbose "Could not connect to $vmName. Error was $($_.Exception.Message)"
-                }
-
-                Start-Sleep -seconds 5
             }
+
+            if ($offCount -eq $integrationServices.Length)
+            {
+                Write-Verbose "VM $vmName has turned off"
+                return $true
+            }
+
         }
-        finally
+        catch
         {
-            $ErrorActionPreference = $originalErrorActionPreference
+            Write-Verbose "Could not connect to $vmName. Error was $($_.Exception.Message)"
         }
 
-        Write-Error "Waiting for VM $name to stop failed outside the normal failure paths."
+        Write-Verbose "Waiting for 5 seconds ..."
+        Start-Sleep -seconds 5
     }
+
+    Write-Verbose "Waiting for VM $name to stop failed outside the normal failure paths."
+    return $false
 }

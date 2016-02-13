@@ -698,6 +698,11 @@ Restart-MachineToApplyPatches `
     @commonParameterSwitches
 
     # Apply missing updates
+    # while ($hasPatches)
+    #{
+    #    Start-VM
+    #    apply patch
+    #}
 
 Invoke-Sysprep `
     -machineName $machineName `
