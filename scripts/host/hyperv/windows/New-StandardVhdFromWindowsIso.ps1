@@ -343,13 +343,25 @@ function Invoke-Sysprep
                 }
             }
 
-            $logonScript | Out-String | Out-File -FilePath "$ENV:SystemDrive\Logon.ps1"
+            $logonScriptPath = "$ENV:SystemDrive\Logon.ps1"
+            $logonScript | Out-String | Out-File -FilePath $logonScriptPath
+
+            # In order to run the logon script we use the 'setupcomplete.cmd' script approach as documented here:
+            # https://technet.microsoft.com/en-us/library/cc766314%28v=ws.10%29.aspx
+            $setupCompleteScriptPath = "$env:windir\Setup\Scripts\SetupComplete.cmd"
+            $setupCompleteScript = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell -NoLogo -NonInteractive -ExecutionPolicy Unrestricted -File $logonScriptPath"
+
+            if (-not (Test-Path (Split-Path $setupCompleteScriptPath -Parent)))
+            {
+                New-Item -Path (Split-Path $setupCompleteScriptPath -Parent)
+            }
+            $setupCompleteScript | Out-File -FilePath $setupCompleteScriptPath
 
             # sysprep
             # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
             # run (i.e. it exits without doing any work). So this needs to be done from the local machine
             # that is about to be sysprepped.
-            $cmd = "Write-Output 'Executing $sysPrepScript on VM'; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:`"$configDir\unattend.xml`""
+            $cmd = "Write-Output 'Executing $sysPrepScript on VM'; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:`"$ENV:SystemDrive\Unattend.xml`""
             $sysprepCmd = Join-Path $configDir 'sysprep.ps1'
 
             Set-Content -Value $cmd -Path $sysprepCmd
