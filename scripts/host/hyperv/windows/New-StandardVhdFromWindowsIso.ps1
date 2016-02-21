@@ -280,12 +280,6 @@ function Invoke-Sysprep
                 [string] $configDir = ''
             )
 
-            # Clean up unattend file if it is there
-            if (Test-Path "$ENV:SystemDrive\Unattend.xml")
-            {
-                Remove-Item -Force -Verbose "$ENV:SystemDrive\Unattend.xml"
-            }
-
             # Clean up output file from the windows image convert script if it is there
             if (Test-Path "$ENV:SystemDrive\Convert-WindowsImageInfo.txt")
             {
