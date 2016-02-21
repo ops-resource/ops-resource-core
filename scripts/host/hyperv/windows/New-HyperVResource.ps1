@@ -7,7 +7,7 @@
 
     .DESCRIPTION
 
-    The New-WindowsResource script takes all the actions necessary to configure the machine.
+    The New-HyperVResource script takes all the actions necessary to configure the machine.
 
 
     .PARAMETER credential
@@ -20,9 +20,9 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
-    .PARAMETER computerName
+    .PARAMETER hypervHost
 
-    The name of the machine that should be set up.
+    The name of the machine on which the hyper-v server is located.
 
 
     .PARAMETER resourceName
@@ -78,7 +78,10 @@
 
     .EXAMPLE
 
-    New-WindowsResource -computerName "MyMachine" -installationDirectory "c:\installers" -logDirectory "c:\logs"
+    New-HyperVResource
+        -hypervHost "MyHost"
+        -installationDirectory "c:\installers"
+        -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
@@ -87,9 +90,6 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch] $authenticateWithCredSSP,
-
-    [Parameter(Mandatory = $true)]
-    [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
 
     [Parameter(Mandatory = $false)]
     [string] $resourceName                                      = '',
@@ -127,26 +127,26 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "New-LocalNetworkResource - credential: $credential"
-Write-Verbose "New-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
-Write-Verbose "New-LocalNetworkResource - computerName: $computerName"
-Write-Verbose "New-LocalNetworkResource - resourceName: $resourceName"
-Write-Verbose "New-LocalNetworkResource - resourceVersion: $resourceVersion"
-Write-Verbose "New-LocalNetworkResource - cookbookNames: $cookbookNames"
-Write-Verbose "New-LocalNetworkResource - installationDirectory: $installationDirectory"
-Write-Verbose "New-LocalNetworkResource - logDirectory: $logDirectory"
+Write-Verbose "New-HyperVResource - credential = $credential"
+Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
+Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
+Write-Verbose "New-HyperVResource - resourceName = $resourceName"
+Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
+Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
+Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
+Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-LocalNetworkResource - dataCenterName: $dataCenterName"
-        Write-Verbose "New-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
-        Write-Verbose "New-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
+        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
+        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-LocalNetworkResource - environmentName: $environmentName"
-        Write-Verbose "New-LocalNetworkResource - consulLocalAddress: $consulLocalAddress"
+        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
+        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -161,6 +161,7 @@ $commonParameterSwitches =
     }
 
 # Load the helper functions
+. (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 
 if (-not (Test-Path $installationDirectory))
@@ -173,18 +174,30 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$session = New-Session -computerName $computerName -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
-if ($session -eq $null)
-{
-    throw "Failed to connect to $computerName"
-}
+# Get the information from the Consul cluster
+
+
+
+New-HypervVmOnDomain `
+    -machineName '' `
+    -baseVhdx '' `
+    -vhdxStoragePath '' `
+    -hypervHost '' `
+    -registeredOwner '' `
+    -domainName '' `
+    -machineOU '' `
+    -domainAdministratorUserName '' `
+    -domainAdministratorPassword '' `
+    @commonParameterSwitches
+
+$vmSession = New-Session -computerName $hypervClient -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
         & $newWindowsResource `
-            -session $session `
+            -session $vmSession `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `
@@ -198,7 +211,7 @@ switch ($psCmdlet.ParameterSetName)
 
     'FromMetaCluster' {
         & $newWindowsResource `
-            -session $session `
+            -session $vmSession `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `

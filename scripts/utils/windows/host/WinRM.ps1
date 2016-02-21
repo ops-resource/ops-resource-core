@@ -375,7 +375,7 @@ function Copy-FilesToRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 
@@ -444,7 +444,7 @@ function Copy-FilesFromRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 
@@ -524,7 +524,7 @@ function Remove-FilesFromRemoteMachine
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = "Stop"
         }
 
@@ -543,4 +543,146 @@ function Remove-FilesFromRemoteMachine
             }
         } `
          @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
+    Waits for the WinRM service on a remote computer to start.
+
+
+    .DESCRIPTION
+
+    The Wait-WinRM function waits for the WinRM service on a remote computer to start.
+
+
+    .PARAMETER computerName
+
+    The name of the remote computer.
+
+
+    .PARAMETER credential
+
+    The credential required to connect to the remote computer.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for the WinRM service
+    on the remote computer to start.
+
+
+    .EXAMPLE
+
+    Remove-FilesFromRemoteMachine -session $session -remoteDirectory 'c:\temp'
+#>
+function Wait-WinRM
+{
+    [cmdletbinding()]
+    param
+    (
+        [Parameter(ParameterSetName = 'FromName')]
+        [string] $computerName,
+
+        [Parameter(ParameterSetName = 'FromIP')]
+        [string] $ipAddress,
+
+        [Parameter()]
+        [System.Management.Automation.PSCredential] $credential = $null,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 900 #seconds
+    )
+
+    Write-Verbose "Wait-WinRM - computerName = $computerName"
+    Write-Verbose "Wait-WinRM - ipAddress = $ipAddress"
+    Write-Verbose "Wait-WinRM - credential = $credential"
+    Write-Verbose "Wait-WinRM - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+        }
+
+    $name = ''
+    switch ($psCmdlet.ParameterSetName)
+    {
+        'FromName' {
+            $name = $computerName
+        }
+
+        'FromIP' {
+            $name = $ipAddress
+        }
+    }
+
+    process
+    {
+        $startTime = Get-Date
+        $endTime = ($startTime) + (New-TimeSpan -Seconds $timeOutInSeconds)
+
+        # Ignore all errors because we're expecting a fair few of them if we connect to a machine
+        # that isn't ready for the connection
+        $originalErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try
+        {
+            while ($true)
+            {
+                if ((Get-Date) -ge $endTime)
+                {
+                    Write-Verbose "Failed to connect to $name in the alotted time of $timeOutInSeconds"
+                    return $false
+                }
+
+                Write-Verbose "Trying to connect to $name [total wait time so far: $((Get-Date) - $startTime)] ..."
+                $inverr = $null
+                try
+                {
+                    if ($credential)
+                    {
+                        Invoke-Command `
+                            -ComputerName $name `
+                            -ScriptBlock { Get-Process } `
+                            -Credential $credential `
+                            -ErrorAction SilentlyContinue `
+                            -ErrorVariable inverr `
+                            @commonParameterSwitches | Out-Null
+                    }
+                    else
+                    {
+                        Invoke-Command `
+                            -ComputerName $name `
+                            -ScriptBlock { Get-Process } `
+                            -ErrorAction SilentlyContinue `
+                            -ErrorVariable inverr `
+                            @commonParameterSwitches | Out-Null
+                    }
+
+                    if ($inverr -eq $null)
+                    {
+                        Write-Verbose "Connection to $name successful."
+                        return $true
+                    }
+                }
+                catch
+                {
+                    # Ignore everything ...
+                    Write-Verbose "Could not connect to $name. Error was $($_.Exception.Message)"
+                }
+
+                Start-Sleep -seconds 5
+            }
+        }
+        finally
+        {
+            $ErrorActionPreference = $originalErrorActionPreference
+        }
+
+        Write-Error "Waiting for $name failed outside the normal failure paths."
+    }
 }

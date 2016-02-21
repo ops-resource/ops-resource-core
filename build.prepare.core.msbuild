@@ -4,7 +4,7 @@
          xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <!-- Defines whether the current script file has been loaded / imported or not -->
-        <ExistsBuildSlaves>true</ExistsBuildSlaves>
+        <ExistsBuildResourceCore>true</ExistsBuildResourceCore>
 
         <!--
             Define the DirWorkspace before importing the BuildPropertyFile so that it is defined and can be used by
@@ -26,12 +26,8 @@
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
         <!-- Files -->
-        <FileSemanticVersion Condition=" '$(FileSemanticVersion)' == '' ">$(DirBuildTemp)\semantic_version.json</FileSemanticVersion>
         <FileResourceCoreMetadataTemplate>$(DirCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataTemplate>
         <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataGenerated>
-
-        <!-- Version number -->
-        <VersionSemantic>0</VersionSemantic>
     </PropertyGroup>
 
     <Import Project="$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild"

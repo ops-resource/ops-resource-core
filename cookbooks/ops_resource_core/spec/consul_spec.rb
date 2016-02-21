@@ -24,7 +24,7 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resource_core::consul'  do
+describe 'ops_resource_core::consul' do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   logs_path = 'c:\\logs'
