@@ -69,6 +69,10 @@
 
     The URL from where the Apply-WindowsUpdate script can be downloaded.
 
+    .PARAMETER logPath
+
+    The full path to the directory in which output log files can be stored.
+
 
     .PARAMETER tempPath
 
@@ -108,6 +112,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [string] $scriptPath = $PSScriptRoot,
+
+    [Parameter(Mandatory = $true)]
+    [string] $logPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString())),
 
     [Parameter(Mandatory = $true)]
     [string] $tempPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString()))
@@ -618,6 +625,12 @@ function Update-VhdWithWindowsPatches
         -WsusTargetGroupName $wsusTargetGroup `
         -WsusContentPath "\\$($wsusServer)\WsusContent" `
         @commonParameterSwitches
+
+    Get-ChildItem -Path (Split-Path $vhdPath -Parent) -Filter *.log |
+        Foreach-Object {
+            Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$([System.IO.Path]::GetFileNameWithoutExtension($_.FullName))-ApplyPatches.log") @commonParameterSwitches
+        }
+
 }
 
 function Wait-MachineCompletesInitialization
@@ -738,6 +751,14 @@ Remove-VM `
 $driveLetter = Mount-Vhdx -vhdPath $vhdPath @commonParameterSwitches
 try
 {
+    # Copy the log files
+    Get-ChildItem -Path "$($driveLetter):\windows\Panther" -Filter *.log -recurse |
+        Foreach-Object {
+            $directoryName = [System.IO.Path]::GetFileName((Split-Path $_.FullName -Parent))
+            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
+            Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-$($directoryName).log") @commonParameterSwitches
+        }
+
     # Remove root level files we don't need anymore
     attrib -s -h "$($driveLetter):\pagefile.sys"
     Remove-Item -Path "$($driveLetter):\pagefile.sys" -Force -Verbose
@@ -752,6 +773,12 @@ try
     # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
     # but saves a considerable amount of disk space.
     dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase
+
+    Get-ChildItem -Path (Split-Path $vhdPath -Parent) -Filter *.log |
+        Foreach-Object {
+            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
+            Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-cleanimage.log") @commonParameterSwitches
+        }
 }
 finally
 {
