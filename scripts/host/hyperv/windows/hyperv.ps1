@@ -602,15 +602,6 @@ function New-HypervVmOnDomain
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
             <RegisteredOwner>$registeredOwner</RegisteredOwner>
             <ComputerName>$vmName</ComputerName>
-
-            <!--
-                Set the generic product key for the Win2012 datacenter SKU. This key is only
-                so that we can get a completely unattended setup. It is not the activation key!
-                Also note that this only works for a Win2012 datacenter SKU and it was found
-                here:
-                https://technet.microsoft.com/en-us/library/jj612867.aspx
-            -->
-            <ProductKey>W3GGN-FT8W3-Y4M27-J84CP-Q3VJ9</ProductKey>
         </component>
 
         <!--
@@ -679,50 +670,10 @@ function New-HypervVmOnDomain
                     </DomainAccountList>
                 </DomainAccounts>
             </UserAccounts>
-            <LogonCommands>
-                 <AsynchronousCommand wcm:action="add">
-                     <CommandLine>%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell -NoLogo -NonInteractive -ExecutionPolicy Unrestricted -File %SystemDrive%\Logon.ps1</CommandLine>
-                     <Order>1</Order>
-                 </AsynchronousCommand>
-             </LogonCommands>
         </component>
     </settings>
 </unattend>
 "@
-
-# Create a process file that will remove the unattend file once the machine is booting
-    $logonContent = @'
-# Remove Unattend entries from the autorun key if they exist
-foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
-{
-    if ($regvalue -like "Unattend*")
-    {
-        # could be multiple unattend* entries
-        foreach ($unattendvalue in $regvalue)
-        {
-            Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue -Verbose
-        }
-    }
-}
-
-# Clean up unattend file if it is there
-if (Test-Path "$ENV:SystemDrive\Unattend.xml")
-{
-    Remove-Item -Force "$ENV:SystemDrive\Unattend.xml";
-}
-
-# Clean up logon file if it is there
-if (Test-Path "$ENV:SystemDrive\Logon.ps1")
-{
-    Remove-Item -Force "$ENV:SystemDrive\Logon.ps1";
-}
-
-# Clean up temp
-if(Test-Path "$ENV:SystemDrive\Temp")
-{
-    Remove-Item -Force -Recurse "$ENV:SystemDrive\Temp";
-}
-'@
 
     # Create a copy of the VHDX file and then mount it
     $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
@@ -733,7 +684,6 @@ if(Test-Path "$ENV:SystemDrive\Temp")
         $driveLetter = Mount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
 
         Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
-        Set-Content -Path "$($driveLetter):\logon.ps1" -Value $logonContent
     }
     finally
     {
