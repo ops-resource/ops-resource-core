@@ -108,6 +108,10 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
+    [string] $hypervHost                                        = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
     [string] $dataCenterName                                    = '',
 
     [Parameter(Mandatory = $true,
@@ -163,6 +167,7 @@ $commonParameterSwitches =
 # Load the helper functions
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
+. (Join-Path $PSScriptRoot windows.ps1)
 
 if (-not (Test-Path $installationDirectory))
 {
@@ -174,20 +179,47 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-# Get the information from the Consul cluster
+if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
+{
+    . $(Join-Path $PSScriptRoot 'Consul.ps1')
 
+    $consulDomain = Get-ConsulDomain `
+        -environment $environmentName `
+        -consulLocalAddress $consulLocalAddress `
+        @commonParameterSwitches
+    $hypervHost = "host.hyperv.service.$($consulDomain)"
 
+    $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
+        -environment $environmentName `
+        -consulLocalAddress $consulLocalAddress `
+        -keyPath '' `
+        @commonParameterSwitches
+    $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
+}
+else
+{
+    $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
+    $machineOU = 'servers'
+}
+
+$vhdxStoragePath = "$($hypervHostVmStoragePath)\$(hdd)"
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
+$registeredOwner = Get-RegisteredOwner @commonParameterSwitches
+
+$machineName = ""
+$domainAdminUserName = ""
+$domainAdminPassword = ""
 
 New-HypervVmOnDomain `
-    -machineName '' `
-    -baseVhdx '' `
-    -vhdxStoragePath '' `
-    -hypervHost '' `
-    -registeredOwner '' `
-    -domainName '' `
-    -machineOU '' `
-    -domainAdministratorUserName '' `
-    -domainAdministratorPassword '' `
+    -machineName $machineName `
+    -baseVhdx $baseVhdx `
+    -vhdxStoragePath $vhdxStoragePath `
+    -hypervHost $hypervHost `
+    -registeredOwner $registeredOwner `
+    -domainName $env:USERDNSDOMAIN `
+    -machineOU $machineOU `
+    -domainAdministratorUserName $domainAdminUserName `
+    -domainAdministratorPassword $domainAdminPassword `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
@@ -203,7 +235,7 @@ switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
         & $newWindowsResource `
-            -session $vmSession `
+            -session $connection.Session `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `
@@ -217,7 +249,7 @@ switch ($psCmdlet.ParameterSetName)
 
     'FromMetaCluster' {
         & $newWindowsResource `
-            -session $vmSession `
+            -session $connection.Session `
             -resourceName $resourceName `
             -resourceVersion $resourceVersion `
             -cookbookNames $cookbookNames `
