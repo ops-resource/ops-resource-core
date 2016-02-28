@@ -37,6 +37,125 @@ function Dismount-Vhdx
 <#
     .SYNOPSIS
 
+    Gets the connection information used to connect to a given Hyper-V VM.
+
+
+    .DESCRIPTION
+
+    The Get-ConnectionInformationForVm function gets the connection information used to connect to a given Hyper-V VM.
+
+
+    .PARAMETER machineName
+
+    The name of the VM.
+
+
+    .PARAMETER hypervHost
+
+    The name of the Hyper-V host machine.
+
+
+    .PARAMETER localAdminCredential
+
+    The credentials for the local administrator account.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The amount of time that the function will wait for at the individual stages for a connection.
+
+
+    .OUTPUTS
+
+    A custom object containing the connection information for the VM. Available properties are:
+
+        IPAddress        The IP address of the VM
+        Session          A powershell remoting session
+#>
+function Get-ConnectionInformationForVm
+{
+    [CmdletBinding()]
+    param(
+        [string] $machineName,
+        [string] $hypervHost,
+        [pscredential] $localAdminCredential,
+        [int] $timeOutInSeconds
+    )
+
+    Write-Verbose "Get-ConnectionInformationForVm - machineName = $machineName"
+    Write-Verbose "Get-ConnectionInformationForVm - hypervHost = $hypervHost"
+    Write-Verbose "Get-ConnectionInformationForVm - localAdminCredential = $localAdminCredential"
+    Write-Verbose "Get-ConnectionInformationForVm - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    # Just because we have a positive connection does not mean that connection will stay there
+    # During initialization the machine will reboot a number of times so it is possible
+    # that we get caught out due to one of these reboots. In that case we'll just try again.
+    $maxRetry = 10
+    $count = 0
+
+    $result = New-Object psObject
+    Add-Member -InputObject $result -MemberType NoteProperty -Name IPAddress -Value $null
+    Add-Member -InputObject $result -MemberType NoteProperty -Name Session -Value $null
+
+    [System.Management.Automation.Runspaces.PSSession]$vmSession = $null
+    while (($vmSession -eq $null) -and ($count -lt $maxRetry))
+    {
+        $count = $count + 1
+
+        try
+        {
+            $ipAddress = Wait-VmIPAddress `
+                -vmName $machineName `
+                -hypervHost $hypervHost `
+                -timeOutInSeconds $timeOutInSeconds `
+                @commonParameterSwitches
+            if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
+            {
+                throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
+            }
+
+            # The guest OS may be up and running, but that doesn't mean we can connect to the
+            # machine through powershell remoting, so ...
+            $waitResult = Wait-WinRM `
+                -ipAddress $ipAddress `
+                -credential $localAdminCredential `
+                -timeOutInSeconds $timeOutInSeconds `
+                @commonParameterSwitches
+            if (-not $waitResult)
+            {
+                throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
+            }
+
+            Write-Verbose "Wait-WinRM completed successfully, making connection to machine $ipAddress ..."
+            $vmSession = New-PSSession `
+                -computerName $ipAddress `
+                -credential $localAdminCredential `
+                @commonParameterSwitches
+
+            $result.IPAddress = $ipAddress
+            $result.Session = $vmSession
+        }
+        catch
+        {
+            Write-Verbose "Failed to connect to the VM. Most likely due to a VM reboot. Trying another $($maxRetry - $count) times ..."
+        }
+    }
+
+    return $result
+}
+
+<#
+    .SYNOPSIS
+
     Gets the drive letter for the drive with the given drive number
 
 
@@ -632,36 +751,6 @@ if(Test-Path "$ENV:SystemDrive\Temp")
         -vmStoragePath '' `
         -vhdStoragePath '' `
         @commonParameterSwitches
-
-    Start-VM -Name $vmName -ComputerName $hypervHost @commonParameterSwitches
-
-    $defaultTimeOutInSeconds = 900
-    $waitResult = Wait-VmGuestOS `
-        -vmName $vmName `
-        -hypervHost $hypervHost `
-        -timeOutInSeconds $defaultTimeOutInSeconds `
-        @commonParameterSwitches
-    if (-not $waitResult)
-    {
-        throw "Waiting for the VM $vmName to start the guest OS time out (timeout: $defaultTimeOutInSeconds seconds)."
-    }
-
-    $ipAddress = Wait-VmIPAddress `
-        -vmName $vmName `
-        -hypervHost $hypervHost `
-        @commonParameterSwitches
-    if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
-    {
-        throw "Waiting for the VM $vmName to get an IP addres failed with timeout $defaultTimeOutInSeconds seconds."
-    }
-
-    # The guest OS may be up and running, but that doesn't mean we can connect to the
-    # machine through powershell remoting, so ...
-    Wait-WinRM `
-        -computerName  `
-        @commonParameterSwitches
-
-    # Note that the VM may still not be ready to do work, so we need to something?
 }
 
 <#

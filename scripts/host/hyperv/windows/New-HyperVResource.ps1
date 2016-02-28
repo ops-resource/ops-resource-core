@@ -190,7 +190,13 @@ New-HypervVmOnDomain `
     -domainAdministratorPassword '' `
     @commonParameterSwitches
 
-$vmSession = New-Session -computerName $hypervClient -credential $credential -authenticateWithCredSSP:$authenticateWithCredSSP @commonParameterSwitches
+Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+$connection = Get-ConnectionInformationForVm `
+    -machineName $machineName `
+    -hypervHost $hypervHost `
+    -localAdminCredential $credential `
+    -timeOutInSeconds 900 `
+    @commonParameterSwitches
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
 switch ($psCmdlet.ParameterSetName)
