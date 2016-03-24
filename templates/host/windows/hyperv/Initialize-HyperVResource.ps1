@@ -21,9 +21,37 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
+    .PARAMETER osName
+
+    The name of the OS that should be used to create the new VM.
+
+
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
+
+
+    .PARAMETER unattendedJoinFile
+
+    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
+
+    <component name="Microsoft-Windows-UnattendedJoin"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <Identification>
+            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
+            <Credentials>
+                <Domain>DOMAIN_NAME_HERE</Domain>
+                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
+                <Username>DOMAIN_ADMIN_USERNAME</Username>
+            </Credentials>
+            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
+        </Identification>
+    </component>
 
 
     .PARAMETER dataCenterName
@@ -64,7 +92,15 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHost                                        = $(throw 'Please specify the name of the Hyper-V host on which a new virtual machine should be configured.'),
+    [string] $osName                                            = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $hypervHost                                        = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $unattendedJoinFile                                = '',
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -78,7 +114,7 @@ param(
                ParameterSetName = 'FromUserSpecification')]
     [string] $globalDnsServerAddress                            = '',
 
-    [Parameter(Mandatory = $false,
+    [Parameter(Mandatory = $true,
                ParameterSetName = 'FromMetaCluster')]
     [string] $environmentName                                   = 'Development',
 
@@ -89,17 +125,20 @@ param(
 
 Write-Verbose "Initialize-HyperVResource - credential: $credential"
 Write-Verbose "Initialize-HyperVResource - authenticateWithCredSSP: $authenticateWithCredSSP"
+Write-Verbose "Initialize-HyperVResource - osName = $osName"
 Write-Verbose "Initialize-HyperVResource - hypervHost: $hypervHost"
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "Initialize-HyperVResource - dataCenterName: $dataCenterName"
-        Write-Verbose "Initialize-HyperVResource - clusterEntryPointAddress: $clusterEntryPointAddress"
-        Write-Verbose "Initialize-HyperVResource - globalDnsServerAddress: $globalDnsServerAddress"
+        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
+        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
+        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "Initialize-HyperVResource - environmentName: $environmentName"
+        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
+        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -113,6 +152,8 @@ $commonParameterSwitches =
         ErrorAction = "Stop"
     }
 
+. (Join-Path $PSScriptRoot 'utils.ps1')
+
 $startTime = [System.DateTimeOffset]::Now
 try
 {
@@ -124,21 +165,25 @@ try
     $testDirectory = $(Join-Path $PSScriptRoot 'verification')
     $logDirectory = $(Join-Path $PSScriptRoot 'logs')
 
-    $installationScript = Join-Path $PSScriptRoot 'New-LocalNetworkResource.ps1'
+    $installationScript = Join-Path $PSScriptRoot 'New-HyperVResource.ps1'
     $verificationScript = Join-Path $PSScriptRoot 'Test-LocalNetworkResource.ps1'
 
+    $machineName = New-RandomMachineName @commonParameterSwitches
     switch ($psCmdlet.ParameterSetName)
     {
         'FromUserSpecification' {
             & $installationScript `
                 -credential $credential `
                 -authenticateWithCredSSP:$authenticateWithCredSSP `
-                -computerName $computerName `
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
                 -cookbookNames $cookbookNames `
                 -installationDirectory $installationDirectory `
                 -logDirectory $logDirectory `
+                -osName $osName `
+                -machineName $machineName `
+                -hypervHost $hypervHost `
+                -unattendedJoinFile $unattendedJoinFile `
                 -dataCenterName $dataCenterName `
                 -clusterEntryPointAddress $clusterEntryPointAddress `
                 -globalDnsServerAddress $globalDnsServerAddress `
@@ -149,12 +194,13 @@ try
             & $installationScript `
                 -credential $credential `
                 -authenticateWithCredSSP:$authenticateWithCredSSP `
-                -computerName $computerName `
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
                 -cookbookNames $cookbookNames `
                 -installationDirectory $installationDirectory `
                 -logDirectory $logDirectory `
+                -osName $osName `
+                -machineName $machineName `
                 -environmentName $environmentName `
                 -consulLocalAddress $consulLocalAddress `
                 @commonParameterSwitches
@@ -164,7 +210,7 @@ try
     & $verificationScript `
         -credential $credential `
         -authenticateWithCredSSP:$authenticateWithCredSSP `
-        -computerName $computerName `
+        -computerName $machineName `
         -testDirectory $testDirectory `
         -logDirectory $logDirectory `
         @commonParameterSwitches

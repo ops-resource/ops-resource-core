@@ -31,6 +31,7 @@
         <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\client" />
 
         <file src="$DirOutput$\scripts\host\hyperv\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\host\lan\windows\Test*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\host\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
 
