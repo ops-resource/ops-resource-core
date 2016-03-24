@@ -496,19 +496,27 @@ function New-HypervVm
     The name of the domain to which the machine should be attached.
 
 
-    .PARAMETER machineOU
+    .PARAMETER unattendedJoin
 
-    The Orginasational Unit to which the machine should be attached.
+    The XML fragment for an unattended domain join. This is expected to look like:
 
-
-    .PARAMETER domainAdministratorUserName
-
-    The user name of a domain user who has the permissions to attach a machine to the domain.
-
-
-    .PARAMETER domainAdministratorPassword
-
-    The password of the domain user who has the permissions to attach a machine to the domain.
+    <component name="Microsoft-Windows-UnattendedJoin"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <Identification>
+            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
+            <Credentials>
+                <Domain>DOMAIN_NAME_HERE</Domain>
+                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
+                <Username>DOMAIN_ADMIN_USERNAME</Username>
+            </Credentials>
+            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
+        </Identification>
+    </component>
 #>
 function New-HypervVmOnDomain
 {
@@ -542,15 +550,7 @@ function New-HypervVmOnDomain
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string] $machineOU,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $domainAdministratorUserName,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $domainAdministratorPassword
+        [string] $unattendedJoin
     )
 
     Write-Verbose "New-HypervVmOnDomain - vmName = $vmName"
@@ -558,9 +558,7 @@ function New-HypervVmOnDomain
     Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
     Write-Verbose "New-HypervVmOnDomain - hypervHost = $hypervHost"
     Write-Verbose "New-HypervVmOnDomain - registeredOwner = $registeredOwner"
-    Write-Verbose "New-HypervVmOnDomain - domainName = $domainName"
-    Write-Verbose "New-HypervVmOnDomain - machineOU = $machineOU"
-    Write-Verbose "New-HypervVmOnDomain - domainAdministratorUserName = $domainAdministratorUserName"
+    Write-Verbose "New-HypervVmOnDomain - unattendedJoin = $unattendedJoin"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -607,23 +605,7 @@ function New-HypervVmOnDomain
         <!--
             Join the domain
         -->
-        <component name="Microsoft-Windows-UnattendedJoin"
-                   processorArchitecture="amd64"
-                   publicKeyToken="31bf3856ad364e35"
-                   language="neutral"
-                   versionScope="nonSxS"
-                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <Identification>
-                <MachineObjectOU>$machineOU</MachineObjectOU>
-                <Credentials>
-                    <Domain>$domainName</Domain>
-                    <Password>$domainAdminPassword</Password>
-                    <Username>$domainAdminUserName</Username>
-                </Credentials>
-                <JoinDomain>$domainName</JoinDomain>
-            </Identification>
-        </component>
+        $unattendedJoin
 
         <!--
             Set the DNS search order

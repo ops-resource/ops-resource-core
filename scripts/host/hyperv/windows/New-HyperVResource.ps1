@@ -20,11 +20,6 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
-    .PARAMETER hypervHost
-
-    The name of the machine on which the hyper-v server is located.
-
-
     .PARAMETER resourceName
 
     The name of the resource that is being created.
@@ -51,6 +46,44 @@
     The directory in which all the logs should be stored.
 
 
+    .PARAMETER osName
+
+    The name of the OS that should be used to create the new VM.
+
+
+    .PARAMETER machineName
+
+    The name of the machine that should be created
+
+
+    .PARAMETER hypervHost
+
+    The name of the machine on which the hyper-v server is located.
+
+
+    .PARAMETER unattendedJoinFile
+
+    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
+
+    <component name="Microsoft-Windows-UnattendedJoin"
+               processorArchitecture="amd64"
+               publicKeyToken="31bf3856ad364e35"
+               language="neutral"
+               versionScope="nonSxS"
+               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <Identification>
+            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
+            <Credentials>
+                <Domain>DOMAIN_NAME_HERE</Domain>
+                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
+                <Username>DOMAIN_ADMIN_USERNAME</Username>
+            </Credentials>
+            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
+        </Identification>
+    </component>
+
+
     .PARAMETER dataCenterName
 
     The name of the consul data center to which the remote machine should belong once configuration is completed.
@@ -74,14 +107,6 @@
     .PARAMETER consulLocalAddress
 
     The URL to the local consul agent.
-
-
-    .EXAMPLE
-
-    New-HyperVResource
-        -hypervHost "MyHost"
-        -installationDirectory "c:\installers"
-        -logDirectory "c:\logs"
 #>
 [CmdletBinding()]
 param(
@@ -106,9 +131,19 @@ param(
     [Parameter(Mandatory = $false)]
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
 
+    [Parameter(Mandatory = $true)]
+    [string] $osName                                            = '',
+
+    [Parameter(Mandatory = $true)]
+    [string] $machineName                                       = '',
+
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $hypervHost                                        = '',
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $unattendedJoinFile                                = '',
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -133,16 +168,17 @@ param(
 
 Write-Verbose "New-HyperVResource - credential = $credential"
 Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
 Write-Verbose "New-HyperVResource - resourceName = $resourceName"
 Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
 Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
 Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
 Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
+Write-Verbose "New-HyperVResource - osName = $osName"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
+        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
         Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
         Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
         Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
@@ -179,6 +215,7 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
+$unattendedJoin = ''
 if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
@@ -195,20 +232,22 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
         -keyPath '' `
         @commonParameterSwitches
     $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
+
+    $unattendedJoin = Get-ConsulKeyValue `
+        -environment $environmentName `
+        -consulLocalAddress $consulLocalAddress `
+        -keyPath '' `
+        @commonParameterSwitches
 }
 else
 {
     $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-    $machineOU = 'servers'
+    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
 }
 
-$vhdxStoragePath = "$($hypervHostVmStoragePath)\$(hdd)"
+$vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
 $registeredOwner = Get-RegisteredOwner @commonParameterSwitches
-
-$machineName = ""
-$domainAdminUserName = ""
-$domainAdminPassword = ""
 
 New-HypervVmOnDomain `
     -machineName $machineName `
@@ -217,9 +256,7 @@ New-HypervVmOnDomain `
     -hypervHost $hypervHost `
     -registeredOwner $registeredOwner `
     -domainName $env:USERDNSDOMAIN `
-    -machineOU $machineOU `
-    -domainAdministratorUserName $domainAdminUserName `
-    -domainAdministratorPassword $domainAdminPassword `
+    -unattendedJoin $unattendedJoin `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
