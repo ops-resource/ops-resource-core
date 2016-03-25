@@ -69,6 +69,7 @@ function Dismount-Vhdx
 
     A custom object containing the connection information for the VM. Available properties are:
 
+        Name             The machine name of the VM
         IPAddress        The IP address of the VM
         Session          A powershell remoting session
 #>
@@ -103,6 +104,7 @@ function Get-ConnectionInformationForVm
     $count = 0
 
     $result = New-Object psObject
+    Add-Member -InputObject $result -MemberType NoteProperty -Name Name -Value $machineName
     Add-Member -InputObject $result -MemberType NoteProperty -Name IPAddress -Value $null
     Add-Member -InputObject $result -MemberType NoteProperty -Name Session -Value $null
 
@@ -242,6 +244,99 @@ function Get-IPAddressForVm
 <#
     .SYNOPSIS
 
+    Invokes sysprep on a Hyper-V VM and waits for the machine to shut down.
+
+
+    .DESCRIPTION
+
+    The Invoke-SysprepOnVmAndWaitShutdown function invokes sysprep on a Hyper-V VM and waits for the machine to shut down
+
+
+    .PARAMETER machineName
+
+    The name of the VM.
+
+
+    .PARAMETER hypervHost
+
+    The name of the machine which is the Hyper-V host for the domain.
+
+
+    .PARAMETER localAdminCredential
+
+    The credentials for the local administrator on the VM.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The amount of time in seconds the function should wait for the guest OS to be started.
+
+
+    .PARAMETER tempPath
+
+    The full path to the directory in which temporary files can be stored.
+#>
+function Invoke-SysprepOnVmAndWaitShutdown
+{
+    [CmdletBinding()]
+    param(
+        [string] $machineName,
+        [string] $hypervHost,
+        [pscredential] $localAdminCredential,
+        [int] $timeOutInSeconds,
+        [string] $tempPath
+    )
+
+    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - machineName = $machineName"
+    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - hypervHost = $hypervHost"
+    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - localAdminCredential = $localAdminCredential"
+    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - timeOutInSeconds = $timeOutInSeconds"
+    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - tempPath = $tempPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    . (Join-Path $PSScriptRoot 'windows.ps1')
+
+    $result = Get-ConnectionInformationForVm `
+        -machineName $machineName `
+        -hypervHost $hypervHost `
+        -localAdminCredential $localAdminCredential `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+    if ($result.Session -eq $null)
+    {
+        throw "Failed to connect to $machineName"
+    }
+
+    Invoke-Sysprep `
+        -connectionInformation $result `
+        -timeOutInSeconds $timeOutInSeconds `
+        -tempPath $tempPath `
+        @commonParameterSwitches
+
+    # Wait till machine is stopped
+    $waitResult = Wait-VmStopped `
+        -vmName $machineName `
+        -hypervHost $hypervHost `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+
+    if (-not $waitResult)
+    {
+        throw "VM $machineName failed to shut down within $timeOutInSeconds seconds."
+    }
+}
+
+<#
+    .SYNOPSIS
+
     Mounts the VHDX drive in the operating system and returns the drive letter for the new drive.
 
 
@@ -296,6 +391,154 @@ function Mount-Vhdx
 <#
     .SYNOPSIS
 
+    Runs sysprep on the given VM, waits for it to turn off and then deletes the VM and turns the VM VHDX into a template.
+
+
+    .DESCRIPTION
+
+    The New-HyperVVhdxTemplateFromVm function runs sysprep on the given VM, waits for it to turn off and then
+    deletes the VM and turns the VM VHDX into a template.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER vhdPath
+
+    The full path to where the VHDX file should be output.
+
+
+    .PARAMETER vhdxTemplatePath
+
+    The full path to the VHDX file that will contain the template once the function completes.
+
+
+    .PARAMETER hypervHost
+
+    The name of the machine which is the Hyper-V host for the domain.
+
+
+    .PARAMETER localAdminCredential
+
+    The credential for the local administrator on the new machine.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for VM to enter the off state.
+
+
+    .PARAMETER tempPath
+
+    The full path to the directory in which temporary files can be stored.
+#>
+function New-HyperVVhdxTemplateFromVm
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $vmName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdPath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdxTemplatePath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $hypervHost,
+
+        [Parameter(Mandatory = $true)]
+        [PSCredential] $localAdminCredential,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 900,
+
+        [Parameter(Mandatory = $true)]
+        [string] $tempPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString()))
+    )
+
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - vmName: $vmName"
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - vhdPath: $vhdPath"
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - hypervHost: $hypervHost"
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - timeOutInSeconds: $timeOutInSeconds"
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - tempPath: $tempPath"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Invoke-SysprepOnVmAndWaitShutdown `
+        -machineName $vmName `
+        -hypervHost $hypervHost `
+        -localAdminCredential $localAdminCredential `
+        -timeOutInSeconds $timeOutInSeconds `
+        -tempPath $tempPath `
+        @commonParameterSwitches
+
+    # Delete VM
+    Remove-VM `
+        -computerName $hypervHost `
+        -Name $vmName `
+        -Force `
+        @commonParameterSwitches
+
+    # Optimize the VHDX
+    #
+    # Mounting the drive using Mount-DiskImage instead of Mount-Vhd because for the latter we need Hyper-V to be installed
+    # which we can't do on a VM
+    $driveLetter = Mount-Vhdx -vhdPath $vhdPath @commonParameterSwitches
+    try
+    {
+        # Copy the log files
+        Get-ChildItem -Path "$($driveLetter):\windows\Panther" -Filter *.log -recurse |
+            Foreach-Object {
+                $directoryName = [System.IO.Path]::GetFileName((Split-Path $_.FullName -Parent))
+                $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
+                Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-$($directoryName).log") @commonParameterSwitches
+            }
+
+        # Remove root level files we don't need anymore
+        attrib -s -h "$($driveLetter):\pagefile.sys"
+        Remove-Item -Path "$($driveLetter):\pagefile.sys" -Force -Verbose
+
+        # Clean up all the user profiles except for the default one
+        $userProfileDirectories = Get-ChildItem -Path "$($driveLetter):\Users\*" -Directory -Exclude 'Default', 'Public'
+        foreach($userProfileDirectory in $userProfileDirectories)
+        {
+            Remove-Item -Path $userProfileDirectory.FullName -Recurse -Force @commonParameterSwitches
+        }
+
+        # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
+        # but saves a considerable amount of disk space.
+        dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase
+
+        Get-ChildItem -Path (Split-Path $vhdPath -Parent) -Filter *.log |
+            Foreach-Object {
+                $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
+                Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-cleanimage.log") @commonParameterSwitches
+            }
+    }
+    finally
+    {
+        Dismount-Vhdx -vhdPath $vhdPath @commonParameterSwitches
+    }
+
+    Copy-Item -Path $vhdPath -Destination $vhdxTemplatePath @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
     Creates a new Hyper-V virtual machine with the given properties.
 
 
@@ -319,9 +562,9 @@ function Mount-Vhdx
     An array containing the sizes, in Gb, of any additional VHDs that should be attached to the virtual machine.
 
 
-    .PARAMETER vmNetworkSwitch
+    .PARAMETER hypervHost
 
-    The name of the virtual network switch that the virtual machine should be connected to.
+    The name of the machine which is the Hyper-V host for the domain.
 
 
     .PARAMETER vmStoragePath
@@ -352,9 +595,6 @@ function New-HypervVm
         [Parameter(Mandatory = $false)]
         [int[]] $vmAdditionalDiskSizesInGb,
 
-        [Parameter(Mandatory = $true)]
-        [string] $vmNetworkSwitch,
-
         [Parameter(Mandatory = $false)]
         [string] $vmStoragePath,
 
@@ -362,6 +602,7 @@ function New-HypervVm
         [string] $vhdStoragePath
     )
 
+    Write-Verbose "New-HypervVm - hypervHost: $hypervHost"
     Write-Verbose "New-HypervVm - vmName: $vmName"
     Write-Verbose "New-HypervVm - osVhdPath: $osVhdPath"
     Write-Verbose "New-HypervVm - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
@@ -392,6 +633,8 @@ function New-HypervVm
         $osVhdLocalPath = $osVhdLocalPath.Replace((Join-Path $uncServerPath $shareRoot), $localShareRoot)
     }
 
+    $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
+
     $vmMemoryInBytes = 2 * 1024 * 1024 * 1024
     if (($vmStoragePath -ne $null) -and ($vmStoragePath -ne ''))
     {
@@ -400,7 +643,7 @@ function New-HypervVm
             -Path $vmStoragePath `
             -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmNetworkSwitch `
+            -SwitchName $vmSwitch `
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
@@ -413,7 +656,174 @@ function New-HypervVm
             -Name $vmName `
             -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmNetworkSwitch `
+            -SwitchName $vmSwitch `
+            -Generation 2 `
+            -BootDevice 'VHD' `
+            -ComputerName $hypervHost `
+            -Confirm:$false `
+            @commonParameterSwitches
+    }
+
+     $vm = $vm |
+        Set-Vm `
+            -ProcessorCount 1 `
+            -Confirm:$false `
+            -Passthru `
+            @commonParameterSwitches
+
+    if ($vmAdditionalDiskSizesInGb -eq $null)
+    {
+        $vmAdditionalDiskSizesInGb = [int[]](@())
+    }
+
+    for ($i = 0; $i -lt $vmAdditionalDiskSizesInGb.Length; $i++)
+    {
+        $diskSize = $vmAdditionalDiskSizesInGb[$i]
+
+        $driveLetter = Get-DriveLetter -driveNumber ($i + 1)
+        $path = Join-Path $vhdStoragePath "$($vmName)_$($driveLetter).vhdx"
+        New-Vhd `
+            -Path $path `
+            -SizeBytes "$($diskSize)GB" `
+            -VHDFormat 'VHDX'
+            -Dynamic `
+            @commonParameterSwitches
+        Add-VMHardDiskDrive `
+            -Path $path `
+            -VM $vm `
+            @commonParameterSwitches
+    }
+
+    return $vm
+}
+
+
+<#
+    .SYNOPSIS
+
+    Creates a new Hyper-V virtual machine from the given base template with the given properties.
+
+
+    .DESCRIPTION
+
+    The New-HypervVmFromBaseImage function creates a new Hyper-V virtual machine from the given base template with the provided properties.
+
+
+    .PARAMETER vmName
+
+    The name of the VM.
+
+
+    .PARAMETER baseVhdx
+
+    The full path of the template VHDx that contains the pre-installed OS.
+
+
+    .PARAMETER vmAdditionalDiskSizesInGb
+
+    An array containing the sizes, in Gb, of any additional VHDs that should be attached to the virtual machine.
+
+
+    .PARAMETER hypervHost
+
+    The name of the machine which is the Hyper-V host for the domain.
+
+
+    .PARAMETER vmStoragePath
+
+    The full path of the directory where the virtual machine files should be stored.
+
+
+    .PARAMETER vhdxStoragePath
+
+    The full path of the directory where the virtual hard drive files should be stored.
+#>
+function New-HypervVmFromBaseImage
+{
+    [CmdletBinding()]
+    [OutputType([void])]
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
+    Param
+    (
+        [Parameter(Mandatory = $true)]
+        [string] $vmName,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string] $baseVhdx,
+
+        [Parameter(Mandatory = $false)]
+        [int[]] $vmAdditionalDiskSizesInGb,
+
+        [Parameter(Mandatory = $false)]
+        [string] $hypervHost = $env:COMPUTERNAME,
+
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $false)]
+        [string] $vmStoragePath
+    )
+
+    Write-Verbose "New-HypervVmFromBaseImage - vmName: $vmName"
+    Write-Verbose "New-HypervVmFromBaseImage - baseVhdx: $baseVhdx"
+    Write-Verbose "New-HypervVmFromBaseImage - vhdxStoragePath: $vhdxStoragePath"
+    Write-Verbose "New-HypervVmFromBaseImage - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
+    Write-Verbose "New-HypervVmFromBaseImage - vmNetworkSwitch: $vmNetworkSwitch"
+    Write-Verbose "New-HypervVmFromBaseImage - vmStoragePath: $vmStoragePath"
+    Write-Verbose "New-HypervVmFromBaseImage - vhdStoragePath: $vhdStoragePath"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    # Copy the template VHDX file
+    $osVhdLocalPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
+    Copy-Item -Path $baseVhdx -Destination $osVhdLocalPath @commonParameterSwitches
+
+    # Make sure we have a local path to the VHD file
+    if ($osVhdLocalPath.StartsWith("$([System.IO.Path]::DirectorySeparatorChar)$([System.IO.Path]::DirectorySeparatorChar)"))
+    {
+        $uncServerPath = "\\$($hypervHost)\"
+        $shareRoot = $osVhdLocalPath.SubString($uncServerPath.Length, $osVhdLocalPath.IndexOf('\', $uncServerPath.Length) - $uncServerPath.Length)
+
+        $shareList = Get-WmiObject -Class Win32_Share -ComputerName $hypervHost @commonParameterSwitches
+        $localShareRoot = $shareList | Where-Object { $_.Name -eq $shareRoot} | Select-Object -ExpandProperty Path
+
+        $osVhdLocalPath = $osVhdLocalPath.Replace((Join-Path $uncServerPath $shareRoot), $localShareRoot)
+    }
+
+    $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
+
+    $vmMemoryInBytes = 2 * 1024 * 1024 * 1024
+    if (($vmStoragePath -ne $null) -and ($vmStoragePath -ne ''))
+    {
+        $vm = New-Vm `
+            -Name $vmName `
+            -Path $vmStoragePath `
+            -VHDPath $osVhdLocalPath `
+            -MemoryStartupBytes $vmMemoryInBytes `
+            -SwitchName $vmSwitch `
+            -Generation 2 `
+            -BootDevice 'VHD' `
+            -ComputerName $hypervHost `
+            -Confirm:$false `
+            @commonParameterSwitches
+    }
+    else
+    {
+        $vm = New-Vm `
+            -Name $vmName `
+            -VHDPath $osVhdLocalPath `
+            -MemoryStartupBytes $vmMemoryInBytes `
+            -SwitchName $vmSwitch `
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
@@ -476,14 +886,14 @@ function New-HypervVm
     The full path of the template VHDx that contains the pre-installed OS.
 
 
-    .PARAMETER vhdxStoragePath
-
-    The full path of the directory where the virtual hard drive files should be stored.
-
-
     .PARAMETER hypervHost
 
     The name of the machine which is the Hyper-V host for the domain.
+
+
+    .PARAMETER vhdxStoragePath
+
+    The full path of the directory where the virtual hard drive files should be stored.
 
 
     .PARAMETER registeredOwner
@@ -534,11 +944,11 @@ function New-HypervVmOnDomain
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string] $vhdxStoragePath,
+        [string] $hypervHost,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string] $hypervHost,
+        [string] $vhdxStoragePath,
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
@@ -555,9 +965,10 @@ function New-HypervVmOnDomain
 
     Write-Verbose "New-HypervVmOnDomain - vmName = $vmName"
     Write-Verbose "New-HypervVmOnDomain - baseVhdx = $baseVhdx"
-    Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
     Write-Verbose "New-HypervVmOnDomain - hypervHost = $hypervHost"
+    Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
     Write-Verbose "New-HypervVmOnDomain - registeredOwner = $registeredOwner"
+    Write-Verbose "New-HypervVmOnDomain - domainName = $domainName"
     Write-Verbose "New-HypervVmOnDomain - unattendedJoin = $unattendedJoin"
 
     # Stop everything if there are errors
@@ -932,6 +1343,6 @@ function Wait-VmStopped
         Start-Sleep -seconds 5
     }
 
-    Write-Verbose "Waiting for VM $name to stop failed outside the normal failure paths."
+    Write-Verbose "Waiting for VM $vmName to stop failed outside the normal failure paths."
     return $false
 }
