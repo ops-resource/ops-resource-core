@@ -1,13 +1,13 @@
 <#
     .SYNOPSIS
 
-    Connects to the remote machine, pushes all the necessary files up to it and then executes the Chef cookbook that installs
-    all the required applications.
+    Connects to a Hyper-V host, creates a new VM, pushes all the necessary files up to the VM and then executes the Chef cookbook that installs
+    all the required applications. Once done, creates a Hyper-V template from the VM and removes the VM.
 
 
     .DESCRIPTION
 
-    The New-HyperVResource script takes all the actions necessary to configure the machine.
+    The New-HyperVImage script takes all the actions necessary to create a Hyper-V template.
 
 
     .PARAMETER credential
@@ -59,29 +59,6 @@
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
-
-
-    .PARAMETER unattendedJoinFile
-
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
-
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
 
 
     .PARAMETER dataCenterName
@@ -140,10 +117,6 @@ param(
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $hypervHost                                        = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $unattendedJoinFile                                = '',
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -232,39 +205,69 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
         -keyPath '' `
         @commonParameterSwitches
     $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
-
-    $unattendedJoin = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
-        @commonParameterSwitches
 }
 else
 {
     $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
 $registeredOwner = Get-RegisteredOwner @commonParameterSwitches
 
-New-HypervVmOnDomain `
-    -machineName $machineName `
+New-HypervVmFromBaseImage `
+    -vmName $machineName `
     -baseVhdx $baseVhdx `
-    -vhdxStoragePath $vhdxStoragePath `
     -hypervHost $hypervHost `
-    -registeredOwner $registeredOwner `
-    -domainName $env:USERDNSDOMAIN `
-    -unattendedJoin $unattendedJoin `
+    -vhdxStoragePath $vhdxStoragePath `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+timeOutInSeconds = 900
 $connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
-    -timeOutInSeconds 900 `
+    -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
-#verify
+$newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        & $newWindowsResource `
+            -session $connection.Session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -dataCenterName $dataCenterName `
+            -clusterEntryPointAddress $clusterEntryPointAddress `
+            -globalDnsServerAddress $globalDnsServerAddress `
+            @commonParameterSwitches
+    }
+
+    'FromMetaCluster' {
+        & $newWindowsResource `
+            -session $connection.Session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -environmentName $environmentName `
+            -consulLocalAddress $consulLocalAddress `
+            @commonParameterSwitches
+    }
+}
+
+New-HypervVhdxTemplateFromVm `
+    -vmName $machineName `
+    -vhdPath (Join-Path $vhdxStoragePath "$($machineName).vhdx") `
+    -vhdxTemplatePath (Join-Path $vhdxTemplatePath "$($resourceName)-$($resourceVersion).vhdx") `
+    -hypervHost $hypervHost `
+    -localAdminCredential $credential `
+    -timeOutInSeconds $timeOutInSeconds `
+    -tempPath $tempPath `
+    @commonParameterSwitches
