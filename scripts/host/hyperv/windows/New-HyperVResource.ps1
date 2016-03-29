@@ -267,4 +267,4 @@ $connection = Get-ConnectionInformationForVm `
     -timeOutInSeconds 900 `
     @commonParameterSwitches
 
-#verify
+# verify

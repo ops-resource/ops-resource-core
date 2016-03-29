@@ -8,7 +8,7 @@
 
     .DESCRIPTION
 
-    The Initialize-HyperVResource script takes all the actions necessary to create and configure a new Hyper-V virtual machine.
+    The Initialize-HyperVImage script takes all the actions necessary to create and configure a new Hyper-V virtual machine.
 
 
     .PARAMETER credential
@@ -31,27 +31,14 @@
     The name of the machine on which the hyper-v server is located.
 
 
-    .PARAMETER unattendedJoinFile
+    .PARAMETER vhdxTemplatePath
 
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
+    The UNC path to the directory that contains the Hyper-V images.
 
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
+
+    .PARAMETER hypervHostVmStoragePath
+
+    The UNC path to the directory that stores the Hyper-V VM information.
 
 
     .PARAMETER dataCenterName
@@ -81,7 +68,7 @@
 
     .EXAMPLE
 
-    Initialize-HyperVResource hypervhost "MyHyperVServer"
+    Initialize-HyperVImage hypervhost "MyHyperVServer"
 #>
 [CmdletBinding()]
 param(
@@ -100,7 +87,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $unattendedJoinFile                                = '',
+    [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines",
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -123,22 +114,24 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "Initialize-HyperVResource - credential: $credential"
-Write-Verbose "Initialize-HyperVResource - authenticateWithCredSSP: $authenticateWithCredSSP"
-Write-Verbose "Initialize-HyperVResource - osName = $osName"
-Write-Verbose "Initialize-HyperVResource - hypervHost: $hypervHost"
+Write-Verbose "Initialize-HyperVImage - credential: $credential"
+Write-Verbose "Initialize-HyperVImage - authenticateWithCredSSP: $authenticateWithCredSSP"
+Write-Verbose "Initialize-HyperVImage - osName = $osName"
+Write-Verbose "Initialize-HyperVImage - hypervHost: $hypervHost"
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
+        Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
+        Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+        Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+        Write-Verbose "Initialize-HyperVImage - dataCenterName = $dataCenterName"
+        Write-Verbose "Initialize-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "Initialize-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
-        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
+        Write-Verbose "Initialize-HyperVImage - environmentName = $environmentName"
+        Write-Verbose "Initialize-HyperVImage - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -165,9 +158,12 @@ try
     $testDirectory = $(Join-Path $PSScriptRoot 'verification')
     $logDirectory = $(Join-Path $PSScriptRoot 'logs')
 
-    $installationScript = Join-Path $PSScriptRoot 'New-HyperVResource.ps1'
-    $verificationScript = Join-Path $PSScriptRoot 'Test-LocalNetworkResource.ps1'
+    $installationScript = Join-Path $PSScriptRoot 'New-HypervImage.ps1'
+    $verificationScript = Join-Path $PSScriptRoot 'Test-HypervImage.ps1'
 
+    $previewPrefix = "preview_"
+    $imageName = "$($resourceName)-$($resourceVersion).vhdx"
+    $previewImageName = "$($previewPrefix)$($imageName)"
     $machineName = New-RandomMachineName @commonParameterSwitches
     switch ($psCmdlet.ParameterSetName)
     {
@@ -178,16 +174,33 @@ try
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
                 -cookbookNames $cookbookNames `
+                -imageName $previewImageName `
                 -installationDirectory $installationDirectory `
                 -logDirectory $logDirectory `
                 -osName $osName `
                 -machineName $machineName `
                 -hypervHost $hypervHost `
-                -unattendedJoinFile $unattendedJoinFile `
+                -vhdxTemplatePath $vhdxTemplatePath `
+                -hypervHostVmStoragePath $hypervHostVmStoragePath `
                 -dataCenterName $dataCenterName `
                 -clusterEntryPointAddress $clusterEntryPointAddress `
                 -globalDnsServerAddress $globalDnsServerAddress `
                 @commonParameterSwitches
+
+                & $verificationScript `
+                    -credential $credential `
+                    -authenticateWithCredSSP:$authenticateWithCredSSP `
+                    -imageName $previewImageName `
+                    -testDirectory $testDirectory `
+                    -logDirectory $logDirectory `
+                    -machineName $machineName `
+                    -hypervHost $hypervHost `
+                    -vhdxTemplatePath $vhdxTemplatePath `
+                    -hypervHostVmStoragePath $hypervHostVmStoragePath `
+                    -dataCenterName $dataCenterName `
+                    -clusterEntryPointAddress $clusterEntryPointAddress `
+                    -globalDnsServerAddress $globalDnsServerAddress `
+                    @commonParameterSwitches
         }
 
         'FromMetaCluster' {
@@ -197,6 +210,7 @@ try
                 -resourceName $resourceName `
                 -resourceVersion $resourceVersion `
                 -cookbookNames $cookbookNames `
+                -imageName $imageName `
                 -installationDirectory $installationDirectory `
                 -logDirectory $logDirectory `
                 -osName $osName `
@@ -204,21 +218,30 @@ try
                 -environmentName $environmentName `
                 -consulLocalAddress $consulLocalAddress `
                 @commonParameterSwitches
+
+                & $verificationScript `
+                    -credential $credential `
+                    -authenticateWithCredSSP:$authenticateWithCredSSP `
+                    -imageName $previewImageName `
+                    -testDirectory $testDirectory `
+                    -logDirectory $logDirectory `
+                    -machineName $machineName `
+                    -environmentName $environmentName `
+                    -consulLocalAddress $consulLocalAddress `
+                    @commonParameterSwitches
         }
     }
 
-    & $verificationScript `
-        -credential $credential `
-        -authenticateWithCredSSP:$authenticateWithCredSSP `
-        -computerName $machineName `
-        -testDirectory $testDirectory `
-        -logDirectory $logDirectory `
-        @commonParameterSwitches
+    # If the tests pass, then rename the image
+    Rename-Item -Path (Join-Path $vhdxTemplatePath $previewImageName) -NewName $imageName -Force @commonParameterSwitches
+
+    # Now make the image file read-only
+    Set-ItemProperty -Path (Join-Path $vhdxTemplatePath $imageName) -Name IsReadOnly -Value $true
 }
 finally
 {
     $endTime = [System.DateTimeOffset]::Now
-    Write-Output ("Resource initialization started: " + $startTime)
-    Write-Output ("Resource initialization completed: " + $endTime)
+    Write-Output ("Image initialization started: " + $startTime)
+    Write-Output ("Image initialization completed: " + $endTime)
     Write-Output ("Total time: " + ($endTime - $startTime))
 }

@@ -788,78 +788,22 @@ function New-HypervVmFromBaseImage
     $osVhdLocalPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
     Copy-Item -Path $baseVhdx -Destination $osVhdLocalPath @commonParameterSwitches
 
-    # Make sure we have a local path to the VHD file
-    if ($osVhdLocalPath.StartsWith("$([System.IO.Path]::DirectorySeparatorChar)$([System.IO.Path]::DirectorySeparatorChar)"))
+    if (Get-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly)
     {
-        $uncServerPath = "\\$($hypervHost)\"
-        $shareRoot = $osVhdLocalPath.SubString($uncServerPath.Length, $osVhdLocalPath.IndexOf('\', $uncServerPath.Length) - $uncServerPath.Length)
-
-        $shareList = Get-WmiObject -Class Win32_Share -ComputerName $hypervHost @commonParameterSwitches
-        $localShareRoot = $shareList | Where-Object { $_.Name -eq $shareRoot} | Select-Object -ExpandProperty Path
-
-        $osVhdLocalPath = $osVhdLocalPath.Replace((Join-Path $uncServerPath $shareRoot), $localShareRoot)
+        Set-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly -Value $false
     }
 
     $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
 
-    $vmMemoryInBytes = 2 * 1024 * 1024 * 1024
-    if (($vmStoragePath -ne $null) -and ($vmStoragePath -ne ''))
-    {
-        $vm = New-Vm `
-            -Name $vmName `
-            -Path $vmStoragePath `
-            -VHDPath $osVhdLocalPath `
-            -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmSwitch `
-            -Generation 2 `
-            -BootDevice 'VHD' `
-            -ComputerName $hypervHost `
-            -Confirm:$false `
-            @commonParameterSwitches
-    }
-    else
-    {
-        $vm = New-Vm `
-            -Name $vmName `
-            -VHDPath $osVhdLocalPath `
-            -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmSwitch `
-            -Generation 2 `
-            -BootDevice 'VHD' `
-            -ComputerName $hypervHost `
-            -Confirm:$false `
-            @commonParameterSwitches
-    }
-
-     $vm = $vm |
-        Set-Vm `
-            -ProcessorCount 1 `
-            -Confirm:$false `
-            -Passthru `
-            @commonParameterSwitches
-
-    if ($vmAdditionalDiskSizesInGb -eq $null)
-    {
-        $vmAdditionalDiskSizesInGb = [int[]](@())
-    }
-
-    for ($i = 0; $i -lt $vmAdditionalDiskSizesInGb.Length; $i++)
-    {
-        $diskSize = $vmAdditionalDiskSizesInGb[$i]
-
-        $driveLetter = Get-DriveLetter -driveNumber ($i + 1)
-        $path = Join-Path $vhdStoragePath "$($vmName)_$($driveLetter).vhdx"
-        New-Vhd `
-            -Path $path `
-            -SizeBytes "$($diskSize)GB" `
-            -VHDFormat 'VHDX'
-            -Dynamic `
-            @commonParameterSwitches
-        Add-VMHardDiskDrive `
-            -Path $path `
-            -VM $vm `
-            @commonParameterSwitches
-    }
+    New-HypervVm `
+        -hypervHost $hypervHost `
+        -vmName $vmName `
+        -osVhdPath $osVhdLocalPath `
+        -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
+        -vmNetworkSwitch $vmSwitch.Name `
+        -vmStoragePath '' `
+        -vhdStoragePath '' `
+        @commonParameterSwitches
 
     return $vm
 }
@@ -884,6 +828,11 @@ function New-HypervVmFromBaseImage
     .PARAMETER baseVhdx
 
     The full path of the template VHDx that contains the pre-installed OS.
+
+
+    .PARAMETER vmAdditionalDiskSizesInGb
+
+    An array containing the sizes, in Gb, of any additional VHDs that should be attached to the virtual machine.
 
 
     .PARAMETER hypervHost
@@ -942,6 +891,9 @@ function New-HypervVmOnDomain
         [ValidateNotNullOrEmpty()]
         [string] $baseVhdx,
 
+        [Parameter(Mandatory = $false)]
+        [int[]] $vmAdditionalDiskSizesInGb,
+
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string] $hypervHost,
@@ -965,6 +917,7 @@ function New-HypervVmOnDomain
 
     Write-Verbose "New-HypervVmOnDomain - vmName = $vmName"
     Write-Verbose "New-HypervVmOnDomain - baseVhdx = $baseVhdx"
+    Write-Verbose "New-HypervVmOnDomain - vmAdditionalDiskSizesInGb = $vmAdditionalDiskSizesInGb"
     Write-Verbose "New-HypervVmOnDomain - hypervHost = $hypervHost"
     Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
     Write-Verbose "New-HypervVmOnDomain - registeredOwner = $registeredOwner"
@@ -1071,6 +1024,10 @@ function New-HypervVmOnDomain
     # Create a copy of the VHDX file and then mount it
     $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
     Copy-Item -Path $baseVhdx -Destination $vhdxPath -Verbose
+    if (Get-ItemProperty -Path $vhdxPath -Name IsReadOnly)
+    {
+        Set-ItemProperty -Path $vhdxPath -Name IsReadOnly -Value $false
+    }
 
     try
     {
@@ -1089,7 +1046,7 @@ function New-HypervVmOnDomain
         -hypervHost $hypervHost `
         -vmName $vmName `
         -osVhdPath $vhdxPath `
-        -vmAdditionalDiskSizesInGb $additionalDrives `
+        -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
         -vmNetworkSwitch $vmSwitch.Name `
         -vmStoragePath '' `
         -vhdStoragePath '' `

@@ -1,13 +1,12 @@
 <#
     .SYNOPSIS
 
-    Connects to a Hyper-V host, creates a new VM, pushes all the necessary files up to the VM and then executes the Chef cookbook that installs
-    all the required applications. Once done, creates a Hyper-V template from the VM and removes the VM.
+    Verifies that a given Hyper-V image can indeed be used to run the selected resource.
 
 
     .DESCRIPTION
 
-    The New-HyperVImage script takes all the actions necessary to create a Hyper-V template.
+    The Test-HyperVImage script verifies that a given image can indeed be used to run the selected resource.
 
 
     .PARAMETER credential
@@ -35,11 +34,6 @@
     An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
 
 
-    .PARAMETER imageName
-
-    The name of the image that should be created.
-
-
     .PARAMETER installationDirectory
 
     The directory in which all the installer packages and cookbooks can be found. It is expected that the cookbooks are stored
@@ -64,16 +58,6 @@
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
-
-
-    .PARAMETER vhdxTemplatePath
-
-    The UNC path to the directory that contains the Hyper-V images.
-
-
-    .PARAMETER hypervHostVmStoragePath
-
-    The UNC path to the directory that stores the Hyper-V VM information.
 
 
     .PARAMETER dataCenterName
@@ -109,25 +93,12 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $false)]
-    [string] $resourceName                                      = '',
-
-    [Parameter(Mandatory = $false)]
-    [string] $resourceVersion                                   = '',
-
-    [Parameter(Mandatory = $true)]
-    [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
-
-    [Parameter(Mandatory = $false)]
     [string] $imageName                                         = "$($resourceName)-$($resourceVersion).vhdx",
 
-    [Parameter(Mandatory = $false)]
-    [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
+    [string] $testDirectory                                     = $(Join-Path $PSScriptRoot "verification"),
 
     [Parameter(Mandatory = $false)]
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
-
-    [Parameter(Mandatory = $true)]
-    [string] $osName                                            = '',
 
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
@@ -165,30 +136,27 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "New-HyperVImage - credential = $credential"
-Write-Verbose "New-HyperVImage - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVImage - resourceName = $resourceName"
-Write-Verbose "New-HyperVImage - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVImage - cookbookNames = $cookbookNames"
-Write-Verbose "New-HyperVImage - installationDirectory = $installationDirectory"
-Write-Verbose "New-HyperVImage - logDirectory = $logDirectory"
-Write-Verbose "New-HyperVImage - osName = $osName"
-Write-Verbose "New-HyperVImage - machineName = $machineName"
+Write-Verbose "Test-HyperVImage - credential = $credential"
+Write-Verbose "Test-HyperVImage - authenticateWithCredSSP = $authenticateWithCredSSP"
+Write-Verbose "Test-HyperVImage - imageName = $imageName"
+Write-Verbose "Test-HyperVImage - testDirectory = $testDirectory"
+Write-Verbose "Test-HyperVImage - logDirectory = $logDirectory"
+Write-Verbose "Test-HyperVImage - machineName = $machineName"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
-        Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
-        Write-Verbose "New-HyperVImage - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
+        Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
+        Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+        Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+        Write-Verbose "Test-HyperVImage - dataCenterName = $dataCenterName"
+        Write-Verbose "Test-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "Test-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-HyperVImage - environmentName = $environmentName"
-        Write-Verbose "New-HyperVImage - consulLocalAddress = $consulLocalAddress"
+        Write-Verbose "Test-HyperVImage - environmentName = $environmentName"
+        Write-Verbose "Test-HyperVImage - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -205,11 +173,10 @@ $commonParameterSwitches =
 # Load the helper functions
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
-. (Join-Path $PSScriptRoot windows.ps1)
 
-if (-not (Test-Path $installationDirectory))
+if (-not (Test-Path $testDirectory))
 {
-    throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
+    throw "Unable to find the directory containing the test files. Expected it at: $testDirectory"
 }
 
 if (-not (Test-Path $logDirectory))
@@ -252,61 +219,52 @@ if (-not (Test-Path $vhdxTemplatePath))
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1
 
-New-HypervVmFromBaseImage `
-    -vmName $machineName `
-    -baseVhdx $baseVhdx `
-    -hypervHost $hypervHost `
-    -vhdxStoragePath $vhdxStoragePath `
-    @commonParameterSwitches
-
-Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
-timeOutInSeconds = 900
-$connection = Get-ConnectionInformationForVm `
-    -machineName $machineName `
-    -hypervHost $hypervHost `
-    -localAdminCredential $credential `
-    -timeOutInSeconds $timeOutInSeconds `
-    @commonParameterSwitches
-
-$newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-switch ($psCmdlet.ParameterSetName)
+try
 {
-    'FromUserSpecification' {
-        & $newWindowsResource `
-            -session $connection.Session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -dataCenterName $dataCenterName `
-            -clusterEntryPointAddress $clusterEntryPointAddress `
-            -globalDnsServerAddress $globalDnsServerAddress `
-            @commonParameterSwitches
-    }
+    New-HypervVmFromBaseImage `
+        -vmName $machineName `
+        -baseVhdx $baseVhdx `
+        -hypervHost $hypervHost `
+        -vhdxStoragePath $vhdxStoragePath `
+        @commonParameterSwitches
 
-    'FromMetaCluster' {
-        & $newWindowsResource `
-            -session $connection.Session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -environmentName $environmentName `
-            -consulLocalAddress $consulLocalAddress `
-            @commonParameterSwitches
-    }
+    Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+    timeOutInSeconds = 900
+    $connection = Get-ConnectionInformationForVm `
+        -machineName $machineName `
+        -hypervHost $hypervHost `
+        -localAdminCredential $credential `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+
+    Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
+
+    $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
+    & $testWindowsResource -session $connection.Session -testDirectory $testDirectory -logDirectory $logDirectory
 }
+finally
+{
+    # Stop the VM
+    try
+    {
+        Stop-VM `
+            -ComputerName $hypervHost `
+            -Name $machineName `
+            -Force `
+            @commonParameterSwitches
+    }
+    catch
+    {
+        # just ignore it
+    }
 
-New-HypervVhdxTemplateFromVm `
-    -vmName $machineName `
-    -vhdPath (Join-Path $vhdxStoragePath "$($machineName).vhdx") `
-    -vhdxTemplatePath (Join-Path $vhdxTemplatePath $imageName) `
-    -hypervHost $hypervHost `
-    -localAdminCredential $credential `
-    -timeOutInSeconds $timeOutInSeconds `
-    -tempPath $tempPath `
-    @commonParameterSwitches
+    # Delete the VM. If the delete goes wrong we want to know, because we'll have a random VM
+    # trying to do stuff on the environment.
+    Remove-VM `
+        -computerName $hypervHost `
+        -Name $machineName `
+        -Force `
+        @commonParameterSwitches
+}
