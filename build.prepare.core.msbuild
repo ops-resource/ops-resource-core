@@ -26,8 +26,11 @@
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
         <!-- Files -->
-        <FileResourceCoreMetadataTemplate>$(DirCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataTemplate>
-        <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataGenerated>
+        <FileResourceCoreConsulMetadataTemplate>$(DirCookbooksResourceCoreConsul)\metadata.rb</FileResourceCoreConsulMetadataTemplate>
+        <FileResourceCoreConsulMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreConsul)\metadata.rb</FileResourceCoreConsulMetadataGenerated>
+
+        <FileResourceCoreMetaMetadataTemplate>$(DirCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataTemplate>
+        <FileResourceCoreMetaMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataGenerated>
     </PropertyGroup>
 
     <Import Project="$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild"
@@ -113,15 +116,26 @@
                  Condition="!Exists('$(DirBuildTempCore)')" />
         <MakeDir Directories="$(DirBuildTempCoreCookbooks)"
                  Condition="!Exists('$(DirBuildTempCoreWCookbooks)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreConsul)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreConsul)')" />
 
         <ItemGroup>
-            <CookbookFiles Include="$(DirCookbooks)\**\*.*" />
+            <CookbookMetaFiles Include="$(DirCookbooksResourceCoreMeta)\**\*.*" />
+            <CookbookConsulFiles Include="$(DirCookbooksResourceCoreConsul)\**\*.*" />
         </ItemGroup>
         <Copy SourceFiles="@(CookbookFiles)"
-              DestinationFiles="@(CookbookFiles->'$(DirBuildTempCoreCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
+              DestinationFiles="@(CookbookMetaFiles->'$(DirBuildTempCoreCookbooksResourceCoreMeta)\%(RecursiveDir)%(Filename)%(Extension)')" />
+        <Copy SourceFiles="@(CookbookFiles)"
+              DestinationFiles="@(CookbookConsulFiles->'$(DirBuildTempCoreCookbooksResourceCoreConsul)\%(RecursiveDir)%(Filename)%(Extension)')" />
 
-        <TemplateFile Template="$(FileResourceCoreMetadataTemplate)"
-                      OutputFileName="$(FileResourceCoreMetadataGenerated)"
+        <TemplateFile Template="$(FileResourceCoreConsulMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreConsulMetadataGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' "/>
+        <TemplateFile Template="$(FileResourceCoreMetaMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreMetaMetadataGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>

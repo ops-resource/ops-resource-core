@@ -274,7 +274,8 @@
         <DirBuildTempCoreScripts>$(DirBuildTempCore)\scripts</DirBuildTempCoreScripts>
         <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
-        <DirBuildTempCoreCookbooksResourceCore>$(DirBuildTempCoreCookbooks)\ops_resource_core</DirBuildTempCoreCookbooksResourceCore>
+        <DirBuildTempCoreCookbooksResourceCoreMeta>$(DirBuildTempCoreCookbooks)\ops_resource_core_meta</DirBuildTempCoreCookbooksResourceCoreMeta>
+        <DirBuildTempCoreCookbooksResourceCoreConsul>$(DirBuildTempCoreCookbooks)\ops_resource_core_consul</DirBuildTempCoreCookbooksResourceCoreConsul>
         <DirBuildTempCoreTests>$(DirBuildTempCore)\tests</DirBuildTempCoreTests>
         <DirBuildTempCoreTools>$(DirBuildTempCore)\tools</DirBuildTempCoreTools>
         <DirBuildTempCoreToolsPester>$(DirBuildTempCoreTools)\pester</DirBuildTempCoreToolsPester>
@@ -284,7 +285,8 @@
 
         <!-- The directory that contains the Chef cookbooks -->
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
-        <DirCookbooksResourceCore>$(DirCookbooks)\ops_resource_core</DirCookbooksResourceCore>
+        <DirCookbooksResourceCoreMeta>$(DirCookbooks)\ops_resource_core_meta</DirCookbooksResourceCoreMeta>
+        <DirCookbooksResourceCoreConsul>$(DirCookbooks)\ops_resource_core_consul</DirCookbooksResourceCoreConsul>
 
         <!-- The directory that contains all the NuGet packages for the project -->
         <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages>
