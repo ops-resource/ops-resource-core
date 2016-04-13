@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: ops_resource_core
+# Cookbook Name:: ops_resource_core_consul
 # Recipe:: consul_as_dns
 #
 # Copyright 2015, P. van der Velde

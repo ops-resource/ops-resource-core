@@ -24,7 +24,7 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resource_core::consul_start' do
+describe 'ops_resource_core_consul::consul_start' do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   it 'starts the consul service' do

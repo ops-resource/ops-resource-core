@@ -24,7 +24,7 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resource_core::consul_health_checks' do
+describe 'ops_resource_core_consul::consul_health_checks' do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
   it 'copies the Test-Disk.ps1 file' do

@@ -1,33 +1,24 @@
-ops_resource_core Cookbook
+ops_resource_core_consul Cookbook
 ======================
-This cookbook installs the applications and files that should be present on all machines that are created. Default installed are:
-* The c:\meta\meta.json file describing which cookbooks were used to configure the machine.
-* The [consul](https://consul.io/) client application which provides monitoring of the machine and a distributed key store that is used to indicate which services are installed on the machine and what environment the machine belongs to.
+This cookbook installs the [consul](https://consul.io/) client application which provides monitoring of the machine and a distributed key store that is used to indicate which services are installed on the machine and what environment the machine belongs to.
 
 Requirements
 ------------
 
 #### cookbooks
-- `chef_handler`
 - `windows`
 - `windows_firewall`
 
 Attributes
 ----------
 
-#### ops_resource_core::default
+#### ops_resource_core_consul::default
 <table>
   <tr>
     <th>Key</th>
     <th>Type</th>
     <th>Description</th>
     <th>Default</th>
-  </tr>
-  <tr>
-    <td><tt>['paths']['meta']</tt></td>
-    <td>String</td>
-    <td>The path to the directory that contains the meta data.</td>
-    <td><tt>c:\meta</tt></td>
   </tr>
   <tr>
     <td><tt>['paths']['consul_base']</tt></td>
@@ -63,14 +54,14 @@ Attributes
 
 Usage
 -----
-#### ops_resource_core::default
-Just include `ops_resource_core` in your node's `run_list`:
+#### ops_resource_core_consul::default
+Just include `ops_resource_core_consul` in your node's `run_list`:
 
 ```json
 {
   "name":"my_node",
   "run_list": [
-    "recipe[ops_resource_core]"
+    "recipe[ops_resource_core_consul]"
   ]
 }
 ```

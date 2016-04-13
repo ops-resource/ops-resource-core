@@ -1,5 +1,5 @@
 #
-# Cookbook Name:: ops_resource_core
+# Cookbook Name:: ops_resource_core_consul
 # Recipe:: consul_health_checks
 #
 # Copyright 2015, P. van der Velde
