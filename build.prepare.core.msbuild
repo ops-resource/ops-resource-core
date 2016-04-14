@@ -26,8 +26,11 @@
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
         <!-- Files -->
-        <FileResourceCoreMetadataTemplate>$(DirCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataTemplate>
-        <FileResourceCoreMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCore)\metadata.rb</FileResourceCoreMetadataGenerated>
+        <FileResourceCoreConsulMetadataTemplate>$(DirCookbooksResourceCoreConsul)\metadata.rb</FileResourceCoreConsulMetadataTemplate>
+        <FileResourceCoreConsulMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreConsul)\metadata.rb</FileResourceCoreConsulMetadataGenerated>
+
+        <FileResourceCoreMetaMetadataTemplate>$(DirCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataTemplate>
+        <FileResourceCoreMetaMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataGenerated>
     </PropertyGroup>
 
     <Import Project="$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild"
@@ -113,6 +116,10 @@
                  Condition="!Exists('$(DirBuildTempCore)')" />
         <MakeDir Directories="$(DirBuildTempCoreCookbooks)"
                  Condition="!Exists('$(DirBuildTempCoreWCookbooks)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreConsul)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreConsul)')" />
 
         <ItemGroup>
             <CookbookFiles Include="$(DirCookbooks)\**\*.*" />
@@ -120,8 +127,12 @@
         <Copy SourceFiles="@(CookbookFiles)"
               DestinationFiles="@(CookbookFiles->'$(DirBuildTempCoreCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
 
-        <TemplateFile Template="$(FileResourceCoreMetadataTemplate)"
-                      OutputFileName="$(FileResourceCoreMetadataGenerated)"
+        <TemplateFile Template="$(FileResourceCoreConsulMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreConsulMetadataGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' "/>
+        <TemplateFile Template="$(FileResourceCoreMetaMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreMetaMetadataGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>
@@ -200,10 +211,12 @@
                  Condition="!Exists('$(DirBuildTempCoreCookbooks)')" />
         <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)"
                  Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)')" />
-        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files"
-                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files')" />
-        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files\default"
-                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files\default')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)\files')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default')" />
 
         <ItemGroup>
           <MetaLines Include="{" />
@@ -212,7 +225,7 @@
         </ItemGroup>
 
         <WriteLinesToFile
-          File="$(DirBuildTempCoreCookbooksResourceCore)\files\default\meta.json"
+          File="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default\meta.json"
           Lines="@(MetaLines)"
           Overwrite="False"
           Encoding="UTF-8" />

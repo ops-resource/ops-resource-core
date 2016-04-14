@@ -59,9 +59,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <CookbooksToInvoke Include="ops_resource_core::default_meta"
+        <CookbooksToInvoke Include="ops_resource_core_meta::default"
                            Condition=" '$(InstallMeta)' == 'true' " />
-        <CookbooksToInvoke Include="ops_resource_core::default_consul"
+        <CookbooksToInvoke Include="ops_resource_core_consul::default"
                            Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
     </ItemGroup>

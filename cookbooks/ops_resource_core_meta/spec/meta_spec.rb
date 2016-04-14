@@ -24,10 +24,16 @@ RSpec.configure do |config|
   config.version = '2012'
 end
 
-describe 'ops_resource_core::consul_config' do
+describe 'ops_resource_core_meta::meta' do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
-  it 'creates the consul configuration directory' do
-    expect(chef_run).to create_directory('c:\\meta\\consul')
+  meta_path = 'c:\\meta'
+  it 'creates the meta directory' do
+    expect(chef_run).to create_directory(meta_path)
+  end
+
+  meta_file = 'meta.json'
+  it 'creates the meta file' do
+    expect(chef_run).to create_cookbook_file("#{meta_path}\\#{meta_file}").with(source: meta_file)
   end
 end

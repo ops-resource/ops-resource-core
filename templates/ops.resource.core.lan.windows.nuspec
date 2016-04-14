@@ -18,9 +18,12 @@
         </dependencies>
     </metadata>
     <files>
-        <file src="$DirOutput$\cookbooks\**\*.*"
+        <file src="$DirOutput$\cookbooks\ops_resource_core_meta\*.*"
               exclude="$DirOutput$\cookbooks\**\*_spec.rb"
-              target="cookbooks" />
+              target="cookbooks\ops_resource_core_meta" />
+        <file src="$DirOutput$\cookbooks\ops_resource_core_consul\*.*"
+              exclude="$DirOutput$\cookbooks\**\*_spec.rb"
+              target="cookbooks\ops_resource_core_consul" />
         <file src="$DirOutput$\tools\**\*.*" target="tools" />
         <file src="$DirOutput$\tests\**\*.*" target="tests" />
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
