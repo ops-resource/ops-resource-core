@@ -122,13 +122,10 @@
                  Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreConsul)')" />
 
         <ItemGroup>
-            <CookbookMetaFiles Include="$(DirCookbooksResourceCoreMeta)\**\*.*" />
-            <CookbookConsulFiles Include="$(DirCookbooksResourceCoreConsul)\**\*.*" />
+            <CookbookFiles Include="$(DirCookbooks)\**\*.*" />
         </ItemGroup>
         <Copy SourceFiles="@(CookbookFiles)"
-              DestinationFiles="@(CookbookMetaFiles->'$(DirBuildTempCoreCookbooksResourceCoreMeta)\%(RecursiveDir)%(Filename)%(Extension)')" />
-        <Copy SourceFiles="@(CookbookFiles)"
-              DestinationFiles="@(CookbookConsulFiles->'$(DirBuildTempCoreCookbooksResourceCoreConsul)\%(RecursiveDir)%(Filename)%(Extension)')" />
+              DestinationFiles="@(CookbookFiles->'$(DirBuildTempCoreCookbooks)\%(RecursiveDir)%(Filename)%(Extension)')" />
 
         <TemplateFile Template="$(FileResourceCoreConsulMetadataTemplate)"
                       OutputFileName="$(FileResourceCoreConsulMetadataGenerated)"
@@ -214,10 +211,12 @@
                  Condition="!Exists('$(DirBuildTempCoreCookbooks)')" />
         <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)"
                  Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)')" />
-        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files"
-                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files')" />
-        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCore)\files\default"
-                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCore)\files\default')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)\files')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default')" />
 
         <ItemGroup>
           <MetaLines Include="{" />
@@ -226,7 +225,7 @@
         </ItemGroup>
 
         <WriteLinesToFile
-          File="$(DirBuildTempCoreCookbooksResourceCore)\files\default\meta.json"
+          File="$(DirBuildTempCoreCookbooksResourceCoreMeta)\files\default\meta.json"
           Lines="@(MetaLines)"
           Overwrite="False"
           Encoding="UTF-8" />
