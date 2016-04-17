@@ -13,3 +13,15 @@ directory consul_config_directory do
   rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
+
+# STORE PROVISIONING SCRIPT
+provisioning_directory = node['paths']['provisioning_base']
+directory provisioning_directory do
+  action :create
+end
+
+provisioning_script = 'Initialize-ConsulResource.ps1'
+cookbook_file "#{provisioning_directory}\\#{provisioning_script}" do
+  source provisioning_script
+  action :create
+end

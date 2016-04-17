@@ -1,13 +1,16 @@
 [CmdletBinding()]
 param(
-    $consulServiceName = 'consul',
-    $filesToUpload = @{}
 )
 
 $ErrorActionPreference = 'Stop'
 
 # verify that the consul service is up and running
 $service = Get-Service -Name $consulServiceName
+
+
+# Set the service to be automatically started
+
+
 if (($service -eq $null) -or ($service.Status -ne 'Running'))
 {
     throw "Consul has not be registered as a service, or the service was not running."
