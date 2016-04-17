@@ -23,16 +23,16 @@ win_service_name = 'consul_service'
 # Create user
 # - limited user
 # - Reduce access to files. User should only have write access to consul dir
-consul_username = 'consul_user'
-consul_password = SecureRandom.uuid
-user consul_username do
-  password consul_password
+service_username = 'consul_user'
+service_password = SecureRandom.uuid
+user service_username do
+  password service_password
   action :create
 end
 
 group 'Performance Monitor Users' do
   action :modify
-  members consul_username
+  members service_username
   append true
 end
 
@@ -42,7 +42,7 @@ powershell_script 'user_grant_service_logon_rights' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
 
-    $userName = "#{consul_username}"
+    $userName = "#{service_username}"
 
     $tempPath = "c:\\temp"
     if (-not (Test-Path $tempPath))
@@ -114,13 +114,13 @@ end
 
 consul_data_directory = node['paths']['consul_data']
 directory consul_data_directory do
-  rights :modify, consul_username, applies_to_children: true, applies_to_self: false
+  rights :modify, service_username, applies_to_children: true, applies_to_self: false
   action :create
 end
 
 consul_logs_directory = node['paths']['consul_logs']
 directory consul_logs_directory do
-  rights :modify, consul_username, applies_to_children: true, applies_to_self: false
+  rights :modify, service_username, applies_to_children: true, applies_to_self: false
   action :create
 end
 
@@ -214,7 +214,6 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
   action :create
 end
 
-# Get IP for consul join from CMDB
 file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   content <<-XML
 <?xml version="1.0"?>
@@ -252,17 +251,19 @@ powershell_script 'consul_as_service' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
 
-    Write-Host "ConsulUser: #{consul_username}"
-    Write-Host "ConsulPassword: #{consul_password}"
-
-    $securePassword = ConvertTo-SecureString "#{consul_password}" -AsPlainText -Force
+    $securePassword = ConvertTo-SecureString "#{service_password}" -AsPlainText -Force
 
     # Note the .\\ is to get the local machine account as per here:
     # http://stackoverflow.com/questions/313622/powershell-script-to-change-service-account#comment14535084_315616
-    $credential = New-Object pscredential((".\\" + "#{consul_username}"), $securePassword)
+    $credential = New-Object pscredential((".\\" + "#{service_username}"), $securePassword)
 
     # Create the new service
-    New-Service -Name '#{service_name}' -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' -Credential $credential -DisplayName '#{service_name}' -StartupType Automatic
+    New-Service `
+        -Name '#{service_name}' `
+        -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
+        -Credential $credential `
+        -DisplayName '#{service_name}' `
+        -StartupType Disabled
 
     # Set the service to restart if it fails
     sc.exe failure #{service_name} reset=86400 actions=restart/5000
