@@ -276,6 +276,7 @@
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
         <DirBuildTempCoreCookbooksResourceCoreMeta>$(DirBuildTempCoreCookbooks)\ops_resource_core_meta</DirBuildTempCoreCookbooksResourceCoreMeta>
         <DirBuildTempCoreCookbooksResourceCoreConsul>$(DirBuildTempCoreCookbooks)\ops_resource_core_consul</DirBuildTempCoreCookbooksResourceCoreConsul>
+        <DirBuildTempCoreCookbooksResourceCoreProvisioning>$(DirBuildTempCoreCookbooks)\ops_resource_core_provisioning</DirBuildTempCoreCookbooksResourceCoreProvisioning>
         <DirBuildTempCoreTests>$(DirBuildTempCore)\tests</DirBuildTempCoreTests>
         <DirBuildTempCoreTools>$(DirBuildTempCore)\tools</DirBuildTempCoreTools>
         <DirBuildTempCoreToolsPester>$(DirBuildTempCoreTools)\pester</DirBuildTempCoreToolsPester>
@@ -287,6 +288,7 @@
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
         <DirCookbooksResourceCoreMeta>$(DirCookbooks)\ops_resource_core_meta</DirCookbooksResourceCoreMeta>
         <DirCookbooksResourceCoreConsul>$(DirCookbooks)\ops_resource_core_consul</DirCookbooksResourceCoreConsul>
+        <DirCookbooksResourceCoreProvisioning>$(DirCookbooks)\ops_resource_core_provisioning</DirCookbooksResourceCoreProvisioning>
 
         <!-- The directory that contains all the NuGet packages for the project -->
         <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages>

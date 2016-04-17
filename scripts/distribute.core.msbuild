@@ -20,6 +20,7 @@
 
         <InstallMeta Condition=" '$(InstallMeta)' == '' ">true</InstallMeta>
         <InstallConsul Condition=" '$(InstallConsul)' == '' ">true</InstallConsul>
+        <InstallProvisioning Condition=" '$(InstallProvisioning)' == '' OR '$(InstallConsul)' == 'true' ">true</InstallProvisioning>
 
         <!-- Properties -->
         <ConsulDatacenter Condition=" '$(ConsulDatacenter)' == '' ">UNDEFINED</ConsulDatacenter>
@@ -63,6 +64,8 @@
                            Condition=" '$(InstallMeta)' == 'true' " />
         <CookbooksToInvoke Include="ops_resource_core_consul::default"
                            Condition=" '$(InstallConsul)' == 'true' " />
+        <CookbooksToInvoke Include="ops_resource_core_provisioning::default"
+                           Condition=" '$(InstallProvisioning)' == 'true' " />
         <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
     </ItemGroup>
 
@@ -201,6 +204,8 @@
                        Condition=" '$(InstallMeta)' == 'true' " />
             <TestFiles Include="$(DirOriginTests)\Consul.Tests.ps1"
                        Condition=" '$(InstallConsul)' == 'true' " />
+            <TestFiles Include="$(DirOriginTests)\Provisioning.Tests.ps1"
+                       Condition=" '$(InstallProvisioning)' == 'true' " />
         </ItemGroup>
         <Copy SourceFiles="@(TestFiles)"
               DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(Filename)%(Extension)')" />
