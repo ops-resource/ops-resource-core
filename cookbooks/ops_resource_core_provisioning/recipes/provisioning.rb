@@ -105,7 +105,7 @@ file "#{provisioning_service_directory}\\#{win_service_name}.xml" do
         <sizeThreshold>10240</sizeThreshold>
         <keepFiles>8</keepFiles>
     </log>
-    <onfailure action="restart"/>
+    <onfailure action="none"/>
 </service>
     XML
   action :create
