@@ -44,30 +44,60 @@ $commonParameterSwitches =
     The Get-ConfigurationInformation function gets information that describes the configuration of the current resource
 
 
+    .PARAMETER configurationUri
+
+    The URI for the configuration server in the environment that the current resource is added to.
+
+
+    .PARAMETER resourceNames
+
+    An array containing the names of all the resources that need to be configured.
+
+
+    .PARAMETER logPath
+
+    The full path to the log file.
+
+
     .OUTPUTS
 
     A custom object describing the configuration. The object is expected to have the following properties:
 
-        Name
-        ID
-        ConfigurationUri
+
 #>
 function Get-ConfigurationInformation
 {
     [CmdletBinding()]
     param(
-        [string[]] $resourceNames
+        [string] $configurationUri,
+        [string[]] $resourceNames,
+        [string] $logPath
     )
 
-    # send request to URL. Request should contain:
-    # - container ID: e.g. machine MAC, container ID, etc. etc.
-    # - resource ID: e.g. ops-resource-core, webserver etc.
+    Write-Output "Get-ConfigurationInformation - configurationUri: $configurationUri"
+    Write-Output "Get-ConfigurationInformation - resourceNames: $resourceNames"
+    Write-Output "Get-ConfigurationInformation - logPath: $logPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = "Stop"
+        }
+
     $configurationRequest = New-ConfigurationRequest `
         @commonParameterSwitches
 
     $body = ConvertTo-Json $configurationRequest
+    Write-Log `
+        -message "Requesting configuration information from $($configurationUri) ..." `
+        -logPath $logPath `
+        @commonParameterSwitches
+
     $response = Invoke-WebRequest `
-        -Uri $environmentInformation.ConfigurationUri `
+        -Uri $configurationUri `
         -Method Get `
         -Body $body `
         -ContentType 'application/json' `
@@ -77,10 +107,22 @@ function Get-ConfigurationInformation
 
     if ($response.StatusCode -ne 200)
     {
-        Write-Error "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        $text = "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        Write-Log `
+            -message $text `
+            -logPath $logPath `
+            @commonParameterSwitches
+
+        throw $text
     }
 
     $json = ConvertFrom-Json -InputObject $response.Content @commonParameterSwitches
+    Write-Log `
+        -message "Successfully received configuration" `
+        -logPath $logPath `
+        @commonParameterSwitches
+
+    return $json
 }
 
 <#
@@ -136,13 +178,24 @@ function Get-EnvironmentInformation
 
     if (($provisioningBaseUri -eq $null) -or ($provisioningBaseUri -eq ''))
     {
-        throw
+        $text = 'Failed to get the environment request URI. This may mean that there is no environment yet.'
+        Write-Log `
+            -message $text `
+            -logPath $logPath `
+            @commonParameterSwitches
+
+        throw $text
     }
 
-    $environmentRequest = New-EnvironmentRequest `
+    $machineIdentifiers = New-MachineIdentifiers `
         @commonParameterSwitches
 
-    $body = ConvertTo-Json $environmentRequest
+    $body = ConvertTo-Json $machineIdentifiers
+    Write-Log `
+        -message "Requesting environment information from $($provisioningBaseUri) ..." `
+        -logPath $logPath `
+        @commonParameterSwitches
+
     $response = Invoke-WebRequest `
         -Uri $provisioningBaseUri `
         -Method Get `
@@ -154,17 +207,40 @@ function Get-EnvironmentInformation
 
     if ($response.StatusCode -ne 200)
     {
-        Write-Error "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        $text = "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        Write-Log `
+            -message $text `
+            -logPath $logPath `
+            @commonParameterSwitches
+
+        throw $text
     }
 
     $json = ConvertFrom-Json -InputObject $response.Content @commonParameterSwitches
 
-    # object that contains:
-    # - Environment name
-    # - Environment ID
-    # - Uri / IP of the configuration server for the environment
+    Write-Log `
+        -message "Successfully obtained environment information" `
+        -logPath $logPath `
+        @commonParameterSwitches
+
+    return $json
 }
 
+<#
+    .SYNOPSIS
+
+    Creates a new custom object containing the information about the resources that should be configured.
+
+
+    .DESCRIPTION
+
+    The New-ConfigurationRequest function creates a new custom object containing the information about the resources that should be configured.
+
+
+    .OUTPUTS
+
+    A custom object containing the information regarding the resources that should be configured.
+#>
 function New-ConfigurationRequest
 {
     [CmdletBinding()]
@@ -238,24 +314,92 @@ function New-MachineIdentifiers
     return $info
 }
 
+<#
+    .SYNOPSIS
+
+    Writes the given message to the given log file.
+
+
+    .DESCRIPTION
+
+    The Write-Log function writes the given message to the given log file.
+
+
+    .PARAMETER message
+
+    The message that should be written to the file.
+
+
+    .PARAMETER logPath
+
+    The full path to the log file that the message should be written to.
+#>
+function Write-Log
+{
+    [CmdletBinding()]
+    param(
+        [string] $message,
+        [string] $logPath
+    )
+
+    Write-Output "Write-Log - message: $message"
+    Write-Output "Write-Log - logPath: $logPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = "Stop"
+        }
+
+    Out-File -FilePath $logPath -Append -InputObject "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff') - $($message)" @commonParameterSwitches
+}
+
 # -------------------------- Script start ------------------------------------
 
 try
 {
-    $environmentInformation = Get-EnvironmentInformation `
-        @commonParameterSwitches
+    $logPath = 'c:\logs\provisioning\initialize-resource.log'
+    [psobject] $configurationInformation = $null
+    try
+    {
+        $environmentInformation = Get-EnvironmentInformation `
+            -logPath $logPath `
+            @commonParameterSwitches
 
-    $scriptPath = Split-Path -Path $PSScriptRoot -Parent @commonParameterSwitches
-    $scriptsToExecute = Get-ChildItem -Path $scriptPath -Filter 'Initialize-*Resource.ps1' -File
+        $scriptPath = Split-Path -Path $PSScriptRoot -Parent @commonParameterSwitches
+        $scriptsToExecute = Get-ChildItem -Path $scriptPath -Filter 'Initialize-*Resource.ps1' -File
 
-    $configurationInformation = Get-ConfigurationInformation `
-        -resourceNames '' `
-        @commonParameterSwitches
+        $configurationInformation = Get-ConfigurationInformation `
+            -configurationUri $environmentInformation.ConfigurationUri `
+            -resourceNames '' `
+            @commonParameterSwitches
+    }
+    catch
+    {
+        # Connecting to the configuration server failed. This may be due to a network issue, a missing
+        # configuration server or due to the fact that the provisioning step is run for the first resource
+        # in the environment(s). In this case we use the default values.
+        Write-Log `
+            -message "Failed to acquire configuration information. This may mean that no environment is defined." `
+            -logPath $logPath `
+            @commonParameterSwitches
+    }
+
     foreach($script in $scriptsToExecute)
     {
         try
         {
+            $configuration = $null
+            if ($configurationInformation -ne $null)
+            {
+
+            }
+
             & $script `
+                -configuration $configuration `
                 @commonParameterSwitches
         }
         catch
