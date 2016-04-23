@@ -88,6 +88,7 @@ function Get-ConfigurationInformation
         }
 
     $configurationRequest = New-ConfigurationRequest `
+        -resourceNames $resourceNames `
         @commonParameterSwitches
 
     $body = ConvertTo-Json $configurationRequest
@@ -136,6 +137,11 @@ function Get-ConfigurationInformation
     The Get-EnvironmentInformation function gets the information that describes the environment to which the current resource should be connected.
 
 
+    .PARAMETER logPath
+
+    The full path to the log file.
+
+
     .OUTPUTS
 
     A custom object describing the environment. The object is expected to have the following properties:
@@ -148,10 +154,11 @@ function Get-EnvironmentInformation
 {
     [CmdletBinding()]
     param(
-
+        [string] $logPath
     )
 
-    # Stop everything if there are errors
+    Write-Output "Get-EnvironmentInformation - logPath: $logPath"
+
     $ErrorActionPreference = 'Stop'
 
     $commonParameterSwitches =
@@ -229,12 +236,69 @@ function Get-EnvironmentInformation
 <#
     .SYNOPSIS
 
+    Extracts the name of a resource from the provisioning script for that resource.
+
+
+    .DESCRIPTION
+
+    The Get-ResourceNameFromProvisioningScript function extracts the name of a resource from the provisioning script for that resource.
+
+
+    .PARAMETER provisioningScript
+
+    The full path to the provisioning script. The script file name is expected to match the pattern: Initialize-<RESOURCE_NAME>Resource.ps1
+
+
+    .OUTPUTS
+
+    The name of the resource that is configured by the script.
+#>
+function Get-ResourceNameFromProvisioningScript
+{
+    [CmdletBinding()]
+    param(
+        [string] $provisioningScript
+    )
+
+    Write-Output "Get-ResourceNameFromProvisioningScript - provisioningScript: $provisioningScript"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = "Stop"
+        }
+
+    # Extract the resource name from the provisioning script name. The script name is expected
+    # to be Initialize-<RESOURCE_NAME>Resource.ps1
+    $regexFilter = '(?:Initialize-)(.+)(?:Resource\.ps1)'
+
+    if ([System.IO.Path]::GetFileName($provisioningScript) -match $regexFilter)
+    {
+        return $Matches[1]
+    }
+    else
+    {
+        return ''
+    }
+}
+
+<#
+    .SYNOPSIS
+
     Creates a new custom object containing the information about the resources that should be configured.
 
 
     .DESCRIPTION
 
     The New-ConfigurationRequest function creates a new custom object containing the information about the resources that should be configured.
+
+
+    .PARAMETER resourceNames
+
+    An array containing the names of all the resources that need to be configured.
 
 
     .OUTPUTS
@@ -244,9 +308,12 @@ function Get-EnvironmentInformation
 function New-ConfigurationRequest
 {
     [CmdletBinding()]
-    param()
+    param(
+        [string[]] $resourceNames
+    )
 
-    # Stop everything if there are errors
+    Write-Output "New-ConfigurationRequest - resourceNames: $resourceNames"
+
     $ErrorActionPreference = 'Stop'
 
     $commonParameterSwitches =
@@ -257,7 +324,9 @@ function New-ConfigurationRequest
         }
 
     $result = New-Object psobject
-    Add-Member -InputObject $result -MemberType NoteProperty -Name MachineId -Value ''
+    Add-Member -InputObject $result -MemberType NoteProperty -Name Resources -Value $resourceNames
+
+    return $result
 }
 
 <#
@@ -371,10 +440,22 @@ try
 
         $scriptPath = Split-Path -Path $PSScriptRoot -Parent @commonParameterSwitches
         $scriptsToExecute = Get-ChildItem -Path $scriptPath -Filter 'Initialize-*Resource.ps1' -File
+        $resourceNames = @()
+        foreach($script in $scriptsToExecute)
+        {
+            $resourceName = Get-ResourceNameFromProvisioningScript `
+                -provisioningScript $_.Name `
+                @commonParameterSwitches
+            if ($resourceName -ne '')
+            {
+                $resourceNames += $resourceName
+            }
+        }
 
         $configurationInformation = Get-ConfigurationInformation `
             -configurationUri $environmentInformation.ConfigurationUri `
-            -resourceNames '' `
+            -resourceNames $resourceNames `
+            -logPath $logPath `
             @commonParameterSwitches
     }
     catch
@@ -383,7 +464,7 @@ try
         # configuration server or due to the fact that the provisioning step is run for the first resource
         # in the environment(s). In this case we use the default values.
         Write-Log `
-            -message "Failed to acquire configuration information. This may mean that no environment is defined." `
+            -message "Failed to acquire configuration information. This may mean that no environment is defined. Provisioning scripts will run with default values." `
             -logPath $logPath `
             @commonParameterSwitches
     }
@@ -393,10 +474,19 @@ try
         try
         {
             $configuration = $null
-            if ($configurationInformation -ne $null)
-            {
 
+            $resourceName = Get-ResourceNameFromProvisioningScript `
+                -provisioningScript $script.Name `
+                @commonParameterSwitches
+            if (($resourceName -ne '') -and ($configurationInformation -ne $null))
+            {
+                $configuration = $configurationInformation."$resourceName"
             }
+
+            Write-Log `
+                -message "Invoking provisioning for the $($resourceName) through $($script) ..." `
+                -logPath $logPath `
+                @commonParameterSwitches
 
             & $script `
                 -configuration $configuration `
@@ -404,7 +494,10 @@ try
         }
         catch
         {
-
+             Write-Log `
+                -message "Failure during the invocation of $($script). Error was: $($_.Exception.ToString())" `
+                -logPath $logPath `
+                @commonParameterSwitches
         }
     }
 }
