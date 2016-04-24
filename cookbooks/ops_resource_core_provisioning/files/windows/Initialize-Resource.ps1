@@ -330,15 +330,34 @@ function New-MachineIdentifiers
     return $info
 }
 
+<#
+    .SYNOPSIS
+
+    Orders the provisioners in the list based on their dependencies. Dependencies first, dependents last.
+
+
+    .DESCRIPTION
+
+    The Order-ByDependencies function orders the provisioners in the list based on their dependencies.
+
+
+    .PARAMETER provisionersToSort
+
+    The collection of provisioners that should be sorted.
+
+
+    .OUTPUTS
+
+    An array containing the provisioners in dependency sorted order.
+#>
 function Order-ByDependencies
 {
     [CmdletBinding()]
     param(
-        $provisionersToSort
+        [object[]] $provisionersToSort
     )
 
     $sortedObjects = New-Object System.Collections.Generic.List[object]
-    $queue = New-Object System.Collections.Queue
 
     # Find all dependency free provisioners
     $dependencyFreeProvisioners = @()
@@ -513,9 +532,7 @@ try
         {
             $configuration = $null
 
-            $resourceName = Get-ResourceNameFromProvisioningScript `
-                -provisioningScript $script.Name `
-                @commonParameterSwitches
+            $resourceName = $provisioner.ResourceName()
             if (($resourceName -ne '') -and ($configurationInformation -ne $null))
             {
                 $configuration = $configurationInformation."$resourceName"
@@ -526,9 +543,7 @@ try
                 -logPath $logPath `
                 @commonParameterSwitches
 
-            & $script `
-                -configuration $configuration `
-                @commonParameterSwitches
+            $provisioner.Provision($configuration)
         }
         catch
         {
