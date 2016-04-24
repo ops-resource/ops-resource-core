@@ -32,10 +32,6 @@ describe 'ops_resource_core_provisioning::provisioning' do
     expect(chef_run).to create_directory(logs_path)
   end
 
-  it 'creates the provisioning user' do
-    expect(chef_run).to create_user('provisioning_user')
-  end
-
   ops_base_path = 'c:\\ops'
   it 'creates the ops base directory' do
     expect(chef_run).to create_directory(ops_base_path)
