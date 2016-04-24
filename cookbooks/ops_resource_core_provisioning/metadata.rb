@@ -1,12 +1,10 @@
-name 'ops_resource_core_consul'
+name 'ops_resource_core_provisioning'
 maintainer '${CompanyName} (${CompanyUrl})'
 maintainer_email '${EmailDocumentation}'
 license 'All rights reserved'
-description 'Configures a server with a consul service'
+description 'Configures a server with the scripts and tools necessary to provide configuration and provisioning upon adding to an environment.'
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version '${VersionSemantic}'
 
 depends 'windows', '~>1.38.3'
-depends 'windows_firewall', '~>3.0.0'
 depends 'ops_resource_core_meta', '~>${VersionSemantic}'
-depends 'ops_resource_core_provisioning', '~>${VersionSemantic}'

@@ -31,6 +31,9 @@
 
         <FileResourceCoreMetaMetadataTemplate>$(DirCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataTemplate>
         <FileResourceCoreMetaMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreMeta)\metadata.rb</FileResourceCoreMetaMetadataGenerated>
+
+        <FileResourceCoreProvisioningMetadataTemplate>$(DirCookbooksResourceCoreProvisioning)\metadata.rb</FileResourceCoreProvisioningMetadataTemplate>
+        <FileResourceCoreProvisioningMetadataGenerated>$(DirBuildTempCoreCookbooksResourceCoreProvisioning)\metadata.rb</FileResourceCoreProvisioningMetadataGenerated>
     </PropertyGroup>
 
     <Import Project="$(DirNBuildKitMsBuild)\shared.templatetokens.msbuild"
@@ -120,6 +123,8 @@
                  Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreMeta)')" />
         <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreConsul)"
                  Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreConsul)')" />
+        <MakeDir Directories="$(DirBuildTempCoreCookbooksResourceCoreProvisioning)"
+                 Condition="!Exists('$(DirBuildTempCoreCookbooksResourceCoreProvisioning)')" />
 
         <ItemGroup>
             <CookbookFiles Include="$(DirCookbooks)\**\*.*" />
@@ -133,6 +138,10 @@
                       Condition=" '$(ShouldExecute)' == 'true' "/>
         <TemplateFile Template="$(FileResourceCoreMetaMetadataTemplate)"
                       OutputFileName="$(FileResourceCoreMetaMetadataGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' "/>
+        <TemplateFile Template="$(FileResourceCoreProvisioningMetadataTemplate)"
+                      OutputFileName="$(FileResourceCoreProvisioningMetadataGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' "/>
     </Target>

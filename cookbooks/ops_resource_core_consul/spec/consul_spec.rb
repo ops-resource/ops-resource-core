@@ -85,7 +85,7 @@ describe 'ops_resource_core_consul::consul' do
 
   consul_config_datacenter = '${ConsulDataCenterName}'
   consul_config_entry_node_dns = '${ConsulClusterEntryPointAddress}'
-  consul_config_recursors = '${ConsulGlobalDnsServerAddress}'
+  consul_config_recursors = '"${ConsulGlobalDnsServerAddress}"'
   consul_default_config_content = <<-JSON
 {
   "data_dir": "c:\\\\ops\\\\consul\\\\data",
@@ -108,7 +108,7 @@ describe 'ops_resource_core_consul::consul' do
   "retry_join": ["#{consul_config_entry_node_dns}"],
   "retry_interval": "30s",
 
-  "recursors": ["#{consul_config_recursors}"],
+  "recursors": [#{consul_config_recursors}],
 
   "disable_remote_exec": true,
   "disable_update_check": true,

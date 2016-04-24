@@ -30,4 +30,8 @@ describe 'ops_resource_core_consul::consul_config' do
   it 'creates the consul configuration directory' do
     expect(chef_run).to create_directory('c:\\meta\\consul')
   end
+
+  it 'copies the Initialize-ConsulResource.ps1 file' do
+    expect(chef_run).to create_cookbook_file('c:\\ops\\provisioning\\Initialize-ConsulResource.ps1').with(source: 'Test-Disk.ps1')
+  end
 end
