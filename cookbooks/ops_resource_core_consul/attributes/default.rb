@@ -1,12 +1,9 @@
-logs_path = 'c:\\logs'
-default['paths']['log'] = logs_path
+# Attributes from the meta cookbook
+logs_path = node['paths']['log']
+meta_base_path = node['paths']['meta']
+ops_base_path = node['paths']['ops_base']
 
-meta_base_path = 'c:\\meta'
-default['paths']['meta'] = meta_base_path
-
-ops_base_path = 'c:\\ops'
-default['paths']['ops_base'] = ops_base_path
-
+# Attributes for the current cookbook
 consul_base_path = "#{ops_base_path}\\consul"
 default['paths']['consul_base'] = consul_base_path
 default['paths']['consul_bin'] = "#{consul_base_path}\\bin"

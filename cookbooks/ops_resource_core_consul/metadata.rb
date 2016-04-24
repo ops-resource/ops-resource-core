@@ -8,4 +8,5 @@ version '${VersionSemantic}'
 
 depends 'windows', '~>1.38.3'
 depends 'windows_firewall', '~>3.0.0'
+depends 'ops_resource_core_meta', '~>${VersionSemantic}'
 depends 'ops_resource_core_provisioning', '~>${VersionSemantic}'

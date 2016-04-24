@@ -7,3 +7,4 @@ long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version '${VersionSemantic}'
 
 depends 'windows', '~>1.38.3'
+depends 'ops_resource_core_meta', '~>${VersionSemantic}'
