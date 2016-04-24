@@ -21,7 +21,6 @@
 param(
 )
 
-# Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 
 $commonParameterSwitches =
@@ -236,58 +235,6 @@ function Get-EnvironmentInformation
 <#
     .SYNOPSIS
 
-    Extracts the name of a resource from the provisioning script for that resource.
-
-
-    .DESCRIPTION
-
-    The Get-ResourceNameFromProvisioningScript function extracts the name of a resource from the provisioning script for that resource.
-
-
-    .PARAMETER provisioningScript
-
-    The full path to the provisioning script. The script file name is expected to match the pattern: Initialize-<RESOURCE_NAME>Resource.ps1
-
-
-    .OUTPUTS
-
-    The name of the resource that is configured by the script.
-#>
-function Get-ResourceNameFromProvisioningScript
-{
-    [CmdletBinding()]
-    param(
-        [string] $provisioningScript
-    )
-
-    Write-Output "Get-ResourceNameFromProvisioningScript - provisioningScript: $provisioningScript"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = "Stop"
-        }
-
-    # Extract the resource name from the provisioning script name. The script name is expected
-    # to be Initialize-<RESOURCE_NAME>Resource.ps1
-    $regexFilter = '(?:Initialize-)(.+)(?:Resource\.ps1)'
-
-    if ([System.IO.Path]::GetFileName($provisioningScript) -match $regexFilter)
-    {
-        return $Matches[1]
-    }
-    else
-    {
-        return ''
-    }
-}
-
-<#
-    .SYNOPSIS
-
     Creates a new custom object containing the information about the resources that should be configured.
 
 
@@ -383,6 +330,72 @@ function New-MachineIdentifiers
     return $info
 }
 
+function Order-ByDependencies
+{
+    [CmdletBinding()]
+    param(
+        $provisionersToSort
+    )
+
+    $sortedObjects = New-Object System.Collections.Generic.List[object]
+    $queue = New-Object System.Collections.Queue
+
+    # Find all dependency free provisioners
+    $dependencyFreeProvisioners = @()
+    $provisionersLeftToSort = New-Object System.Collections.Generic.List[object]
+    foreach($provisioner in $provisionersToSort)
+    {
+        $dependencies = $provisioner.Dependencies()
+        if (($dependencies -eq $null) -or ($dependencies.Length -eq 0))
+        {
+            $dependencyFreeProvisioners += $provisioner
+            continue
+        }
+
+        # If the dependencies don't have a provisioner then we're in the clear too
+        if (($provisionersToSort | Where-Object { $dependencies -contains $_.ResourceName() }).Length -eq 0)
+        {
+            $dependencyFreeProvisioners += $provisioner
+            continue
+        }
+
+        # The provisioner has existing dependencies. Will need to sort it later
+        $provisionersLeftToSort.Add($provisioner)
+    }
+
+    $sortedObjects.AddRange($dependencyFreeProvisioners)
+    while ($provisionersLeftToSort.Count -gt 0)
+    {
+        $i = 0
+        while ($i -lt $provisionersLeftToSort.Count)
+        {
+            $provisioner = $provisionersLeftToSort[$i]
+            $dependencies = $provisioner.Dependencies()
+            $existingDependencies = @()
+
+            foreach($dependency in $dependencies)
+            {
+                if (($provisionersToSort | Where-Object { $dependency -eq $_.ResourceName() }).Length -eq 1)
+                {
+                    $existingDependencies += $dependency
+                }
+            }
+
+            if (($sortedObjects | Where-Object { $existingDependencies -contains $_.ResourceName() }).Length -eq $existingDependencies.Length)
+            {
+                $sortedObjects.Add($provisioner)
+                $provisionersLeftToSort.RemoveAt($i)
+            }
+            else
+            {
+                $i++
+            }
+        }
+    }
+
+    return $sortedObjects.ToArray()
+}
+
 <#
     .SYNOPSIS
 
@@ -431,6 +444,35 @@ function Write-Log
 try
 {
     $logPath = 'c:\logs\provisioning\initialize-resource.log'
+
+    $scriptPath = Split-Path -Path $PSScriptRoot -Parent @commonParameterSwitches
+    $scriptsToExecute = Get-ChildItem -Path $scriptPath -Filter 'Initialize-*Resource.ps1' -File
+
+    $provisioners = @()
+    foreach($script in $scriptsToExecute)
+    {
+        try
+        {
+            $provisioner = & $script
+            if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Provision' ).Length -eq 3))
+            {
+                $provisioners += $provisioner
+            }
+        }
+        catch
+        {
+            Write-Log `
+                -message "Failed to get the provisioner object from $($script). The error was $($_.Exception.ToString())" `
+                -logPath $logPath `
+                @commonParameterSwitches
+        }
+    }
+
+    $provisioners = SortBy-Dependencies `
+        -provisionersToSort $provisioners `
+        @commonParameterSwitches
+
+
     [psobject] $configurationInformation = $null
     try
     {
@@ -438,14 +480,10 @@ try
             -logPath $logPath `
             @commonParameterSwitches
 
-        $scriptPath = Split-Path -Path $PSScriptRoot -Parent @commonParameterSwitches
-        $scriptsToExecute = Get-ChildItem -Path $scriptPath -Filter 'Initialize-*Resource.ps1' -File
         $resourceNames = @()
-        foreach($script in $scriptsToExecute)
+        foreach($provisioner in $provisioners)
         {
-            $resourceName = Get-ResourceNameFromProvisioningScript `
-                -provisioningScript $_.Name `
-                @commonParameterSwitches
+            $resourceName = $provisioner.ResourceName
             if ($resourceName -ne '')
             {
                 $resourceNames += $resourceName
@@ -469,7 +507,7 @@ try
             @commonParameterSwitches
     }
 
-    foreach($script in $scriptsToExecute)
+    foreach($provisioner in $provisioners)
     {
         try
         {
