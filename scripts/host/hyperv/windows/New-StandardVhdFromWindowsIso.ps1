@@ -69,6 +69,7 @@
 
     The URL from where the Apply-WindowsUpdate script can be downloaded.
 
+
     .PARAMETER logPath
 
     The full path to the directory in which output log files can be stored.
@@ -142,250 +143,11 @@ $commonParameterSwitches =
 
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
+. (Join-Path $PSScriptRoot Windows.ps1)
 . (Join-Path $PSScriptRoot WinRM.ps1)
 
 
 # -------------------------- Script functions --------------------------------
-
-function Get-ConnectionInformationForVm
-{
-    [CmdletBinding()]
-    param(
-        [string] $machineName,
-        [string] $hypervHost,
-        [pscredential] $localAdminCredential,
-        [int] $timeOutInSeconds
-    )
-
-    Write-Verbose "Get-ConnectionInformationForVm - machineName = $machineName"
-    Write-Verbose "Get-ConnectionInformationForVm - hypervHost = $hypervHost"
-    Write-Verbose "Get-ConnectionInformationForVm - localAdminCredential = $localAdminCredential"
-    Write-Verbose "Get-ConnectionInformationForVm - timeOutInSeconds = $timeOutInSeconds"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    # Just because we have a positive connection does not mean that connection will stay there
-    # During initialization the machine will reboot a number of times so it is possible
-    # that we get caught out due to one of these reboots. In that case we'll just try again.
-    $maxRetry = 10
-    $count = 0
-
-    $result = New-Object psObject
-    Add-Member -InputObject $result -MemberType NoteProperty -Name IPAddress -Value $null
-    Add-Member -InputObject $result -MemberType NoteProperty -Name Session -Value $null
-
-    [System.Management.Automation.Runspaces.PSSession]$vmSession = $null
-    while (($vmSession -eq $null) -and ($count -lt $maxRetry))
-    {
-        $count = $count + 1
-
-        try
-        {
-            $ipAddress = Wait-VmIPAddress `
-                -vmName $machineName `
-                -hypervHost $hypervHost `
-                -timeOutInSeconds $timeOutInSeconds `
-                @commonParameterSwitches
-            if (($ipAddress -eq $null) -or ($ipAddress -eq ''))
-            {
-                throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
-            }
-
-            # The guest OS may be up and running, but that doesn't mean we can connect to the
-            # machine through powershell remoting, so ...
-            $waitResult = Wait-WinRM `
-                -ipAddress $ipAddress `
-                -credential $localAdminCredential `
-                -timeOutInSeconds $timeOutInSeconds `
-                @commonParameterSwitches
-            if (-not $waitResult)
-            {
-                throw "Waiting for $machineName to be ready for remote connections has timed out with timeout of $timeOutInSeconds"
-            }
-
-            Write-Verbose "Wait-WinRM completed successfully, making connection to machine $ipAddress ..."
-            $vmSession = New-PSSession `
-                -computerName $ipAddress `
-                -credential $localAdminCredential `
-                @commonParameterSwitches
-
-            $result.IPAddress = $ipAddress
-            $result.Session = $vmSession
-        }
-        catch
-        {
-            Write-Verbose "Failed to connect to the VM. Most likely due to a VM reboot. Trying another $($maxRetry - $count) times ..."
-        }
-    }
-
-    return $result
-}
-
-function Invoke-Sysprep
-{
-    [CmdletBinding()]
-    param(
-        [string] $machineName,
-        [string] $hypervHost,
-        [pscredential] $localAdminCredential,
-        [int] $timeOutInSeconds,
-        [string] $tempPath
-    )
-
-    Write-Verbose "Invoke-Sysprep - machineName = $machineName"
-    Write-Verbose "Invoke-Sysprep - hypervHost = $hypervHost"
-    Write-Verbose "Invoke-Sysprep - localAdminCredential = $localAdminCredential"
-    Write-Verbose "Invoke-Sysprep - timeOutInSeconds = $timeOutInSeconds"
-    Write-Verbose "Invoke-Sysprep - tempPath = $tempPath"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    $result = Get-ConnectionInformationForVm `
-        -machineName $machineName `
-        -hypervHost $hypervHost `
-        -localAdminCredential $localAdminCredential `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-    if ($result.Session -eq $null)
-    {
-        throw "Failed to connect to $machineName"
-    }
-
-    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
-
-    # sysprep
-    $remoteDirectory = "c:\sysprep"
-    Copy-FilesToRemoteMachine -session $result.Session -remoteDirectory $remoteDirectory -localDirectory $tempPath
-
-    Write-Verbose "Starting sysprep ..."
-    Invoke-Command `
-        -Session $result.Session `
-        -ArgumentList @( $remoteDirectory ) `
-        -ScriptBlock {
-            param(
-                [string] $configDir = ''
-            )
-
-            # Clean up output file from the windows image convert script if it is there
-            if (Test-Path "$ENV:SystemDrive\Convert-WindowsImageInfo.txt")
-            {
-                Remove-Item -Force -Verbose "$ENV:SystemDrive\Convert-WindowsImageInfo.txt"
-            }
-
-            # Clean up output file from the windows image convert script if it is there
-            if (Test-Path "$ENV:SystemDrive\UnattendResources")
-            {
-                Remove-Item -Force -Verbose -Recurse "$ENV:SystemDrive\UnattendResources"
-            }
-
-            # Remove Unattend entries from the autorun key if they exist
-            foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
-            {
-                if ($regvalue -like "Unattend*")
-                {
-                    # could be multiple unattend* entries
-                    foreach ($unattendvalue in $regvalue)
-                    {
-                        Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue  -Verbose
-                    }
-                }
-            }
-
-            # logon script
-            $logonScript = {
-                # Remove Unattend entries from the autorun key if they exist
-                foreach ($regvalue in (Get-Item -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run).Property)
-                {
-                    if ($regvalue -like "Unattend*")
-                    {
-                        # could be multiple unattend* entries
-                        foreach ($unattendvalue in $regvalue)
-                        {
-                            Remove-ItemProperty -Path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run -name $unattendvalue -Verbose
-                        }
-                    }
-                }
-
-                # Clean up unattend file if it is there
-                if (Test-Path "$ENV:SystemDrive\Unattend.xml")
-                {
-                    Remove-Item -Force "$ENV:SystemDrive\Unattend.xml";
-                }
-
-                # Clean up logon file if it is there
-                if (Test-Path "$ENV:SystemDrive\Logon.ps1")
-                {
-                    Remove-Item -Force "$ENV:SystemDrive\Logon.ps1";
-                }
-
-                # Clean up temp
-                if (Test-Path "$ENV:SystemDrive\Temp")
-                {
-                    Remove-Item -Force -Recurse "$ENV:SystemDrive\Temp";
-                }
-
-                if (Test-Path "$ENV:SystemDrive\Sysprep")
-                {
-                    Remove-Item -Force -Recurse "$ENV:SystemDrive\Sysprep";
-                }
-            }
-
-            $logonScriptPath = "$ENV:SystemDrive\Logon.ps1"
-            Set-Content -Value ($logonScript | Out-String) -Path $logonScriptPath -Verbose
-
-            # In order to run the logon script we use the 'setupcomplete.cmd' script approach as documented here:
-            # https://technet.microsoft.com/en-us/library/cc766314%28v=ws.10%29.aspx
-            $setupCompleteScriptPath = "$env:windir\Setup\Scripts\SetupComplete.cmd"
-            $setupCompleteScriptDirectory = Split-Path -Path $setupCompleteScriptPath -Parent
-            $setupCompleteScript = "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell -NoLogo -NonInteractive -ExecutionPolicy Unrestricted -File $logonScriptPath"
-
-            if (-not (Test-Path $setupCompleteScriptDirectory))
-            {
-                New-Item -Path $setupCompleteScriptDirectory -ItemType Directory
-            }
-            Set-Content -Value $setupCompleteScript -Path $setupCompleteScriptPath -Verbose
-
-            # sysprep
-            # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
-            # run (i.e. it exits without doing any work). So this needs to be done from the local machine
-            # that is about to be sysprepped.
-            $cmd = "Write-Output 'Executing $sysPrepScript on VM'; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:`"$ENV:SystemDrive\Unattend.xml`""
-            $sysprepCmd = Join-Path $configDir 'sysprep.ps1'
-
-            Set-Content -Value $cmd -Path $sysprepCmd -Verbose
-
-            Write-Output "Starting sysprep ..."
-            & powershell -File "$sysprepCmd"
-        } `
-        -Verbose `
-        -ErrorAction Continue
-
-    # Wait till machine is stopped
-    $waitResult = Wait-VmStopped `
-        -vmName $machineName `
-        -hypervHost $hypervHost `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-
-    if (-not $waitResult)
-    {
-        throw "VM $machineName failed to shut down within $timeOutInSeconds seconds."
-    }
-}
 
 function New-VhdFromIso
 {
@@ -491,13 +253,10 @@ function New-VmFromVhdAndWaitForBoot
         Stop-VM $machineName -ComputerName $hypervHost -TurnOff -Confirm:$false -Passthru | Remove-VM -ComputerName $hypervHost -Force -Confirm:$false
     }
 
-    $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
-
     $vm = New-HypervVm `
         -hypervHost $hypervHost `
         -vmName $machineName `
         -osVhdPath $vhdPath `
-        -vmNetworkSwitch $vmSwitch.Name `
         @commonParameterSwitches
 
     # Ensure that the VM has a specific Mac address so that it will get a known IP address
@@ -725,60 +484,11 @@ Restart-MachineToApplyPatches `
     #    apply patch
     #}
 
-Invoke-Sysprep `
-    -machineName $machineName `
+New-HypervVhdxTemplateFromVm `
+    -vmName $machineName `
+    -vhdPath $vhdPath `
     -hypervHost $hypervHost `
     -localAdminCredential $localAdminCredential `
     -timeOutInSeconds $timeOutInSeconds `
     -tempPath $tempPath `
     @commonParameterSwitches
-
-# Delete VM
-Remove-VM `
-    -computerName $hypervHost `
-    -Name $machineName `
-    -Force `
-    @commonParameterSwitches
-
-# Optimize the VHDX
-#
-# Mounting the drive using Mount-DiskImage instead of Mount-Vhd because for the latter we need Hyper-V to be installed
-# which we can't do on a VM
-$driveLetter = Mount-Vhdx -vhdPath $vhdPath @commonParameterSwitches
-try
-{
-    # Copy the log files
-    Get-ChildItem -Path "$($driveLetter):\windows\Panther" -Filter *.log -recurse |
-        Foreach-Object {
-            $directoryName = [System.IO.Path]::GetFileName((Split-Path $_.FullName -Parent))
-            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
-            Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-$($directoryName).log") @commonParameterSwitches
-        }
-
-    # Remove root level files we don't need anymore
-    attrib -s -h "$($driveLetter):\pagefile.sys"
-    Remove-Item -Path "$($driveLetter):\pagefile.sys" -Force -Verbose
-
-    # Clean up all the user profiles except for the default one
-    $userProfileDirectories = Get-ChildItem -Path "$($driveLetter):\Users\*" -Directory -Exclude 'Default', 'Public'
-    foreach($userProfileDirectory in $userProfileDirectories)
-    {
-        Remove-Item -Path $userProfileDirectory.FullName -Recurse -Force @commonParameterSwitches
-    }
-
-    # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
-    # but saves a considerable amount of disk space.
-    dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase
-
-    Get-ChildItem -Path (Split-Path $vhdPath -Parent) -Filter *.log |
-        Foreach-Object {
-            $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
-            Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-cleanimage.log") @commonParameterSwitches
-        }
-}
-finally
-{
-    Dismount-Vhdx -vhdPath $vhdPath @commonParameterSwitches
-}
-
-# Mark drive as read-only?

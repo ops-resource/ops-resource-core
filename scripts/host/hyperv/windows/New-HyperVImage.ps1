@@ -1,13 +1,13 @@
 <#
     .SYNOPSIS
 
-    Connects to the remote machine, pushes all the necessary files up to it and then executes the Chef cookbook that installs
-    all the required applications.
+    Connects to a Hyper-V host, creates a new VM, pushes all the necessary files up to the VM and then executes the Chef cookbook that installs
+    all the required applications. Once done, creates a Hyper-V template from the VM and removes the VM.
 
 
     .DESCRIPTION
 
-    The New-HyperVResource script takes all the actions necessary to configure the machine.
+    The New-HyperVImage script takes all the actions necessary to create a Hyper-V template.
 
 
     .PARAMETER credential
@@ -33,6 +33,11 @@
     .PARAMETER cookbookNames
 
     An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
+
+
+    .PARAMETER imageName
+
+    The name of the image that should be created.
 
 
     .PARAMETER installationDirectory
@@ -61,27 +66,14 @@
     The name of the machine on which the hyper-v server is located.
 
 
-    .PARAMETER unattendedJoinFile
+    .PARAMETER vhdxTemplatePath
 
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
+    The UNC path to the directory that contains the Hyper-V images.
 
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
+
+    .PARAMETER hypervHostVmStoragePath
+
+    The UNC path to the directory that stores the Hyper-V VM information.
 
 
     .PARAMETER dataCenterName
@@ -126,6 +118,9 @@ param(
     [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
 
     [Parameter(Mandatory = $false)]
+    [string] $imageName                                         = "$($resourceName)-$($resourceVersion).vhdx",
+
+    [Parameter(Mandatory = $false)]
     [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
 
     [Parameter(Mandatory = $false)]
@@ -143,7 +138,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $unattendedJoinFile                                = '',
+    [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -166,27 +165,30 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "New-HyperVResource - credential = $credential"
-Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - resourceName = $resourceName"
-Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
-Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
-Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
-Write-Verbose "New-HyperVResource - osName = $osName"
+Write-Verbose "New-HyperVImage - credential = $credential"
+Write-Verbose "New-HyperVImage - authenticateWithCredSSP = $authenticateWithCredSSP"
+Write-Verbose "New-HyperVImage - resourceName = $resourceName"
+Write-Verbose "New-HyperVImage - resourceVersion = $resourceVersion"
+Write-Verbose "New-HyperVImage - cookbookNames = $cookbookNames"
+Write-Verbose "New-HyperVImage - installationDirectory = $installationDirectory"
+Write-Verbose "New-HyperVImage - logDirectory = $logDirectory"
+Write-Verbose "New-HyperVImage - osName = $osName"
+Write-Verbose "New-HyperVImage - machineName = $machineName"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
+        Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
+        Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+        Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+        Write-Verbose "New-HyperVImage - dataCenterName = $dataCenterName"
+        Write-Verbose "New-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "New-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
-        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
+        Write-Verbose "New-HyperVImage - environmentName = $environmentName"
+        Write-Verbose "New-HyperVImage - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -215,7 +217,6 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$unattendedJoin = ''
 if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
@@ -229,42 +230,83 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
     $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
         -environment $environmentName `
         -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
+        -keyPath 'service\hyperv\storagesubpath' `
         @commonParameterSwitches
     $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
 
-    $unattendedJoin = Get-ConsulKeyValue `
+    $vhdxTemplatePath = Get-ConsulKeyValue `
         -environment $environmentName `
         -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
+        -keyPath 'service\hyperv\templatesubpath' `
         @commonParameterSwitches
 }
-else
+
+if (-not (Test-Path $hypervHostVmStoragePath))
 {
-    $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
+    throw "Unable to find the directory where the Hyper-V VMs are stored. Expected it at: $hypervHostVmStoragePath"
+}
+
+if (-not (Test-Path $vhdxTemplatePath))
+{
+    throw "Unable to find the directory where the Hyper-V templates are stored. Expected it at: $vhdxTemplatePath"
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
-$registeredOwner = Get-RegisteredOwner @commonParameterSwitches
 
-New-HypervVmOnDomain `
-    -machineName $machineName `
+New-HypervVmFromBaseImage `
+    -vmName $machineName `
     -baseVhdx $baseVhdx `
-    -vhdxStoragePath $vhdxStoragePath `
     -hypervHost $hypervHost `
-    -registeredOwner $registeredOwner `
-    -domainName $env:USERDNSDOMAIN `
-    -unattendedJoin $unattendedJoin `
+    -vhdxStoragePath $vhdxStoragePath `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+timeOutInSeconds = 900
 $connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
-    -timeOutInSeconds 900 `
+    -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
-# verify
+$newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        & $newWindowsResource `
+            -session $connection.Session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -dataCenterName $dataCenterName `
+            -clusterEntryPointAddress $clusterEntryPointAddress `
+            -globalDnsServerAddress $globalDnsServerAddress `
+            @commonParameterSwitches
+    }
+
+    'FromMetaCluster' {
+        & $newWindowsResource `
+            -session $connection.Session `
+            -resourceName $resourceName `
+            -resourceVersion $resourceVersion `
+            -cookbookNames $cookbookNames `
+            -installationDirectory $installationDirectory `
+            -logDirectory $logDirectory `
+            -environmentName $environmentName `
+            -consulLocalAddress $consulLocalAddress `
+            @commonParameterSwitches
+    }
+}
+
+New-HypervVhdxTemplateFromVm `
+    -vmName $machineName `
+    -vhdPath (Join-Path $vhdxStoragePath "$($machineName).vhdx") `
+    -vhdxTemplatePath (Join-Path $vhdxTemplatePath $imageName) `
+    -hypervHost $hypervHost `
+    -localAdminCredential $credential `
+    -timeOutInSeconds $timeOutInSeconds `
+    -tempPath $tempPath `
+    @commonParameterSwitches

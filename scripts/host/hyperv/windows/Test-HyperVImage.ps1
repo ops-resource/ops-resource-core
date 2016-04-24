@@ -1,13 +1,12 @@
 <#
     .SYNOPSIS
 
-    Connects to the remote machine, pushes all the necessary files up to it and then executes the Chef cookbook that installs
-    all the required applications.
+    Verifies that a given Hyper-V image can indeed be used to run the selected resource.
 
 
     .DESCRIPTION
 
-    The New-HyperVResource script takes all the actions necessary to configure the machine.
+    The Test-HyperVImage script verifies that a given image can indeed be used to run the selected resource.
 
 
     .PARAMETER credential
@@ -61,29 +60,6 @@
     The name of the machine on which the hyper-v server is located.
 
 
-    .PARAMETER unattendedJoinFile
-
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
-
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
-
-
     .PARAMETER dataCenterName
 
     The name of the consul data center to which the remote machine should belong once configuration is completed.
@@ -117,22 +93,12 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $false)]
-    [string] $resourceName                                      = '',
+    [string] $imageName                                         = "$($resourceName)-$($resourceVersion).vhdx",
 
-    [Parameter(Mandatory = $false)]
-    [string] $resourceVersion                                   = '',
-
-    [Parameter(Mandatory = $true)]
-    [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
-
-    [Parameter(Mandatory = $false)]
-    [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
+    [string] $testDirectory                                     = $(Join-Path $PSScriptRoot "verification"),
 
     [Parameter(Mandatory = $false)]
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
-
-    [Parameter(Mandatory = $true)]
-    [string] $osName                                            = '',
 
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
@@ -143,7 +109,11 @@ param(
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $unattendedJoinFile                                = '',
+    [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
+
+    [Parameter(Mandatory = $true,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
 
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
@@ -166,27 +136,27 @@ param(
     [string] $consulLocalAddress                                = "http://localhost:8500"
 )
 
-Write-Verbose "New-HyperVResource - credential = $credential"
-Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - resourceName = $resourceName"
-Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
-Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
-Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
-Write-Verbose "New-HyperVResource - osName = $osName"
+Write-Verbose "Test-HyperVImage - credential = $credential"
+Write-Verbose "Test-HyperVImage - authenticateWithCredSSP = $authenticateWithCredSSP"
+Write-Verbose "Test-HyperVImage - imageName = $imageName"
+Write-Verbose "Test-HyperVImage - testDirectory = $testDirectory"
+Write-Verbose "Test-HyperVImage - logDirectory = $logDirectory"
+Write-Verbose "Test-HyperVImage - machineName = $machineName"
 
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
-        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
+        Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
+        Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+        Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+        Write-Verbose "Test-HyperVImage - dataCenterName = $dataCenterName"
+        Write-Verbose "Test-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "Test-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
     'FromMetaCluster' {
-        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
-        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
+        Write-Verbose "Test-HyperVImage - environmentName = $environmentName"
+        Write-Verbose "Test-HyperVImage - consulLocalAddress = $consulLocalAddress"
     }
 }
 
@@ -203,11 +173,10 @@ $commonParameterSwitches =
 # Load the helper functions
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
-. (Join-Path $PSScriptRoot windows.ps1)
 
-if (-not (Test-Path $installationDirectory))
+if (-not (Test-Path $testDirectory))
 {
-    throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
+    throw "Unable to find the directory containing the test files. Expected it at: $testDirectory"
 }
 
 if (-not (Test-Path $logDirectory))
@@ -215,7 +184,6 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$unattendedJoin = ''
 if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
 {
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
@@ -229,42 +197,74 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
     $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
         -environment $environmentName `
         -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
+        -keyPath 'service\hyperv\storagesubpath' `
         @commonParameterSwitches
     $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
 
-    $unattendedJoin = Get-ConsulKeyValue `
+    $vhdxTemplatePath = Get-ConsulKeyValue `
         -environment $environmentName `
         -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
+        -keyPath 'service\hyperv\templatesubpath' `
         @commonParameterSwitches
 }
-else
+
+if (-not (Test-Path $hypervHostVmStoragePath))
 {
-    $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
+    throw "Unable to find the directory where the Hyper-V VMs are stored. Expected it at: $hypervHostVmStoragePath"
+}
+
+if (-not (Test-Path $vhdxTemplatePath))
+{
+    throw "Unable to find the directory where the Hyper-V templates are stored. Expected it at: $vhdxTemplatePath"
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
-$registeredOwner = Get-RegisteredOwner @commonParameterSwitches
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1
 
-New-HypervVmOnDomain `
-    -machineName $machineName `
-    -baseVhdx $baseVhdx `
-    -vhdxStoragePath $vhdxStoragePath `
-    -hypervHost $hypervHost `
-    -registeredOwner $registeredOwner `
-    -domainName $env:USERDNSDOMAIN `
-    -unattendedJoin $unattendedJoin `
-    @commonParameterSwitches
+try
+{
+    New-HypervVmFromBaseImage `
+        -vmName $machineName `
+        -baseVhdx $baseVhdx `
+        -hypervHost $hypervHost `
+        -vhdxStoragePath $vhdxStoragePath `
+        @commonParameterSwitches
 
-Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
-$connection = Get-ConnectionInformationForVm `
-    -machineName $machineName `
-    -hypervHost $hypervHost `
-    -localAdminCredential $credential `
-    -timeOutInSeconds 900 `
-    @commonParameterSwitches
+    Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
+    timeOutInSeconds = 900
+    $connection = Get-ConnectionInformationForVm `
+        -machineName $machineName `
+        -hypervHost $hypervHost `
+        -localAdminCredential $credential `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
 
-# verify
+    Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
+
+    $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
+    & $testWindowsResource -session $connection.Session -testDirectory $testDirectory -logDirectory $logDirectory
+}
+finally
+{
+    # Stop the VM
+    try
+    {
+        Stop-VM `
+            -ComputerName $hypervHost `
+            -Name $machineName `
+            -Force `
+            @commonParameterSwitches
+    }
+    catch
+    {
+        # just ignore it
+    }
+
+    # Delete the VM. If the delete goes wrong we want to know, because we'll have a random VM
+    # trying to do stuff on the environment.
+    Remove-VM `
+        -computerName $hypervHost `
+        -Name $machineName `
+        -Force `
+        @commonParameterSwitches
+}
