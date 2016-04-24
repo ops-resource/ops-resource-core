@@ -311,14 +311,20 @@ file "#{meta_directory}\\service_consul.json" do
   action :create
 end
 
-powershell_script 'firewall_open_TCP_ports_for_consul' do
-  code <<-POWERSHELL
-    netsh advfirewall firewall add rule name=\"Consul_Tcp\" dir=in action=allow protocol=TCP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
-  POWERSHELL
+windows_firewall_rule 'Consul_TCP' do
+    dir 'in'
+    firewall_action :allow
+    protocol 'TCP'
+    program "#{consul_bin_directory}\\consul.exe"
+    profile 'domain'
+    action :create
 end
 
-powershell_script 'firewall_open_UDP_ports_for_consul' do
-  code <<-POWERSHELL
-    netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
-  POWERSHELL
+windows_firewall_rule 'Consul_UDP' do
+    dir 'in'
+    firewall_action :allow
+    protocol 'UDP'
+    program "#{consul_bin_directory}\\consul.exe"
+    profile 'domain'
+    action :create
 end

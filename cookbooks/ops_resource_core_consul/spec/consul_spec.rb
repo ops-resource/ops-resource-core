@@ -197,10 +197,24 @@ describe 'ops_resource_core_consul::consul' do
   end
 
   it 'opens the TCP ports for consul in the firewall' do
-    expect(chef_run).to run_powershell_script('firewall_open_TCP_ports_for_consul')
+    expect(chef_run).to create_windows_firewall_rule('Consul_TCP').with(
+        values: [{
+            dir: 'in',
+            firewall_action: :allow,
+            protocol: 'TCP',
+            program: "#{consul_bin_directory}\\consul.exe",
+            profile: 'domain'
+        }])
   end
 
   it 'opens the UDP ports for consul in the firewall' do
-    expect(chef_run).to run_powershell_script('firewall_open_UDP_ports_for_consul')
+    expect(chef_run).to create_windows_firewall_rule('Consul_UDP').with(
+        values: [{
+            dir: 'in',
+            firewall_action: :allow,
+            protocol: 'UDP',
+            program: "#{consul_bin_directory}\\consul.exe",
+            profile: 'domain'
+        }])
   end
 end
