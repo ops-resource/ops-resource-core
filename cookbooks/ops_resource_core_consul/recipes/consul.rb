@@ -152,6 +152,12 @@ cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
   action :create
 end
 
+# Getting a comma separed set of IP addresses that are the IP addresses of the DNS recusors
+# For the consul configuration we want a formatted string that looks like:
+# "recursor_IP_1","recursor_IP_2","recursor_IP_3"
+recusors_formatted = node['env_external']['dns_server'].gsub(',', '\",\"')
+consul_config_recursors = "\"#{recursors_formatted}\""
+
 consul_config_datacenter = node['consul']['datacenter']
 consul_config_entry_node_dns = node['consul']['entry_node_dns']
 consul_config_recursors = node['consul']['dns_server_url']
@@ -182,7 +188,7 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
   "retry_join": ["#{consul_config_entry_node_dns}"],
   "retry_interval": "30s",
 
-  "recursors": ["#{consul_config_recursors}"],
+  "recursors": [#{consul_config_recursors}],
 
   "disable_remote_exec": true,
   "disable_update_check": true,
