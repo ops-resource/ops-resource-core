@@ -35,6 +35,15 @@ class ConsulProvisioner
 
     [void] Provision([psobject] $configuration)
     {
+        # Update the consul configuration
+        $configPath = 'c:\ops\consul\bin\consul_default.json'
+        $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
+        $json.datacenter = $configuration.datacenter
+        $json.retry_join = $configuration.consulservers
+        $json.recursors = $configuration.consulrecursors
+
+        ConvertTo-Json -InputObject $json | Out-File -FilePath $configPath -Force -NoNewline @($this.commonParameterSwitches)
+
         # Make sure the service starts automatically when the machine starts, and then start the service if required
         Set-Service `
             -Name $this.serviceName `
