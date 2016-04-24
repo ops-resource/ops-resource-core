@@ -115,13 +115,16 @@ powershell_script 'provisioning_as_service' do
     # https://msdn.microsoft.com/en-us/library/windows/desktop/ms684190%28v=vs.85%29.aspx
     $credential = New-Object pscredential((".\\LocalSystem", $securePassword)
 
-    # Create the new service
-    New-Service `
-        -Name '#{service_name}' `
-        -BinaryPathName '#{provisioning_service_directory}\\#{win_service_name}.exe' `
-        -Credential $credential `
-        -DisplayName '#{service_name}' `
-        -StartupType Automatic
+    $service = Get-Service -Name '#{service_name}' -ErrorAction SilentlyContinue
+    if ($service -eq $null)
+    {
+        New-Service `
+            -Name '#{service_name}' `
+            -BinaryPathName '#{provisioning_service_directory}\\#{win_service_name}.exe' `
+            -Credential $credential `
+            -DisplayName '#{service_name}' `
+            -StartupType Automatic
+    }
 
     # Set the service to restart if it fails
     sc.exe failure #{service_name} reset=86400 actions=restart/5000

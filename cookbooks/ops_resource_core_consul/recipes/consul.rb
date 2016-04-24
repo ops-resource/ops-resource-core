@@ -68,35 +68,42 @@ powershell_script 'user_grant_service_logon_rights' do
         Remove-Item -Path $secedt -Force
     }
 
-    Write-Host ("Granting SeServiceLogonRight to user account: {0} on host: {1}." -f $userName, $computerName)
     $sid = ((New-Object System.Security.Principal.NTAccount($userName)).Translate([System.Security.Principal.SecurityIdentifier])).Value
 
     secedit /export /cfg $export
     $line = (Select-String $export -Pattern "SeServiceLogonRight").Line
     $sids = $line.Substring($line.IndexOf('=') + 1).Trim()
 
-    $lines = @(
-            "[Unicode]",
-            "Unicode=yes",
-            "[System Access]",
-            "[Event Audit]",
-            "[Registry Values]",
-            "[Version]",
-            "signature=`"`$CHICAGO$`"",
-            "Revision=1",
-            "[Profile Description]",
-            "Description=GrantLogOnAsAService security template",
-            "[Privilege Rights]",
-            "SeServiceLogonRight = $sids,*$sid"
-        )
-    foreach ($line in $lines)
+    if (-not ($sids.Contains($sid)))
     {
-        Add-Content $import $line
-    }
+        Write-Host ("Granting SeServiceLogonRight to user account: {0} on host: {1}." -f $userName, $computerName)
+        $lines = @(
+                "[Unicode]",
+                "Unicode=yes",
+                "[System Access]",
+                "[Event Audit]",
+                "[Registry Values]",
+                "[Version]",
+                "signature=`"`$CHICAGO$`"",
+                "Revision=1",
+                "[Profile Description]",
+                "Description=GrantLogOnAsAService security template",
+                "[Privilege Rights]",
+                "SeServiceLogonRight = $sids,*$sid"
+            )
+        foreach ($line in $lines)
+        {
+            Add-Content $import $line
+        }
 
-    secedit /import /db $secedt /cfg $import
-    secedit /configure /db $secedt
-    gpupdate /force
+        secedit /import /db $secedt /cfg $import
+        secedit /configure /db $secedt
+        gpupdate /force
+    }
+    else
+    {
+        Write-Host ("User account: {0} on host: {1} already has SeServiceLogonRight." -f $userName, $computerName)
+    }
   POWERSHELL
 end
 
@@ -263,13 +270,16 @@ powershell_script 'consul_as_service' do
     # http://stackoverflow.com/questions/313622/powershell-script-to-change-service-account#comment14535084_315616
     $credential = New-Object pscredential((".\\" + "#{service_username}"), $securePassword)
 
-    # Create the new service
-    New-Service `
-        -Name '#{service_name}' `
-        -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
-        -Credential $credential `
-        -DisplayName '#{service_name}' `
-        -StartupType Disabled
+    $service = Get-Service -Name '#{service_name}' -ErrorAction SilentlyContinue
+    if ($service -eq $null)
+    {
+        New-Service `
+            -Name '#{service_name}' `
+            -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
+            -Credential $credential `
+            -DisplayName '#{service_name}' `
+            -StartupType Disabled
+    }
 
     # Set the service to restart if it fails
     sc.exe failure #{service_name} reset=86400 actions=restart/5000
@@ -301,14 +311,20 @@ file "#{meta_directory}\\service_consul.json" do
   action :create
 end
 
-powershell_script 'firewall_open_TCP_ports_for_consul' do
-  code <<-POWERSHELL
-    netsh advfirewall firewall add rule name=\"Consul_Tcp\" dir=in action=allow protocol=TCP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
-  POWERSHELL
+windows_firewall_rule 'Consul_TCP' do
+    dir 'in'
+    firewall_action :allow
+    protocol 'TCP'
+    program "#{consul_bin_directory}\\consul.exe"
+    profile 'domain'
+    action :create
 end
 
-powershell_script 'firewall_open_UDP_ports_for_consul' do
-  code <<-POWERSHELL
-    netsh advfirewall firewall add rule name=\"Consul_UDP\" dir=in action=allow protocol=UDP program=\"#{consul_bin_directory}\\consul.exe\" enable=yes profile=domain
-  POWERSHELL
+windows_firewall_rule 'Consul_UDP' do
+    dir 'in'
+    firewall_action :allow
+    protocol 'UDP'
+    program "#{consul_bin_directory}\\consul.exe"
+    profile 'domain'
+    action :create
 end

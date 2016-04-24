@@ -17,12 +17,16 @@ powershell_script 'localhost_as_primary_dns' do
     # Get the IP addresses for the current DNS servers
     $currentDnsAddresses = Get-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -AddressFamily IPv4
 
-    # Add the consul IP address to the list of DNS servers and make sure it's the first one so that it gets the first go at
-    # resolving all the DNS queries.
-    # We'll keep the previously set DNS addresses so that in case of failure we still have a DNS server to resolve addresses against.
-    $serverDnsAddresses = @( '127.0.0.1' )
-    $serverDnsAddresses += $currentDnsAddresses.ServerAddresses
-    Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $serverDnsAddresses -Verbose
+    $localhost = '127.0.0.1'
+    if ($currentDnsAddresses.ServerAddresses -notcontains $localhost)
+    {
+        # Add the consul IP address to the list of DNS servers and make sure it's the first one so that it gets the first go at
+        # resolving all the DNS queries.
+        # We'll keep the previously set DNS addresses so that in case of failure we still have a DNS server to resolve addresses against.
+        $serverDnsAddresses = @( $localhost )
+        $serverDnsAddresses += $currentDnsAddresses.ServerAddresses
+        Set-DnsClientServerAddress -InterfaceIndex $adapter.InterfaceIndex -ServerAddresses $serverDnsAddresses -Verbose
+    }
   POWERSHELL
 end
 
