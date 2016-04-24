@@ -68,35 +68,42 @@ powershell_script 'user_grant_service_logon_rights' do
         Remove-Item -Path $secedt -Force
     }
 
-    Write-Host ("Granting SeServiceLogonRight to user account: {0} on host: {1}." -f $userName, $computerName)
     $sid = ((New-Object System.Security.Principal.NTAccount($userName)).Translate([System.Security.Principal.SecurityIdentifier])).Value
 
     secedit /export /cfg $export
     $line = (Select-String $export -Pattern "SeServiceLogonRight").Line
     $sids = $line.Substring($line.IndexOf('=') + 1).Trim()
 
-    $lines = @(
-            "[Unicode]",
-            "Unicode=yes",
-            "[System Access]",
-            "[Event Audit]",
-            "[Registry Values]",
-            "[Version]",
-            "signature=`"`$CHICAGO$`"",
-            "Revision=1",
-            "[Profile Description]",
-            "Description=GrantLogOnAsAService security template",
-            "[Privilege Rights]",
-            "SeServiceLogonRight = $sids,*$sid"
-        )
-    foreach ($line in $lines)
+    if (-not ($sids.Contains($sid)))
     {
-        Add-Content $import $line
-    }
+        Write-Host ("Granting SeServiceLogonRight to user account: {0} on host: {1}." -f $userName, $computerName)
+        $lines = @(
+                "[Unicode]",
+                "Unicode=yes",
+                "[System Access]",
+                "[Event Audit]",
+                "[Registry Values]",
+                "[Version]",
+                "signature=`"`$CHICAGO$`"",
+                "Revision=1",
+                "[Profile Description]",
+                "Description=GrantLogOnAsAService security template",
+                "[Privilege Rights]",
+                "SeServiceLogonRight = $sids,*$sid"
+            )
+        foreach ($line in $lines)
+        {
+            Add-Content $import $line
+        }
 
-    secedit /import /db $secedt /cfg $import
-    secedit /configure /db $secedt
-    gpupdate /force
+        secedit /import /db $secedt /cfg $import
+        secedit /configure /db $secedt
+        gpupdate /force
+    }
+    else
+    {
+        Write-Host ("User account: {0} on host: {1} already has SeServiceLogonRight." -f $userName, $computerName)
+    }
   POWERSHELL
 end
 
