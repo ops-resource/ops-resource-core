@@ -1,60 +1,54 @@
 [CmdletBinding()]
-param(
-)
+param()
 
 $ErrorActionPreference = 'Stop'
 
-# verify that the consul service is up and running
-$service = Get-Service -Name $consulServiceName
+$commonParameterSwitches =
+    @{
+        Verbose = $PSBoundParameters.ContainsKey('Verbose');
+        Debug = $false;
+        ErrorAction = "Stop"
+    }
 
+# -------------------------- Script classes --------------------------------
 
-# Set the service to be automatically started
-
-
-if (($service -eq $null) -or ($service.Status -ne 'Running'))
+class ConsulProvisioner
 {
-    throw "Consul has not be registered as a service, or the service was not running."
-}
+    [hashtable] $commonParameterSwitches
+    [string] $serviceName
 
-$hasError = $false
-$ErrorActionPreference = 'Continue'
-try
-{
-    foreach($pair in $filesToUpload.GetEnumerator())
+    ConsulProvisioner ([string] $serviceName, [hashtable] $commonParameterSwitches)
     {
-        try
-        {
-            $filePath = $pair.Key
-            # verify that the json file exists
-            if (-not (Test-Path $filePath))
-            {
-                Write-Error "Could not locate the file. Was supposed to be located at $filePath but it was not."
-                continue
-            }
+        $this.serviceName = $serviceName
+        $this.commonParameterSwitches = $commonParameterSwitches
+    }
 
-            # Read the json file
-            $content = Get-Content -Path $filePath
+    [string] ResourceName()
+    {
+        return 'Consul'
+    }
 
-            # Push the meta data up to the consul cluster
-            $machineName = [System.Net.Dns]::GetHostName()
-            $uri = "http://localhost:8500/v1/kv/resource/$machineName/configuration/$($pair.Value)"
-            Write-Output "Uploading to $uri"
-            $response = Invoke-WebRequest -Uri $uri -Method Put -Body $content -UseBasicParsing -UseDefaultCredentials
-            Write-Output "Upload: $($response.StatusDescription)"
-        }
-        catch
+    [string[]] Dependencies()
+    {
+        return @( 'Meta', 'Provisioning' )
+    }
+
+    [void] Provision([psobject] $configuration)
+    {
+        # Make sure the service starts automatically when the machine starts, and then start the service if required
+        Set-Service `
+            -Name $this.serviceName `
+            -StartupType Automatic `
+            @($this.commonParameterSwitches)
+
+        $service = Get-Service -Name $this.serviceName @($this.commonParameterSwitches)
+        if ($service.Status -ne 'Running')
         {
-            $hasError = $true
-            Write-Error "Failed to upload the configuration metadata from $filePath to the consul cluster. Error was: $($_.Exception.ToString())"
+            Start-Service -Name $this.serviceName @($this.commonParameterSwitches)
         }
     }
 }
-finally
-{
-    $ErrorActionPreference = 'Stop'
-}
 
-if ($hasError)
-{
-    throw "Failed to send all the meta data to the consul cluster"
-}
+# -------------------------- Script start ------------------------------------
+
+[ConsulProvisioner]::New('consul', $commonParameterSwitches)
