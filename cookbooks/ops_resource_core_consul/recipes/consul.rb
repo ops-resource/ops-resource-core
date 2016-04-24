@@ -270,13 +270,16 @@ powershell_script 'consul_as_service' do
     # http://stackoverflow.com/questions/313622/powershell-script-to-change-service-account#comment14535084_315616
     $credential = New-Object pscredential((".\\" + "#{service_username}"), $securePassword)
 
-    # Create the new service
-    New-Service `
-        -Name '#{service_name}' `
-        -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
-        -Credential $credential `
-        -DisplayName '#{service_name}' `
-        -StartupType Disabled
+    $service = Get-Service -Name '#{service_name}' -ErrorAction SilentlyContinue
+    if ($service -eq $null)
+    {
+        New-Service `
+            -Name '#{service_name}' `
+            -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
+            -Credential $credential `
+            -DisplayName '#{service_name}' `
+            -StartupType Disabled
+    }
 
     # Set the service to restart if it fails
     sc.exe failure #{service_name} reset=86400 actions=restart/5000
