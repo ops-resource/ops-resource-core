@@ -10,12 +10,7 @@
 include_recipe 'windows'
 include_recipe 'windows_firewall'
 
-log_directory = node['paths']['log']
-directory log_directory do
-  rights :read, 'Everyone', applies_to_children: true
-  rights :modify, 'Administrators', applies_to_children: true
-  action :create
-end
+Chef::Recipe.send(:include, Consul::Helper)
 
 service_name = node['service']['consul']
 win_service_name = 'consul_service'
@@ -107,6 +102,21 @@ powershell_script 'user_grant_service_logon_rights' do
   POWERSHELL
 end
 
+# CONFIGURE LOG DIRECTORIES
+log_directory = node['paths']['log']
+directory log_directory do
+  rights :read, 'Everyone', applies_to_children: true
+  rights :modify, 'Administrators', applies_to_children: true
+  action :create
+end
+
+consul_logs_directory = node['paths']['consul_logs']
+directory consul_logs_directory do
+  rights :modify, service_username, applies_to_children: true, applies_to_self: false
+  action :create
+end
+
+# CONFIGURE CONSUL DIRECTORIES
 ops_base_directory = node['paths']['ops_base']
 directory ops_base_directory do
   rights :read, 'Everyone', applies_to_children: true
@@ -125,12 +135,7 @@ directory consul_data_directory do
   action :create
 end
 
-consul_logs_directory = node['paths']['consul_logs']
-directory consul_logs_directory do
-  rights :modify, service_username, applies_to_children: true, applies_to_self: false
-  action :create
-end
-
+# CONFIGURE CONSUL CONFIG DIRECTORIES
 consul_config_directory = node['paths']['consul_config']
 directory consul_config_directory do
   action :create
@@ -147,6 +152,7 @@ directory consul_checks_directory do
   action :create
 end
 
+# CONFIGURE CONSUL EXECUTABLE
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
   rights :read_execute, 'Everyone', applies_to_children: true, applies_to_self: false
@@ -159,15 +165,73 @@ cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
   action :create
 end
 
+windows_firewall_rule 'Consul_TCP' do
+  dir 'in'
+  firewall_action :allow
+  protocol 'TCP'
+  program "#{consul_bin_directory}\\consul.exe"
+  profile 'domain'
+  action :create
+end
+
+windows_firewall_rule 'Consul_UDP' do
+  dir 'in'
+  firewall_action :allow
+  protocol 'UDP'
+  program "#{consul_bin_directory}\\consul.exe"
+  profile 'domain'
+  action :create
+end
+
 # Getting a comma separed set of IP addresses that are the IP addresses of the DNS recusors
 # For the consul configuration we want a formatted string that looks like:
 # "recursor_IP_1","recursor_IP_2","recursor_IP_3"
-recusors_formatted = node['env_external']['dns_server'].gsub(',', '\",\"')
+recursors_formatted = node['env_external']['dns_server'].gsub(',', '\",\"')
 consul_config_recursors = "\"#{recursors_formatted}\""
 
-consul_config_datacenter = node['consul']['datacenter']
-consul_config_entry_node_dns = node['consul']['entry_node_dns']
-consul_config_recursors = node['consul']['dns_server_url']
+environment = 'env_consul'
+datacenter = node[environment]['consul_datacenter']
+dns_port = node[environment]['consul_dns_port']
+http_port = node[environment]['consul_http_port']
+rpc_port = node[environment]['consul_rpc_port']
+serf_lan_port = node[environment]['consul_serf_lan_port']
+serf_wan_port = node[environment]['consul_serf_wan_port']
+server_port = node[environment]['consul_server_port']
+
+consul_server = ''
+consul_addresses = ''
+retry_join_wan = ''
+retry_join_lan = ''
+if node[environment]['consul_as_server'].casecmp 'true'
+  numberofservers = node[environment]['consul_server_count']
+  consuldomain = node[environment]['consul_domain']
+
+  consul_server = <<-TEXT
+  "bootstrap_expect" : #{numberofservers},
+  "server": true,
+  "domain": "#{consuldomain}",
+  TEXT
+
+  machine_ip = local_ip
+  consul_addresses = <<-TEXT
+  "addresses": {
+    "dns": "#{machine_ip}"
+  },
+  TEXT
+
+  consul_retry_join_wan_nodes = node[environment]['wan_server_node_dns'].gsub(',', '\",\"')
+  retry_join_wan = <<-TEXT
+  "retry_join_wan": ["#{consul_retry_join_wan_nodes}"],
+  "retry_interval_wan": "30s",
+  TEXT
+else
+  consul_retry_join_lan_nodes = node[environment]['lan_server_node_dns'].gsub(',', '\",\"')
+  retry_join_lan = <<-TEXT
+  "retry_join": ["#{consul_retry_join_lan_nodes}"],
+  "retry_interval": "30s",
+  TEXT
+
+end
 
 consul_config_file = 'consul_default.json'
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
@@ -177,10 +241,18 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
 {
   "data_dir": "#{consul_data_directory_json_escaped}",
 
-  "datacenter": "#{consul_config_datacenter}",
+#{consul_server}
 
+  "datacenter": "#{datacenter}",
+
+#{consul_addresses}
   "ports": {
-    "dns": 53
+    "dns": #{dns_port}
+    "http": #{http_port},
+    "rpc": #{rpc_port},
+    "serf_lan": #{serf_lan_port},
+    "serf_wan": #{serf_wan_port},
+    "server": #{server_port}
   },
 
   "dns_config" : {
@@ -192,9 +264,8 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
     }
   },
 
-  "retry_join": ["#{consul_config_entry_node_dns}"],
-  "retry_interval": "30s",
-
+#{retry_join_lan}
+#{retry_join_wan}
   "recursors": [#{consul_config_recursors}],
 
   "disable_remote_exec": true,
@@ -205,8 +276,7 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
   JSON
 end
 
-# add the winsw binaries
-# Copy the service runner & rename to consul.exe
+# INSTALL CONSUL AS SERVICE
 cookbook_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
   source 'winsw.exe'
   action :create
@@ -259,7 +329,6 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   action :create
 end
 
-# Install consul_service.exe as service
 powershell_script 'consul_as_service' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
@@ -297,7 +366,7 @@ registry_key "HKEY_LOCAL_MACHINE\\SYSTEM\\CurrentControlSet\\services\\eventlog\
   action :create
 end
 
-# Add file to meta directory containing information about consul install
+# STORE META INFORMATION
 meta_directory = node['paths']['meta']
 consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
 consul_config_directory_escaped = consul_config_directory.gsub('\\', '\\\\\\\\')
@@ -309,22 +378,4 @@ file "#{meta_directory}\\service_consul.json" do
 }
   JSON
   action :create
-end
-
-windows_firewall_rule 'Consul_TCP' do
-    dir 'in'
-    firewall_action :allow
-    protocol 'TCP'
-    program "#{consul_bin_directory}\\consul.exe"
-    profile 'domain'
-    action :create
-end
-
-windows_firewall_rule 'Consul_UDP' do
-    dir 'in'
-    firewall_action :allow
-    protocol 'UDP'
-    program "#{consul_bin_directory}\\consul.exe"
-    profile 'domain'
-    action :create
 end
