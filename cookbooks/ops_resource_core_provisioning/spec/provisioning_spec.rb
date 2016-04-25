@@ -57,6 +57,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
     expect(chef_run).to create_cookbook_file("#{provisioning_service_directory}\\#{provisioning_initialize_file}").with_source(consul_config_upload_file)
   end
 
+  service_name = 'provisioning'
   win_service_name = 'provisioning_service'
   it 'creates provisioning_service.exe in the provisioning ops directory' do
     expect(chef_run).to create_cookbook_file("#{provisioning_service_directory}\\#{win_service_name}.exe").with_source('winsw.exe')
@@ -74,7 +75,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
 </configuration>
   XML
   it 'creates provisioning_service.exe.config in the provisioning ops directory' do
-    expect(chef_run).to create_file("#{provisioning_service_directory}\\#{win_service_name}.exe.config").with_content(consul_service_exe_config_content)
+    expect(chef_run).to create_file("#{provisioning_service_directory}\\#{win_service_name}.exe.config").with_content(service_exe_config_content)
   end
 
   service_xml_content = <<-XML
@@ -106,7 +107,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
 </service>
   XML
   it 'creates provisioning_service.xml in the provisioning ops directory' do
-    expect(chef_run).to create_file("#{provisioning_service_directory}\\#{win_service_name}.xml").with_content(consul_service_xml_content)
+    expect(chef_run).to create_file("#{provisioning_service_directory}\\#{win_service_name}.xml").with_content(service_xml_content)
   end
 
   it 'installs as service' do
@@ -128,6 +129,6 @@ describe 'ops_resource_core_provisioning::provisioning' do
 }
   JSON
   it 'creates the service_provisioning.json meta file' do
-    expect(chef_run).to create_file("#{meta_directory}\\service_provisioning.json").with_content(consul_service_config_content)
+    expect(chef_run).to create_file("#{meta_directory}\\service_provisioning.json").with_content(provisioning_service_config_content)
   end
 end

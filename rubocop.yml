@@ -2,6 +2,9 @@ Metrics/LineLength:
   Max: 100
   Enabled: false
 
+Documentation:
+  Enabled: false
+
 AllCops:
   Exclude:
     - 'build/temp/core/cookbooks/chef_handler/**/*'
