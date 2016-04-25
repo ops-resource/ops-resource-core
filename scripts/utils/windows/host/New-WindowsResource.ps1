@@ -51,14 +51,24 @@
     The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\temp\logs'.
 
 
+    .PARAMETER consulDomain
+
+    The name of the consul domain
+
+
     .PARAMETER dataCenterName
 
     The name of the consul data center to which the remote machine should belong once configuration is completed.
 
 
-    .PARAMETER clusterEntryPointAddress
+    .PARAMETER lanEntryPointAddress
 
     The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER lanEntryPointAddress
+
+    The DNS name of a machine that is part of the meta consul remote cluster to which the remote machine should be joined.
 
 
     .PARAMETER globalDnsServerAddress
@@ -106,13 +116,21 @@ param(
     [Parameter(Mandatory = $false)]
     [string] $remoteLogDirectory                                = 'c:\temp\logs',
 
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $consulDomain                                      = '',
+
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $dataCenterName                                    = '',
 
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
+    [string] $lanEntryPointAddress                              = '',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $wanEntryPointAddress                              = '',
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
@@ -132,17 +150,27 @@ function New-ConsulAttributesFile
     [CmdletBinding()]
     param(
         [string] $consulAttributePath = $(Join-Path (Join-Path (Join-Path (Join-Path PSScriptRoot 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb'),
+        [bool] $consulAsServer,
         [string] $dataCenterName,
-        [string] $clusterEntryPointAddress,
-        [string] $globalDnsServerAddress
+        [string] $lanServerAddress,
+        [string] $wanServerAddress,
+        [string] $globalDnsServerAddress,
+        [int] $serverCount = 0,
+        [string] $consulDomain
     )
 
     # Create the consul attributes file with the data describing the environment we want to join
     $consulAttributeContent = Get-Content -Path $consulAttributePath
 
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulAsServer}', $consulAsServer.ToString().ToLower())
     $consulAttributeContent = $consulAttributeContent.Replace('${ConsulDataCenterName}', "$dataCenterName")
-    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulClusterEntryPointAddress}', "$clusterEntryPointAddress")
-    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulGlobalDnsServerAddress}', "$globalDnsServerAddress")
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulExternalDnsServers}', "$globalDnsServerAddress")
+
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulLanServerAddress}', "$lanServerAddress")
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulWanServerAddress}', "$wanServerAddress")
+
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulServerCount}', "$serverCount")
+    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulDomain}', "$consulDomain")
 
     Set-Content -Path $consulAttributePath -Value $consulAttributeContent -Force
 }
@@ -155,6 +183,20 @@ Write-Verbose "New-WindowsResource - installationDirectory: $installationDirecto
 Write-Verbose "New-WindowsResource - logDirectory: $logDirectory"
 Write-Verbose "New-WindowsResource - remoteConfigurationDirectory: $remoteConfigurationDirectory"
 Write-Verbose "New-WindowsResource - remoteLogDirectory: $remoteLogDirectory"
+switch ($psCmdlet.ParameterSetName)
+{
+    'FromUserSpecification' {
+        Write-Verbose "New-WindowsResource - consulDomain: $consulDomain"
+        Write-Verbose "New-WindowsResource - dataCenterName: $dataCenterName"
+        Write-Verbose "New-WindowsResource - lanEntryPointAddress: $lanEntryPointAddress"
+        Write-Verbose "New-WindowsResource - wanEntryPointAddress: $wanEntryPointAddress"
+        Write-Verbose "New-WindowsResource - globalDnsServerAddress: $globalDnsServerAddress"
+    }
+
+    'FromMetaCluster' {
+        Write-Verbose "New-WindowsResource - environmentName: $environmentName"
+    }
+}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -190,17 +232,23 @@ if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
     . $(Join-Path $PSScriptRoot 'Consul.ps1')
 
     $target = Get-ConsulTargetEnvironmentData -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
+    $consulDomain = $target.Domain
     $dataCenterName = $target.DataCenter
-    $clusterEntryPointAddress = $target.SerfLan
+    $lanEntryPointAddress = $target.SerfLan
+    $wanEntryPointAddress = $target.SerfWan
     $globalDnsServerAddress = Get-DnsFallbackIp -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
 }
 
 # Overwrite the consul.rb attributes file with the attributes for the machine we're about to create
 New-ConsulAttributesFile `
     -consulAttributePath $(Join-Path (Join-Path (Join-Path (Join-Path $installationDirectory 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb') `
+    -consulAsServer ($consulServerCount -gt 0) `
     -dataCenterName $dataCenterName `
-    -clusterEntryPointAddress $clusterEntryPointAddress `
+    -lanServerAddress $lanEntryPointAddress `
+    -wanServerAddress $wanEntryPointAddress `
     -globalDnsServerAddress $globalDnsServerAddress `
+    -serverCount $consulServerCount `
+    -consulDomain $consulDomain `
     @commonParameterSwitches
 
 Write-Verbose "Connecting to $($session.Name)"

@@ -25,14 +25,29 @@
     The name of the machine that should be set up.
 
 
+    .PARAMETER isConsulClusterLeader
+
+    A flag that indicates whether or not configure the consul agent as a cluser leader or not. Defaults to false.
+
+
+    .PARAMETER consulDomain
+
+    The name of the consul domain
+
+
     .PARAMETER dataCenterName
 
     The name of the consul data center to which the remote machine should belong once configuration is completed.
 
 
-    .PARAMETER clusterEntryPointAddress
+    .PARAMETER lanEntryPointAddress
 
     The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER lanEntryPointAddress
+
+    The DNS name of a machine that is part of the meta consul remote cluster to which the remote machine should be joined.
 
 
     .PARAMETER globalDnsServerAddress
@@ -65,13 +80,23 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $computerName                                      = $(throw 'Please specify the name of the machine that should be configured.'),
 
+    [bool] $isConsulClusterLeader                               = $false,
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $consulDomain                                      = '',
+
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $dataCenterName                                    = '',
 
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
+    [string] $lanEntryPointAddress                              = '',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $wanEntryPointAddress                              = '',
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
@@ -89,11 +114,14 @@ param(
 Write-Verbose "Initialize-LocalNetworkResource - credential: $credential"
 Write-Verbose "Initialize-LocalNetworkResource - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Initialize-LocalNetworkResource - computerName: $computerName"
+Write-Verbose "Initialize-LocalNetworkResource - isConsulClusterLeader: $isConsulClusterLeader"
 switch ($psCmdlet.ParameterSetName)
 {
     'FromUserSpecification' {
+        Write-Verbose "Initialize-LocalNetworkResource - consulDomain: $consulDomain"
         Write-Verbose "Initialize-LocalNetworkResource - dataCenterName: $dataCenterName"
-        Write-Verbose "Initialize-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
+        Write-Verbose "Initialize-LocalNetworkResource - lanEntryPointAddress: $lanEntryPointAddress"
+        Write-Verbose "Initialize-LocalNetworkResource - wanEntryPointAddress: $wanEntryPointAddress"
         Write-Verbose "Initialize-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
     }
 
@@ -138,8 +166,10 @@ try
                 -cookbookNames $cookbookNames `
                 -installationDirectory $installationDirectory `
                 -logDirectory $logDirectory `
+                -consulDomain $consulDomain `
                 -dataCenterName $dataCenterName `
-                -clusterEntryPointAddress $clusterEntryPointAddress `
+                -lanEntryPointAddress $lanEntryPointAddress `
+                -wanEntryPointAddress $wanEntryPointAddress `
                 -globalDnsServerAddress $globalDnsServerAddress `
                 @commonParameterSwitches
         }

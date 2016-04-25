@@ -26,6 +26,11 @@
     The name of the OS that should be used to create the new VM.
 
 
+    .PARAMETER isConsulClusterLeader
+
+    A flag that indicates whether or not configure the consul agent as a cluser leader or not. Defaults to false.
+
+
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
@@ -41,14 +46,24 @@
     The UNC path to the directory that stores the Hyper-V VM information.
 
 
+    .PARAMETER consulDomain
+
+    The name of the consul domain
+
+
     .PARAMETER dataCenterName
 
     The name of the consul data center to which the remote machine should belong once configuration is completed.
 
 
-    .PARAMETER clusterEntryPointAddress
+    .PARAMETER lanEntryPointAddress
 
     The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+
+
+    .PARAMETER lanEntryPointAddress
+
+    The DNS name of a machine that is part of the meta consul remote cluster to which the remote machine should be joined.
 
 
     .PARAMETER globalDnsServerAddress
@@ -81,6 +96,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $osName                                            = '',
 
+    [bool] $isConsulClusterLeader                               = $false,
+
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $hypervHost                                        = '',
@@ -93,13 +110,21 @@ param(
                ParameterSetName = 'FromUserSpecification')]
     [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines",
 
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $consulDomain                                      = '',
+
     [Parameter(Mandatory = $true,
                ParameterSetName = 'FromUserSpecification')]
     [string] $dataCenterName                                    = '',
 
-    [Parameter(Mandatory = $true,
+    [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
+    [string] $lanEntryPointAddress                              = '',
+
+    [Parameter(Mandatory = $false,
+               ParameterSetName = 'FromUserSpecification')]
+    [string] $wanEntryPointAddress                              = '',
 
     [Parameter(Mandatory = $false,
                ParameterSetName = 'FromUserSpecification')]
@@ -117,6 +142,7 @@ param(
 Write-Verbose "Initialize-HyperVImage - credential: $credential"
 Write-Verbose "Initialize-HyperVImage - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Initialize-HyperVImage - osName = $osName"
+Write-Verbose "Initialize-HyperVImage - isConsulClusterLeader: $isConsulClusterLeader"
 Write-Verbose "Initialize-HyperVImage - hypervHost: $hypervHost"
 switch ($psCmdlet.ParameterSetName)
 {
@@ -124,8 +150,10 @@ switch ($psCmdlet.ParameterSetName)
         Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
         Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
         Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
-        Write-Verbose "Initialize-HyperVImage - dataCenterName = $dataCenterName"
-        Write-Verbose "Initialize-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
+        Write-Verbose "Initialize-HyperVImage - consulDomain: $consulDomain"
+        Write-Verbose "Initialize-HyperVImage - dataCenterName: $dataCenterName"
+        Write-Verbose "Initialize-HyperVImage - lanEntryPointAddress: $lanEntryPointAddress"
+        Write-Verbose "Initialize-HyperVImage - wanEntryPointAddress: $wanEntryPointAddress"
         Write-Verbose "Initialize-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
     }
 
