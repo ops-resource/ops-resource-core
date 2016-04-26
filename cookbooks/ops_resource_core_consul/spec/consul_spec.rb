@@ -149,7 +149,7 @@ describe 'ops_resource_core_consul::consul' do
     end
 
     consul_service_xml_content = <<-XML
-    <?xml version="1.0"?>
+<?xml version="1.0"?>
 <!--
     The MIT License Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi Permission is hereby granted, free of charge, to any person obtaining a
     copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights
@@ -196,26 +196,26 @@ describe 'ops_resource_core_consul::consul' do
 
   context 'install consul as client' do
     let(:chef_run) do
-      node.set['env_consul']['consul_as_server'] = false
-      node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
-      node.set['env_consul']['consul_dns_port'] = 1
-      node.set['env_consul']['consul_http_port'] = 2
-      node.set['env_consul']['consul_rpc_port'] = 3
-      node.set['env_consul']['consul_serf_lan_port'] = 4
-      node.set['env_consul']['consul_serf_wan_port'] = 5
-      node.set['env_consul']['consul_server_port'] = 6
-      node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
-      node.set['env_consul']['lan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
-      node.set['env_consul']['consul_server_count'] = -1
-      node.set['env_consul']['consul_domain'] = 'CONSUL_DOMAIN_NOT_SET'
-      node.set['env_consul']['wan_server_node_dns'] = 'WAN_DNS_NOT_SET'
-      ChefSpec::SoloRunner.converge(described_recipe)
+      ChefSpec::SoloRunner.new do |node|
+        node.set['env_consul']['consul_as_server'] = 'false'
+        node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
+        node.set['env_consul']['consul_dns_port'] = 1
+        node.set['env_consul']['consul_http_port'] = 2
+        node.set['env_consul']['consul_rpc_port'] = 3
+        node.set['env_consul']['consul_serf_lan_port'] = 4
+        node.set['env_consul']['consul_serf_wan_port'] = 5
+        node.set['env_consul']['consul_server_port'] = 6
+        node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
+        node.set['env_consul']['lan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
+        node.set['env_consul']['consul_server_count'] = -1
+        node.set['env_consul']['consul_domain'] = 'CONSUL_DOMAIN_NOT_SET'
+        node.set['env_consul']['wan_server_node_dns'] = 'WAN_DNS_NOT_SET'
+      end.converge(described_recipe)
     end
 
     consul_default_config_content = <<-JSON
 {
   "data_dir": "c:\\\\ops\\\\consul\\\\data",
-
 
 
   "datacenter": "MyDatacenter",
@@ -242,6 +242,7 @@ describe 'ops_resource_core_consul::consul' do
   "retry_join": ["5.4.3.2","6.5.4.3","7.6.5.4"],
   "retry_interval": "30s",
 
+
   "recursors": ["4.3.2.1","3.2.1.0"],
 
   "disable_remote_exec": true,
@@ -257,20 +258,21 @@ describe 'ops_resource_core_consul::consul' do
 
   context 'install consul as server' do
     let(:chef_run) do
-      node.set['env_consul']['consul_as_server'] = true
-      node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
-      node.set['env_consul']['consul_dns_port'] = 1
-      node.set['env_consul']['consul_http_port'] = 2
-      node.set['env_consul']['consul_rpc_port'] = 3
-      node.set['env_consul']['consul_serf_lan_port'] = 4
-      node.set['env_consul']['consul_serf_wan_port'] = 5
-      node.set['env_consul']['consul_server_port'] = 6
-      node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
-      node.set['env_consul']['lan_server_node_dns'] = 'LAN_DNS_NOT_SET'
-      node.set['env_consul']['consul_server_count'] = 7
-      node.set['env_consul']['consul_domain'] = 'MyDomain'
-      node.set['env_consul']['wan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
-      ChefSpec::SoloRunner.converge(described_recipe)
+      ChefSpec::SoloRunner.new do |node|
+        node.set['env_consul']['consul_as_server'] = 'true'
+        node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
+        node.set['env_consul']['consul_dns_port'] = 1
+        node.set['env_consul']['consul_http_port'] = 2
+        node.set['env_consul']['consul_rpc_port'] = 3
+        node.set['env_consul']['consul_serf_lan_port'] = 4
+        node.set['env_consul']['consul_serf_wan_port'] = 5
+        node.set['env_consul']['consul_server_port'] = 6
+        node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
+        node.set['env_consul']['lan_server_node_dns'] = 'LAN_DNS_NOT_SET'
+        node.set['env_consul']['consul_server_count'] = 7
+        node.set['env_consul']['consul_domain'] = 'MyDomain'
+        node.set['env_consul']['wan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
+      end.converge(described_recipe)
     end
 
     machine_ip = Consul::Helper.local_ip
@@ -288,6 +290,7 @@ describe 'ops_resource_core_consul::consul' do
   "addresses": {
     "dns": "#{machine_ip}"
   },
+
   "ports": {
     "dns": 1
     "http": 2,
@@ -309,6 +312,7 @@ describe 'ops_resource_core_consul::consul' do
 
   "retry_join_wan": ["5.4.3.2","6.5.4.3","7.6.5.4"],
   "retry_interval_wan": "30s",
+
   "recursors": ["4.3.2.1","3.2.1.0"],
 
   "disable_remote_exec": true,

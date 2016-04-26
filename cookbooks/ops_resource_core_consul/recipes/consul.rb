@@ -166,30 +166,32 @@ cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
 end
 
 windows_firewall_rule 'Consul_TCP' do
-  dir 'in'
+  dir :in
   firewall_action :allow
   protocol 'TCP'
   program "#{consul_bin_directory}\\consul.exe"
-  profile 'domain'
+  profile :domain
   action :create
 end
 
 windows_firewall_rule 'Consul_UDP' do
-  dir 'in'
+  dir :in
   firewall_action :allow
   protocol 'UDP'
   program "#{consul_bin_directory}\\consul.exe"
-  profile 'domain'
+  profile :domain
   action :create
 end
 
 # Getting a comma separed set of IP addresses that are the IP addresses of the DNS recusors
 # For the consul configuration we want a formatted string that looks like:
 # "recursor_IP_1","recursor_IP_2","recursor_IP_3"
-recursors_formatted = node['env_external']['dns_server'].gsub(',', '\",\"')
+recursors_formatted = node['env_external']['dns_server'].gsub(',', '","')
 consul_config_recursors = "\"#{recursors_formatted}\""
 
 environment = 'env_consul'
+
+consul_as_service = node[environment]['consul_as_server']
 datacenter = node[environment]['consul_datacenter']
 dns_port = node[environment]['consul_dns_port']
 http_port = node[environment]['consul_http_port']
@@ -202,7 +204,7 @@ consul_server = ''
 consul_addresses = ''
 retry_join_wan = ''
 retry_join_lan = ''
-if node[environment]['consul_as_server'].casecmp 'true'
+if consul_as_service.casecmp('true') == 0
   numberofservers = node[environment]['consul_server_count']
   consuldomain = node[environment]['consul_domain']
 
@@ -219,13 +221,13 @@ if node[environment]['consul_as_server'].casecmp 'true'
   },
   TEXT
 
-  consul_retry_join_wan_nodes = node[environment]['wan_server_node_dns'].gsub(',', '\",\"')
+  consul_retry_join_wan_nodes = node[environment]['wan_server_node_dns'].gsub(',', '","')
   retry_join_wan = <<-TEXT
   "retry_join_wan": ["#{consul_retry_join_wan_nodes}"],
   "retry_interval_wan": "30s",
   TEXT
 else
-  consul_retry_join_lan_nodes = node[environment]['lan_server_node_dns'].gsub(',', '\",\"')
+  consul_retry_join_lan_nodes = node[environment]['lan_server_node_dns'].gsub(',', '","')
   retry_join_lan = <<-TEXT
   "retry_join": ["#{consul_retry_join_lan_nodes}"],
   "retry_interval": "30s",
@@ -242,7 +244,6 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
   "data_dir": "#{consul_data_directory_json_escaped}",
 
 #{consul_server}
-
   "datacenter": "#{datacenter}",
 
 #{consul_addresses}

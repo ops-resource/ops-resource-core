@@ -54,7 +54,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
 
   provisioning_initialize_file = 'Initialize-Resource.ps1'
   it 'creates Initialize-Resource.ps1 in the provisioning directory' do
-    expect(chef_run).to create_cookbook_file("#{provisioning_service_directory}\\#{provisioning_initialize_file}").with_source(consul_config_upload_file)
+    expect(chef_run).to create_cookbook_file("#{provisioning_service_directory}\\#{provisioning_initialize_file}").with_source(provisioning_initialize_file)
   end
 
   service_name = 'provisioning'
@@ -103,7 +103,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
         <sizeThreshold>10240</sizeThreshold>
         <keepFiles>8</keepFiles>
     </log>
-    <onfailure action="restart"/>
+    <onfailure action="none"/>
 </service>
   XML
   it 'creates provisioning_service.xml in the provisioning ops directory' do
@@ -123,6 +123,7 @@ describe 'ops_resource_core_provisioning::provisioning' do
       }])
   end
 
+  meta_directory = 'c:\\meta'
   provisioning_service_config_content = <<-JSON
 {
     "install_path": "c:\\\\ops\\\\provisioning",
