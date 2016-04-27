@@ -58,31 +58,6 @@
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
-
-
-    .PARAMETER dataCenterName
-
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
-
-
-    .PARAMETER globalDnsServerAddress
-
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
-
-
-    .PARAMETER consulLocalAddress
-
-    The URL to the local consul agent.
 #>
 [CmdletBinding()]
 param(
@@ -103,37 +78,14 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
+    [Parameter(Mandatory = $true)]
     [string] $hypervHost                                        = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
+    [Parameter(Mandatory = $true)]
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $globalDnsServerAddress                            = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://localhost:8500"
+    [Parameter(Mandatory = $true)]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines"
 )
 
 Write-Verbose "Test-HyperVImage - credential = $credential"
@@ -142,23 +94,9 @@ Write-Verbose "Test-HyperVImage - imageName = $imageName"
 Write-Verbose "Test-HyperVImage - testDirectory = $testDirectory"
 Write-Verbose "Test-HyperVImage - logDirectory = $logDirectory"
 Write-Verbose "Test-HyperVImage - machineName = $machineName"
-
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
-        Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
-        Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
-        Write-Verbose "Test-HyperVImage - dataCenterName = $dataCenterName"
-        Write-Verbose "Test-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "Test-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
-    }
-
-    'FromMetaCluster' {
-        Write-Verbose "Test-HyperVImage - environmentName = $environmentName"
-        Write-Verbose "Test-HyperVImage - consulLocalAddress = $consulLocalAddress"
-    }
-}
+Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
+Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -182,30 +120,6 @@ if (-not (Test-Path $testDirectory))
 if (-not (Test-Path $logDirectory))
 {
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
-}
-
-if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
-{
-    . $(Join-Path $PSScriptRoot 'Consul.ps1')
-
-    $consulDomain = Get-ConsulDomain `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        @commonParameterSwitches
-    $hypervHost = "host.hyperv.service.$($consulDomain)"
-
-    $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\storagesubpath' `
-        @commonParameterSwitches
-    $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
-
-    $vhdxTemplatePath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\templatesubpath' `
-        @commonParameterSwitches
 }
 
 if (-not (Test-Path $hypervHostVmStoragePath))

@@ -51,31 +51,6 @@
     The directory in which all the logs should be stored.
 
 
-    .PARAMETER dataCenterName
-
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
-
-
-    .PARAMETER globalDnsServerAddress
-
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
-
-
-    .PARAMETER consulLocalAddress
-
-    The URL to the local consul agent.
-
-
     .EXAMPLE
 
     New-WindowsResource -computerName "MyMachine" -installationDirectory "c:\installers" -logDirectory "c:\logs"
@@ -104,27 +79,7 @@ param(
     [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
 
     [Parameter(Mandatory = $false)]
-    [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $globalDnsServerAddress                            = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://localhost:8500"
+    [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs')
 )
 
 Write-Verbose "New-LocalNetworkResource - credential: $credential"
@@ -135,20 +90,6 @@ Write-Verbose "New-LocalNetworkResource - resourceVersion: $resourceVersion"
 Write-Verbose "New-LocalNetworkResource - cookbookNames: $cookbookNames"
 Write-Verbose "New-LocalNetworkResource - installationDirectory: $installationDirectory"
 Write-Verbose "New-LocalNetworkResource - logDirectory: $logDirectory"
-
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        Write-Verbose "New-LocalNetworkResource - dataCenterName: $dataCenterName"
-        Write-Verbose "New-LocalNetworkResource - clusterEntryPointAddress: $clusterEntryPointAddress"
-        Write-Verbose "New-LocalNetworkResource - globalDnsServerAddress: $globalDnsServerAddress"
-    }
-
-    'FromMetaCluster' {
-        Write-Verbose "New-LocalNetworkResource - environmentName: $environmentName"
-        Write-Verbose "New-LocalNetworkResource - consulLocalAddress: $consulLocalAddress"
-    }
-}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -180,32 +121,11 @@ if ($session -eq $null)
 }
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        & $newWindowsResource `
-            -session $session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -dataCenterName $dataCenterName `
-            -clusterEntryPointAddress $clusterEntryPointAddress `
-            -globalDnsServerAddress $globalDnsServerAddress `
-            @commonParameterSwitches
-    }
-
-    'FromMetaCluster' {
-        & $newWindowsResource `
-            -session $session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -environmentName $environmentName `
-            -consulLocalAddress $consulLocalAddress `
-            @commonParameterSwitches
-    }
-}
+& $newWindowsResource `
+    -session $session `
+    -resourceName $resourceName `
+    -resourceVersion $resourceVersion `
+    -cookbookNames $cookbookNames `
+    -installationDirectory $installationDirectory `
+    -logDirectory $logDirectory `
+    @commonParameterSwitches
