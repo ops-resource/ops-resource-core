@@ -183,57 +183,14 @@ windows_firewall_rule 'Consul_UDP' do
   action :create
 end
 
-# Getting a comma separed set of IP addresses that are the IP addresses of the DNS recusors
-# For the consul configuration we want a formatted string that looks like:
-# "recursor_IP_1","recursor_IP_2","recursor_IP_3"
-recursors_formatted = node['env_external']['dns_server'].gsub(',', '","')
-consul_config_recursors = "\"#{recursors_formatted}\""
-
 environment = 'env_consul'
 
-consul_as_service = node[environment]['consul_as_server']
-datacenter = node[environment]['consul_datacenter']
 dns_port = node[environment]['consul_dns_port']
 http_port = node[environment]['consul_http_port']
 rpc_port = node[environment]['consul_rpc_port']
 serf_lan_port = node[environment]['consul_serf_lan_port']
 serf_wan_port = node[environment]['consul_serf_wan_port']
 server_port = node[environment]['consul_server_port']
-
-consul_server = ''
-consul_addresses = ''
-retry_join_wan = ''
-retry_join_lan = ''
-if consul_as_service.casecmp('true') == 0
-  numberofservers = node[environment]['consul_server_count']
-  consuldomain = node[environment]['consul_domain']
-
-  consul_server = <<-TEXT
-  "bootstrap_expect" : #{numberofservers},
-  "server": true,
-  "domain": "#{consuldomain}",
-  TEXT
-
-  machine_ip = local_ip
-  consul_addresses = <<-TEXT
-  "addresses": {
-    "dns": "#{machine_ip}"
-  },
-  TEXT
-
-  consul_retry_join_wan_nodes = node[environment]['wan_server_node_dns'].gsub(',', '","')
-  retry_join_wan = <<-TEXT
-  "retry_join_wan": ["#{consul_retry_join_wan_nodes}"],
-  "retry_interval_wan": "30s",
-  TEXT
-else
-  consul_retry_join_lan_nodes = node[environment]['lan_server_node_dns'].gsub(',', '","')
-  retry_join_lan = <<-TEXT
-  "retry_join": ["#{consul_retry_join_lan_nodes}"],
-  "retry_interval": "30s",
-  TEXT
-
-end
 
 consul_config_file = 'consul_default.json'
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
@@ -243,10 +200,15 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
 {
   "data_dir": "#{consul_data_directory_json_escaped}",
 
-#{consul_server}
-  "datacenter": "#{datacenter}",
+  "bootstrap_expect" : 0,
+  "server": false,
+  "domain": "CONSUL_DOMAIN_NOT_SET",
+  "datacenter": "CONSUL_DATACENTER_NOT_SET",
 
-#{consul_addresses}
+  "addresses": {
+    "dns": "CONSUL_ADDRESS_DNS_NOT_SET"
+  },
+
   "ports": {
     "dns": #{dns_port}
     "http": #{http_port},
@@ -265,9 +227,13 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
     }
   },
 
-#{retry_join_lan}
-#{retry_join_wan}
-  "recursors": [#{consul_config_recursors}],
+  "retry_join_wan": [],
+  "retry_interval_wan": "30s",
+
+  "retry_join": ["CONSUL_RETRY_JOIN_LAN_NOT_SET"],
+  "retry_interval": "30s",
+
+  "recursors": ["CONSUL_RECURSORS_NOT_SET"],
 
   "disable_remote_exec": true,
   "disable_update_check": true,

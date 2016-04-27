@@ -126,7 +126,16 @@ describe 'ops_resource_core_consul::consul' do
   end
 
   context 'install consul as service' do
-    let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
+    let(:chef_run) do
+      ChefSpec::SoloRunner.new do |node|
+        node.set['env_consul']['consul_dns_port'] = 1
+        node.set['env_consul']['consul_http_port'] = 2
+        node.set['env_consul']['consul_rpc_port'] = 3
+        node.set['env_consul']['consul_serf_lan_port'] = 4
+        node.set['env_consul']['consul_serf_wan_port'] = 5
+        node.set['env_consul']['consul_server_port'] = 6
+      end.converge(described_recipe)
+    end
 
     win_service_name = 'consul_service'
     it 'creates consul_service.exe in the consul ops directory' do
@@ -192,103 +201,18 @@ describe 'ops_resource_core_consul::consul' do
           data: 'c:\\Windows\\Microsoft.NET\\Framework64\\v4.0.30319\\EventLogMessages.dll'
         }])
     end
-  end
-
-  context 'install consul as client' do
-    let(:chef_run) do
-      ChefSpec::SoloRunner.new do |node|
-        node.set['env_consul']['consul_as_server'] = 'false'
-        node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
-        node.set['env_consul']['consul_dns_port'] = 1
-        node.set['env_consul']['consul_http_port'] = 2
-        node.set['env_consul']['consul_rpc_port'] = 3
-        node.set['env_consul']['consul_serf_lan_port'] = 4
-        node.set['env_consul']['consul_serf_wan_port'] = 5
-        node.set['env_consul']['consul_server_port'] = 6
-        node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
-        node.set['env_consul']['lan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
-        node.set['env_consul']['consul_server_count'] = -1
-        node.set['env_consul']['consul_domain'] = 'CONSUL_DOMAIN_NOT_SET'
-        node.set['env_consul']['wan_server_node_dns'] = 'WAN_DNS_NOT_SET'
-      end.converge(described_recipe)
-    end
 
     consul_default_config_content = <<-JSON
 {
   "data_dir": "c:\\\\ops\\\\consul\\\\data",
 
-
-  "datacenter": "MyDatacenter",
-
-
-  "ports": {
-    "dns": 1
-    "http": 2,
-    "rpc": 3,
-    "serf_lan": 4,
-    "serf_wan": 5,
-    "server": 6
-  },
-
-  "dns_config" : {
-    "allow_stale" : true,
-    "max_stale" : "150s",
-    "node_ttl" : "300s",
-    "service_ttl": {
-      "*": "300s"
-    }
-  },
-
-  "retry_join": ["5.4.3.2","6.5.4.3","7.6.5.4"],
-  "retry_interval": "30s",
-
-
-  "recursors": ["4.3.2.1","3.2.1.0"],
-
-  "disable_remote_exec": true,
-  "disable_update_check": true,
-
-  "log_level" : "debug"
-}
-    JSON
-    it 'creates consul_default.json in the consul ops directory' do
-      expect(chef_run).to create_file("#{consul_bin_directory}\\#{consul_config_file}").with_content(consul_default_config_content)
-    end
-  end
-
-  context 'install consul as server' do
-    let(:chef_run) do
-      ChefSpec::SoloRunner.new do |node|
-        node.set['env_consul']['consul_as_server'] = 'true'
-        node.set['env_consul']['consul_datacenter'] = 'MyDatacenter'
-        node.set['env_consul']['consul_dns_port'] = 1
-        node.set['env_consul']['consul_http_port'] = 2
-        node.set['env_consul']['consul_rpc_port'] = 3
-        node.set['env_consul']['consul_serf_lan_port'] = 4
-        node.set['env_consul']['consul_serf_wan_port'] = 5
-        node.set['env_consul']['consul_server_port'] = 6
-        node.set['env_external']['dns_server'] = '4.3.2.1,3.2.1.0'
-        node.set['env_consul']['lan_server_node_dns'] = 'LAN_DNS_NOT_SET'
-        node.set['env_consul']['consul_server_count'] = 7
-        node.set['env_consul']['consul_domain'] = 'MyDomain'
-        node.set['env_consul']['wan_server_node_dns'] = '5.4.3.2,6.5.4.3,7.6.5.4'
-      end.converge(described_recipe)
-    end
-
-    machine_ip = Consul::Helper.local_ip
-
-    consul_default_config_content = <<-JSON
-{
-  "data_dir": "c:\\\\ops\\\\consul\\\\data",
-
-  "bootstrap_expect" : 7,
-  "server": true,
-  "domain": "MyDomain",
-
-  "datacenter": "MyDatacenter",
+  "bootstrap_expect" : 0,
+  "server": false,
+  "domain": "CONSUL_DOMAIN_NOT_SET",
+  "datacenter": "CONSUL_DATACENTER_NOT_SET",
 
   "addresses": {
-    "dns": "#{machine_ip}"
+    "dns": "CONSUL_ADDRESS_DNS_NOT_SET"
   },
 
   "ports": {
@@ -309,11 +233,13 @@ describe 'ops_resource_core_consul::consul' do
     }
   },
 
-
-  "retry_join_wan": ["5.4.3.2","6.5.4.3","7.6.5.4"],
+  "retry_join_wan": [],
   "retry_interval_wan": "30s",
 
-  "recursors": ["4.3.2.1","3.2.1.0"],
+  "retry_join": ["CONSUL_RETRY_JOIN_LAN_NOT_SET"],
+  "retry_interval": "30s",
+
+  "recursors": ["CONSUL_RECURSORS_NOT_SET"],
 
   "disable_remote_exec": true,
   "disable_update_check": true,

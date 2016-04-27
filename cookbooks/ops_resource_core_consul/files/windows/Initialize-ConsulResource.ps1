@@ -38,9 +38,23 @@ class ConsulProvisioner
         # Update the consul configuration
         $configPath = 'c:\ops\consul\bin\consul_default.json'
         $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
-        $json.datacenter = $configuration.datacenter
-        $json.retry_join = $configuration.consulservers
-        $json.recursors = $configuration.consulrecursors
+        $json.datacenter = $configuration.consul_datacenter
+        $json.recursors = $configuration.consul_recursors
+        $json.retry_join = $configuration.consul_lanservers
+
+        if ($configuration.consul_isserver)
+        {
+            $json.bootstrap_expect = $configuration.consul_numberofservers
+            $json.server = $true
+            $json.domain = $configuration.consul_domain
+
+            $addresses = New-Object psobject -Property @{
+                dns = $this.MachineIp()
+            }
+            $json.addresses = $addresses
+
+            $json.retry_join_wan = $configuration.consul_wanservers
+        }
 
         ConvertTo-Json -InputObject $json | Out-File -FilePath $configPath -Force -NoNewline @($this.commonParameterSwitches)
 
@@ -55,6 +69,30 @@ class ConsulProvisioner
         {
             Start-Service -Name $this.serviceName @($this.commonParameterSwitches)
         }
+    }
+
+    [string] MachineIp()
+    {
+        $result = ''
+        $adapters = Get-NetAdapter @($this.commonParameterSwitches)
+        foreach($adapter in $adapters)
+        {
+            if ($adapter.Status -ne 'Up')
+            {
+                continue
+            }
+
+            $address = Get-NetIPAddress -InterfaceAlias $adapter.InterfaceAlias |
+                Where-Object { $_.AddressFamily -ne 'IPv6' }
+
+            if (($address -ne $null) -and ($address -ne ''))
+            {
+                $result = $address.IPAddress
+                break
+            }
+        }
+
+        return $result
     }
 }
 
