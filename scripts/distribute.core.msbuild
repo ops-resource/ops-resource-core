@@ -57,6 +57,9 @@
 
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
+
+        <FileInitializeHypervScriptTemplate>$(DirOriginTemplates)\host\Initialize-HyperVImage.ps1</FileInitializeHypervScriptTemplate>
+        <FileInitializeHypervScriptGenerated>$(DirOutput)\Initialize-HyperVImage.ps1</FileInitializeHypervScriptGenerated>
     </PropertyGroup>
 
     <ItemGroup>
@@ -173,6 +176,11 @@
                       OutputFileName="$(FileInitializeLocalNetworkScriptGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeLocalNetworkScriptTemplate)')"/>
+
+        <TemplateFile Template="$(FileInitializeHypervScriptTemplate)"
+                      OutputFileName="$(FileInitializeHypervScriptGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeHypervScriptTemplate)')"/>
     </Target>
 
     <Target Name="_Distribute_Core_Cookbooks"

@@ -74,31 +74,6 @@
     .PARAMETER hypervHostVmStoragePath
 
     The UNC path to the directory that stores the Hyper-V VM information.
-
-
-    .PARAMETER dataCenterName
-
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
-
-
-    .PARAMETER globalDnsServerAddress
-
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
-
-
-    .PARAMETER consulLocalAddress
-
-    The URL to the local consul agent.
 #>
 [CmdletBinding()]
 param(
@@ -132,37 +107,14 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
+    [Parameter(Mandatory = $true)]
     [string] $hypervHost                                        = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
+    [Parameter(Mandatory = $true)]
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $globalDnsServerAddress                            = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://localhost:8500"
+    [Parameter(Mandatory = $true)]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines"
 )
 
 Write-Verbose "New-HyperVImage - credential = $credential"
@@ -174,23 +126,10 @@ Write-Verbose "New-HyperVImage - installationDirectory = $installationDirectory"
 Write-Verbose "New-HyperVImage - logDirectory = $logDirectory"
 Write-Verbose "New-HyperVImage - osName = $osName"
 Write-Verbose "New-HyperVImage - machineName = $machineName"
+Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
+Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
 
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
-        Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
-        Write-Verbose "New-HyperVImage - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVImage - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVImage - globalDnsServerAddress = $globalDnsServerAddress"
-    }
-
-    'FromMetaCluster' {
-        Write-Verbose "New-HyperVImage - environmentName = $environmentName"
-        Write-Verbose "New-HyperVImage - consulLocalAddress = $consulLocalAddress"
-    }
-}
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -271,35 +210,14 @@ $connection = Get-ConnectionInformationForVm `
     @commonParameterSwitches
 
 $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        & $newWindowsResource `
-            -session $connection.Session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -dataCenterName $dataCenterName `
-            -clusterEntryPointAddress $clusterEntryPointAddress `
-            -globalDnsServerAddress $globalDnsServerAddress `
-            @commonParameterSwitches
-    }
-
-    'FromMetaCluster' {
-        & $newWindowsResource `
-            -session $connection.Session `
-            -resourceName $resourceName `
-            -resourceVersion $resourceVersion `
-            -cookbookNames $cookbookNames `
-            -installationDirectory $installationDirectory `
-            -logDirectory $logDirectory `
-            -environmentName $environmentName `
-            -consulLocalAddress $consulLocalAddress `
-            @commonParameterSwitches
-    }
-}
+& $newWindowsResource `
+    -session $connection.Session `
+    -resourceName $resourceName `
+    -resourceVersion $resourceVersion `
+    -cookbookNames $cookbookNames `
+    -installationDirectory $installationDirectory `
+    -logDirectory $logDirectory `
+    @commonParameterSwitches
 
 New-HypervVhdxTemplateFromVm `
     -vmName $machineName `

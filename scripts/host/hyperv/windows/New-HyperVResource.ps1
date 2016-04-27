@@ -137,33 +137,11 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
+    [Parameter(Mandatory = $true)]
     [string] $hypervHost                                        = '',
 
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $unattendedJoinFile                                = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $globalDnsServerAddress                            = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://localhost:8500"
+    [Parameter(Mandatory = $true)]
+    [string] $unattendedJoinFile                                = ''
 )
 
 Write-Verbose "New-HyperVResource - credential = $credential"
@@ -174,21 +152,7 @@ Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
 Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
 Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
 Write-Verbose "New-HyperVResource - osName = $osName"
-
-switch ($psCmdlet.ParameterSetName)
-{
-    'FromUserSpecification' {
-        Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
-        Write-Verbose "New-HyperVResource - dataCenterName = $dataCenterName"
-        Write-Verbose "New-HyperVResource - clusterEntryPointAddress = $clusterEntryPointAddress"
-        Write-Verbose "New-HyperVResource - globalDnsServerAddress = $globalDnsServerAddress"
-    }
-
-    'FromMetaCluster' {
-        Write-Verbose "New-HyperVResource - environmentName = $environmentName"
-        Write-Verbose "New-HyperVResource - consulLocalAddress = $consulLocalAddress"
-    }
-}
+Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -215,35 +179,8 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-$unattendedJoin = ''
-if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
-{
-    . $(Join-Path $PSScriptRoot 'Consul.ps1')
-
-    $consulDomain = Get-ConsulDomain `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        @commonParameterSwitches
-    $hypervHost = "host.hyperv.service.$($consulDomain)"
-
-    $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
-        @commonParameterSwitches
-    $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
-
-    $unattendedJoin = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath '' `
-        @commonParameterSwitches
-}
-else
-{
-    $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
-}
+$hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
+$unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1

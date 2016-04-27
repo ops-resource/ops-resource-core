@@ -15,7 +15,7 @@ directory log_directory do
 end
 
 provisioning_logs_directory = node['paths']['provisioning_logs']
-directory consul_logs_directory do
+directory provisioning_logs_directory do
   rights :modify, 'Administrators', applies_to_children: true, applies_to_self: false
   action :create
 end

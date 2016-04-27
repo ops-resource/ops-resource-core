@@ -51,31 +51,6 @@
     The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\temp\logs'.
 
 
-    .PARAMETER dataCenterName
-
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
-
-
-    .PARAMETER globalDnsServerAddress
-
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
-
-
-    .PARAMETER consulLocalAddress
-
-    The URL to the local consul agent.
-
-
     .EXAMPLE
 
     New-WindowsResource -session $session -installationDirectory "c:\installers" -logDirectory "c:\logs"
@@ -104,48 +79,8 @@ param(
     [string] $remoteConfigurationDirectory                      = 'c:\temp\configuration',
 
     [Parameter(Mandatory = $false)]
-    [string] $remoteLogDirectory                                = 'c:\temp\logs',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $dataCenterName                                    = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $clusterEntryPointAddress                          = '',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromUserSpecification')]
-    [string] $globalDnsServerAddress                            = '',
-
-    [Parameter(Mandatory = $true,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $environmentName                                   = 'Development',
-
-    [Parameter(Mandatory = $false,
-               ParameterSetName = 'FromMetaCluster')]
-    [string] $consulLocalAddress                                = "http://localhost:8500"
+    [string] $remoteLogDirectory                                = 'c:\temp\logs'
 )
-
-function New-ConsulAttributesFile
-{
-    [CmdletBinding()]
-    param(
-        [string] $consulAttributePath = $(Join-Path (Join-Path (Join-Path (Join-Path PSScriptRoot 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb'),
-        [string] $dataCenterName,
-        [string] $clusterEntryPointAddress,
-        [string] $globalDnsServerAddress
-    )
-
-    # Create the consul attributes file with the data describing the environment we want to join
-    $consulAttributeContent = Get-Content -Path $consulAttributePath
-
-    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulDataCenterName}', "$dataCenterName")
-    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulClusterEntryPointAddress}', "$clusterEntryPointAddress")
-    $consulAttributeContent = $consulAttributeContent.Replace('${ConsulGlobalDnsServerAddress}', "$globalDnsServerAddress")
-
-    Set-Content -Path $consulAttributePath -Value $consulAttributeContent -Force
-}
 
 Write-Verbose "New-WindowsResource - session: $($session.Name)"
 Write-Verbose "New-WindowsResource - resourceName: $resourceName"
@@ -184,24 +119,6 @@ if ($session -eq $null)
 {
     throw 'Failed to connect to the remote machine'
 }
-
-if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
-{
-    . $(Join-Path $PSScriptRoot 'Consul.ps1')
-
-    $target = Get-ConsulTargetEnvironmentData -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
-    $dataCenterName = $target.DataCenter
-    $clusterEntryPointAddress = $target.SerfLan
-    $globalDnsServerAddress = Get-DnsFallbackIp -environment $environmentName -consulLocalAddress $consulLocalAddress @commonParameterSwitches
-}
-
-# Overwrite the consul.rb attributes file with the attributes for the machine we're about to create
-New-ConsulAttributesFile `
-    -consulAttributePath $(Join-Path (Join-Path (Join-Path (Join-Path $installationDirectory 'cookbooks') 'ops_resource_core') 'attributes') 'consul.rb') `
-    -dataCenterName $dataCenterName `
-    -clusterEntryPointAddress $clusterEntryPointAddress `
-    -globalDnsServerAddress $globalDnsServerAddress `
-    @commonParameterSwitches
 
 Write-Verbose "Connecting to $($session.Name)"
 try
