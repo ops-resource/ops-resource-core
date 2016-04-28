@@ -10,8 +10,6 @@
 include_recipe 'windows'
 include_recipe 'windows_firewall'
 
-Chef::Recipe.send(:include, Consul::Helper)
-
 service_name = node['service']['consul']
 win_service_name = 'consul_service'
 
