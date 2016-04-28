@@ -33,6 +33,8 @@ describe 'ops_resource_core_consul::consul' do
   consul_config_directory = 'c:\\meta\\consul'
   consul_checks_directory = 'c:\\meta\\consul\\checks'
 
+  consul_template_directory = 'c:\\meta\\consultemplate\\templates\\consul'
+
   consul_base_path = 'c:\\ops\\consul'
   consul_data_directory = 'c:\\ops\\consul\\data'
   consul_bin_directory = 'c:\\ops\\consul\\bin'
@@ -47,7 +49,7 @@ describe 'ops_resource_core_consul::consul' do
     end
   end
 
-  context 'create the meta locations' do
+  context 'create the config locations' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
     it 'creates the consul config directory' do
@@ -59,10 +61,16 @@ describe 'ops_resource_core_consul::consul' do
     end
   end
 
-  context 'create the consul locations' do
+  context 'create the template locations' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
+    it 'creates the consul template directory' do
+      expect(chef_run).to create_directory(consul_template_directory)
     end
+  end
+
+  context 'create the consul locations' do
+    let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
     it 'creates the consul base directory' do
       expect(chef_run).to create_directory(consul_base_path)

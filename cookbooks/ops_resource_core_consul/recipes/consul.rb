@@ -127,14 +127,21 @@ directory consul_config_directory do
   action :create
 end
 
-consul_config_upload_file = 'Set-ConfigurationInConsulCluster.ps1'
-cookbook_file "#{consul_config_directory}\\#{consul_config_upload_file}" do
-  source consul_config_upload_file
+consul_checks_directory = node['paths']['consul_checks']
+directory consul_checks_directory do
   action :create
 end
 
-consul_checks_directory = node['paths']['consul_checks']
-directory consul_checks_directory do
+# CONFIGURE CONSUL TEMPLATE DIRECTORIES
+consul_template_directory = node['paths']['consul_template']
+directory consul_template_directory do
+  action :create
+end
+
+consul_config_file = node['file_name']['consul_config_file']
+consul_config_template = "#{consul_config_file}.ctmpl"
+cookbook_file "#{consul_template_directory}\\#{consul_config_template}" do
+  source consul_config_template
   action :create
 end
 
@@ -178,7 +185,6 @@ serf_lan_port = node[environment]['consul_serf_lan_port']
 serf_wan_port = node[environment]['consul_serf_wan_port']
 server_port = node[environment]['consul_server_port']
 
-consul_config_file = 'consul_default.json'
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
 consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\\\\\')
 file "#{consul_bin_directory}\\#{consul_config_file}" do
