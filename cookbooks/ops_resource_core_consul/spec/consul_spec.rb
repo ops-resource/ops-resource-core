@@ -27,14 +27,12 @@ RSpec.configure do |config|
 end
 
 describe 'ops_resource_core_consul::consul' do
-  logs_path = 'c:\\logs'
   consul_logs_directory = 'c:\\logs\\consul'
 
   meta_directory = 'c:\\meta'
   consul_config_directory = 'c:\\meta\\consul'
   consul_checks_directory = 'c:\\meta\\consul\\checks'
 
-  ops_base_path = 'c:\\ops'
   consul_base_path = 'c:\\ops\\consul'
   consul_data_directory = 'c:\\ops\\consul\\data'
   consul_bin_directory = 'c:\\ops\\consul\\bin'
@@ -43,10 +41,6 @@ describe 'ops_resource_core_consul::consul' do
   consul_config_file = 'consul_default.json'
   context 'create the log locations' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
-
-    it 'creates the logs base directory' do
-      expect(chef_run).to create_directory(logs_path)
-    end
 
     it 'creates the consul logs directory' do
       expect(chef_run).to create_directory(consul_logs_directory)
@@ -60,11 +54,6 @@ describe 'ops_resource_core_consul::consul' do
       expect(chef_run).to create_directory(consul_config_directory)
     end
 
-    consul_config_upload_file = 'Set-ConfigurationInConsulCluster.ps1'
-    it 'creates Set-ConfigurationInConsulCluster.ps1 in the consul config directory' do
-      expect(chef_run).to create_cookbook_file("#{consul_config_directory}\\#{consul_config_upload_file}").with_source(consul_config_upload_file)
-    end
-
     it 'creates the consul checks directory' do
       expect(chef_run).to create_directory(consul_checks_directory)
     end
@@ -73,8 +62,6 @@ describe 'ops_resource_core_consul::consul' do
   context 'create the consul locations' do
     let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
-    it 'creates the ops base directory' do
-      expect(chef_run).to create_directory(ops_base_path)
     end
 
     it 'creates the consul base directory' do

@@ -27,6 +27,11 @@ end
 describe 'ops_resource_core_meta::meta' do
   let(:chef_run) { ChefSpec::SoloRunner.converge(described_recipe) }
 
+  logs_path = 'c:\\logs'
+  it 'creates the logs base directory' do
+    expect(chef_run).to create_directory(logs_path)
+  end
+
   meta_path = 'c:\\meta'
   it 'creates the meta directory' do
     expect(chef_run).to create_directory(meta_path)
@@ -35,5 +40,10 @@ describe 'ops_resource_core_meta::meta' do
   meta_file = 'meta.json'
   it 'creates the meta file' do
     expect(chef_run).to create_cookbook_file("#{meta_path}\\#{meta_file}").with(source: meta_file)
+  end
+
+  ops_base_path = 'c:\\ops'
+  it 'creates the ops base directory' do
+    expect(chef_run).to create_directory(ops_base_path)
   end
 end

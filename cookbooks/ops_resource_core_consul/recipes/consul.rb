@@ -103,13 +103,6 @@ powershell_script 'consul_user_grant_service_logon_rights' do
 end
 
 # CONFIGURE LOG DIRECTORIES
-log_directory = node['paths']['log']
-directory log_directory do
-  rights :read, 'Everyone', applies_to_children: true
-  rights :modify, 'Administrators', applies_to_children: true
-  action :create
-end
-
 consul_logs_directory = node['paths']['consul_logs']
 directory consul_logs_directory do
   rights :modify, service_username, applies_to_children: true, applies_to_self: false
@@ -117,13 +110,6 @@ directory consul_logs_directory do
 end
 
 # CONFIGURE CONSUL DIRECTORIES
-ops_base_directory = node['paths']['ops_base']
-directory ops_base_directory do
-  rights :read, 'Everyone', applies_to_children: true
-  rights :modify, 'Administrators', applies_to_children: true
-  action :create
-end
-
 consul_base_directory = node['paths']['consul_base']
 directory consul_base_directory do
   action :create
