@@ -37,6 +37,8 @@ class ConsulProvisioner
     {
         # Update the consul configuration
         $configPath = 'c:\ops\consul\bin\consul_default.json'
+        $templatePath = 'c:\meta\consultemplate\templates\consul\consul_default.json.ctmpl'
+
         $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
         $json.datacenter = $configuration.consul_datacenter
         $json.recursors = $configuration.consul_recursors
@@ -58,6 +60,27 @@ class ConsulProvisioner
 
         ConvertTo-Json -InputObject $json | Out-File -FilePath $configPath -Force -NoNewline @($this.commonParameterSwitches)
 
+
+
+
+
+
+
+
+        # overwrite some of the values with consul template parameters
+        ConvertTo-Json -InputObject $json | Out-File -FilePath $templatePath -Force -NoNewline @($this.commonParameterSwitches)
+
+
+
+
+
+
+
+
+
+
+
+
         # Make sure the service starts automatically when the machine starts, and then start the service if required
         Set-Service `
             -Name $this.serviceName `
@@ -69,6 +92,23 @@ class ConsulProvisioner
         {
             Start-Service -Name $this.serviceName @($this.commonParameterSwitches)
         }
+
+
+
+
+
+
+
+
+        # Start the consultemplate service
+
+
+
+
+
+
+
+
     }
 
     [string] MachineIp()
