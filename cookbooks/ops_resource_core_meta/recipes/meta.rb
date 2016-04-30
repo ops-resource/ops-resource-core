@@ -15,7 +15,6 @@ directory ops_base_directory do
   action :create
 end
 
-
 # CONFIGURE LOG DIRECTORY
 log_directory = node['paths']['log']
 directory log_directory do
@@ -23,7 +22,6 @@ directory log_directory do
   rights :modify, 'Administrators', applies_to_children: true
   action :create
 end
-
 
 # CONFIGURE META DIRECTORY
 meta_directory = node['paths']['meta']
