@@ -136,13 +136,6 @@ directory consul_template_directory do
   action :create
 end
 
-consul_config_file = node['file_name']['consul_config_file']
-consul_config_template = "#{consul_config_file}.ctmpl"
-cookbook_file "#{consul_template_directory}\\#{consul_config_template}" do
-  source consul_config_template
-  action :create
-end
-
 # CONFIGURE CONSUL EXECUTABLE
 consul_bin_directory = node['paths']['consul_bin']
 directory consul_bin_directory do
@@ -160,7 +153,7 @@ windows_firewall_rule 'Consul_TCP' do
   dir :in
   firewall_action :allow
   protocol 'TCP'
-  program "#{consul_bin_directory}\\consul.exe"
+  program "#{consul_bin_directory}\\#{consul_exe}"
   profile :domain
   action :create
 end
@@ -169,7 +162,7 @@ windows_firewall_rule 'Consul_UDP' do
   dir :in
   firewall_action :allow
   protocol 'UDP'
-  program "#{consul_bin_directory}\\consul.exe"
+  program "#{consul_bin_directory}\\#{consul_exe}"
   profile :domain
   action :create
 end
@@ -182,6 +175,8 @@ rpc_port = node[environment]['consul_rpc_port']
 serf_lan_port = node[environment]['consul_serf_lan_port']
 serf_wan_port = node[environment]['consul_serf_wan_port']
 server_port = node[environment]['consul_server_port']
+
+consul_config_file = node['file_name']['consul_config_file']
 
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
 consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\\\\\')
@@ -326,12 +321,24 @@ end
 # STORE META INFORMATION
 meta_directory = node['paths']['meta']
 consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
+consul_config_file_escaped = "#{consul_bin_directory}\\#{consul_config_file}".gsub('\\', '\\\\\\\\')
+
+win_service_config_file_escaped = "#{consul_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
+
 consul_config_directory_escaped = consul_config_directory.gsub('\\', '\\\\\\\\')
 file "#{meta_directory}\\service_consul.json" do
   content <<-JSON
 {
-    "install_path": "#{consul_bin_directory_escaped}",
-    "config_path": "#{consul_config_directory_escaped}",
+    "service" : {
+        "application" : "#{consul_exe}",
+        "application_config" : "#{consul_config_file_escaped}",
+
+        "win_service" : "#{service_name}",
+        "win_service_config" : "#{win_service_config_file_escaped}",
+
+        "install_path": "#{consul_bin_directory_escaped}",
+        "config_path": "#{consul_config_directory_escaped}"
+    }
 }
   JSON
   action :create

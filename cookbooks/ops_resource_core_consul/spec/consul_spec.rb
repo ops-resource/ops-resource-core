@@ -1,6 +1,4 @@
 require 'chefspec'
-require 'socket'
-require_relative '../libraries/consul_helper'
 
 RSpec.configure do |config|
   # Specify the path for Chef Solo to find cookbooks (default: [inferred from
@@ -252,8 +250,16 @@ describe 'ops_resource_core_consul::consul' do
 
     consul_service_config_content = <<-JSON
 {
-    "install_path": "c:\\\\ops\\\\consul\\\\bin",
-    "config_path": "c:\\\\meta\\\\consul",
+    "service" : {
+        "application" : "consul.exe",
+        "application_config" : "c:\\\\ops\\\\consul\\\\bin\\\\consul_default.json",
+
+        "win_service" : "consul",
+        "win_service_config" : "c:\\\\ops\\\\consul\\\\bin\\\\consul_service.xml",
+
+        "install_path": "c:\\\\ops\\\\consul\\\\bin",
+        "config_path": "c:\\\\meta\\\\consul"
+    }
 }
     JSON
     it 'creates the service_consul.json meta file' do
