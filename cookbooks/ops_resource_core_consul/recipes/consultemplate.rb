@@ -124,7 +124,7 @@ directory consultemplate_bin_directory do
   action :create
 end
 
-consultemplate_exe = 'consultemplate.exe'
+consultemplate_exe = 'consul-template.exe'
 cookbook_file "#{consultemplate_bin_directory}\\#{consultemplate_exe}" do
   source consultemplate_exe
   action :create
@@ -133,6 +133,7 @@ end
 consul_port = node['env_consul']['consul_http_port']
 consul_bin_directory = node['paths']['consul_bin']
 consul_config_file = node['file_name']['consul_config_file']
+service_name_consul = node['service']['consul']
 
 consultemplate_config_file = 'consultemplate_default.json'
 file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
@@ -150,7 +151,7 @@ file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
         source = "#{consultemplate_template_directory}\\consul\\#{consul_config_file}.ctmpl",
         destination = "#{consul_bin_directory}\\#{consul_config_file}",
 
-        command = "restart service foo",
+        command = "net stop service #{service_name_consul};net start service #{service_name_consul}",
         command_timeout = "60s",
 
         backup = false,
@@ -198,12 +199,12 @@ file "#{consultemplate_bin_directory}\\#{win_service_name}.xml" do
 <service>
     <id>#{service_name}</id>
     <name>#{service_name}</name>
-    <description>This service runs the consul agent.</description>
+    <description>This service runs the consul-template agent.</description>
 
-    <executable>#{consul_bin_directory}\\consultemplate.exe</executable>
-    <arguments>-config #{consultemplate_bin_directory}\\#{consul_config_file}</arguments>
+    <executable>#{consultemplate_bin_directory}\\consul-template.exe</executable>
+    <arguments>-config #{consultemplate_bin_directory}\\#{consultemplate_config_file}</arguments>
 
-    <logpath>#{consul_logs_directory}</logpath>
+    <logpath>#{consultemplate_logs_directory}</logpath>
     <log mode="roll-by-size">
         <sizeThreshold>10240</sizeThreshold>
         <keepFiles>8</keepFiles>
@@ -253,13 +254,25 @@ end
 
 # STORE META INFORMATION
 meta_directory = node['paths']['meta']
-consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
-consul_config_directory_escaped = consul_config_directory.gsub('\\', '\\\\\\\\')
+consultemplate_bin_directory_escaped = consultemplate_bin_directory.gsub('\\', '\\\\\\\\')
+consultemplate_config_file_escaped = "#{consultemplate_bin_directory}\\#{consultemplate_config_file}".gsub('\\', '\\\\\\\\')
+
+win_service_config_file_escaped = "#{consultemplate_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
+
+consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
 file "#{meta_directory}\\service_consultemplate.json" do
   content <<-JSON
 {
-    "install_path": "#{consultemplate_bin_directory_escaped}",
-    "config_path": "#{consultemplate_config_directory_escaped}",
+    "service" : {
+        "application" : "#{consultemplate_exe}",
+        "application_config" : "#{consultemplate_config_file_escaped}",
+
+        "win_service" : "#{service_name}",
+        "win_service_config" : "#{win_service_config_file_escaped}",
+
+        "install_path": "#{consultemplate_bin_directory_escaped}",
+        "template_path": "#{consultemplate_template_directory_escaped}"
+    }
 }
   JSON
   action :create

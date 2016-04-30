@@ -15,7 +15,7 @@ consultemplate_base_path = "#{ops_base_path}\\consultemplate"
 default['paths']['consultemplate_base'] = consultemplate_base_path
 default['paths']['consultemplate_bin'] = "#{consultemplate_base_path}\\bin"
 
-default['file_name']['consultemplate_config_file'] = 'consul_default.json'
+default['file_name']['consultemplate_config_file'] = 'consultemplate_default.json'
 
 # LOG PATHS
 default['paths']['consul_logs'] = "#{logs_path}\\consul"
