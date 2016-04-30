@@ -18,7 +18,6 @@
         <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
-        <InstallMeta Condition=" '$(InstallMeta)' == '' ">true</InstallMeta>
         <InstallConsul Condition=" '$(InstallConsul)' == '' ">true</InstallConsul>
         <InstallProvisioning Condition=" '$(InstallProvisioning)' == '' OR '$(InstallConsul)' == 'true' ">true</InstallProvisioning>
 
@@ -63,8 +62,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <CookbooksToInvoke Include="ops_resource_core_meta::default"
-                           Condition=" '$(InstallMeta)' == 'true' " />
+        <CookbooksToInvoke Include="ops_resource_core_meta::default"/>
         <CookbooksToInvoke Include="ops_resource_core_consul::default"
                            Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToInvoke Include="ops_resource_core_provisioning::default"
@@ -108,8 +106,8 @@
 
         <Message Text="External dependencies file is located at:                            $(FileNonCoreDependencies)" />
         <Message Text="Cookbooks that should be invoked are:                                $(CookbooksToInvoke)" />
-        <Message Text="Install meta:                                                        $(InstallMeta)" />
         <Message Text="Install consul:                                                      $(InstallConsul)" />
+        <Message Text="Install provisioning:                                                $(InstallProvisioning)" />
         <Message Text=" " />
 
         <Message Text="The directory containing the nBuildKit files is located at:          $(DirNBuildKitMsBuild)"/>
@@ -208,8 +206,7 @@
                  Condition="!Exists('$(DirOutputVerificationTests)')" />
 
         <ItemGroup>
-            <TestFiles Include="$(DirOriginTests)\Meta.Tests.ps1"
-                       Condition=" '$(InstallMeta)' == 'true' " />
+            <TestFiles Include="$(DirOriginTests)\Meta.Tests.ps1"/>
             <TestFiles Include="$(DirOriginTests)\Consul.Tests.ps1"
                        Condition=" '$(InstallConsul)' == 'true' " />
             <TestFiles Include="$(DirOriginTests)\Provisioning.Tests.ps1"

@@ -1,6 +1,6 @@
 #
 # Cookbook Name:: ops_resource_core_consul
-# Recipe:: consul
+# Recipe:: consultemplate
 #
 # Copyright 2015, P. van der Velde
 #
@@ -8,30 +8,23 @@
 #
 
 include_recipe 'windows'
-include_recipe 'windows_firewall'
 
-service_name = node['service']['consul']
-win_service_name = 'consul_service'
+service_name = node['service']['consultemplate']
+win_service_name = 'consultemplate_service'
 
 # Create user
 # - limited user
 # - Reduce access to files. User should only have write access to consul dir
-service_username = 'consul_user'
+service_username = 'consultemplate_user'
 service_password = SecureRandom.uuid
 user service_username do
   password service_password
   action :create
 end
 
-group 'Performance Monitor Users' do
-  action :modify
-  members service_username
-  append true
-end
-
 # Grant the user the LogOnAsService permission. Following this anwer on SO: http://stackoverflow.com/a/21235462/539846
 # With some additional bug fixes to get the correct line from the export file and to put the correct text in the import file
-powershell_script 'consul_user_grant_service_logon_rights' do
+powershell_script 'consultemplate_user_grant_service_logon_rights' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
 
@@ -101,140 +94,81 @@ powershell_script 'consul_user_grant_service_logon_rights' do
 end
 
 # CONFIGURE LOG DIRECTORIES
-consul_logs_directory = node['paths']['consul_logs']
-directory consul_logs_directory do
+consultemplate_logs_directory = node['paths']['consultemplate_logs']
+directory consultemplate_logs_directory do
   rights :modify, service_username, applies_to_children: true, applies_to_self: false
   action :create
 end
 
-# CONFIGURE CONSUL DIRECTORIES
-consul_base_directory = node['paths']['consul_base']
-directory consul_base_directory do
-  action :create
-end
-
-consul_data_directory = node['paths']['consul_data']
-directory consul_data_directory do
-  rights :modify, service_username, applies_to_children: true, applies_to_self: false
+# CONFIGURE CONSULTEMPLATE DIRECTORIES
+consultemplate_base_directory = node['paths']['consultemplate_base']
+directory consultemplate_base_directory do
   action :create
 end
 
 # CONFIGURE CONSUL CONFIG DIRECTORIES
-consul_config_directory = node['paths']['consul_config']
-directory consul_config_directory do
+consultemplate_config_directory = node['paths']['consultemplate_config']
+directory consultemplate_config_directory do
   action :create
 end
 
-consul_checks_directory = node['paths']['consul_checks']
-directory consul_checks_directory do
+consultemplate_template_directory = node['paths']['consultemplate_templates']
+directory consultemplate_template_directory do
   action :create
 end
 
-# CONFIGURE CONSUL TEMPLATE DIRECTORIES
-consul_template_directory = node['paths']['consul_template']
-directory consul_template_directory do
-  action :create
-end
-
-# CONFIGURE CONSUL EXECUTABLE
-consul_bin_directory = node['paths']['consul_bin']
-directory consul_bin_directory do
+# CONFIGURE CONSULTEMPLATE EXECUTABLE
+consultemplate_bin_directory = node['paths']['consultemplate_bin']
+directory consultemplate_bin_directory do
   rights :read_execute, 'Everyone', applies_to_children: true, applies_to_self: false
   action :create
 end
 
-consul_exe = 'consul.exe'
-cookbook_file "#{consul_bin_directory}\\#{consul_exe}" do
-  source consul_exe
+consultemplate_exe = 'consul-template.exe'
+cookbook_file "#{consultemplate_bin_directory}\\#{consultemplate_exe}" do
+  source consultemplate_exe
   action :create
 end
 
-windows_firewall_rule 'Consul_TCP' do
-  dir :in
-  firewall_action :allow
-  protocol 'TCP'
-  program "#{consul_bin_directory}\\#{consul_exe}"
-  profile :domain
-  action :create
-end
-
-windows_firewall_rule 'Consul_UDP' do
-  dir :in
-  firewall_action :allow
-  protocol 'UDP'
-  program "#{consul_bin_directory}\\#{consul_exe}"
-  profile :domain
-  action :create
-end
-
-environment = 'env_consul'
-
-dns_port = node[environment]['consul_dns_port']
-http_port = node[environment]['consul_http_port']
-rpc_port = node[environment]['consul_rpc_port']
-serf_lan_port = node[environment]['consul_serf_lan_port']
-serf_wan_port = node[environment]['consul_serf_wan_port']
-server_port = node[environment]['consul_server_port']
-
+consul_port = node['env_consul']['consul_http_port']
+consul_bin_directory = node['paths']['consul_bin']
 consul_config_file = node['file_name']['consul_config_file']
+service_name_consul = node['service']['consul']
 
-# We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
-consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\\\\\')
-file "#{consul_bin_directory}\\#{consul_config_file}" do
+consultemplate_config_file = 'consultemplate_default.json'
+file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
   content <<-JSON
 {
-  "data_dir": "#{consul_data_directory_json_escaped}",
+    consul = "127.0.0.1:#{consul_port},
 
-  "bootstrap_expect" : 0,
-  "server": false,
-  "domain": "CONSUL_DOMAIN_NOT_SET",
-  "datacenter": "CONSUL_DATACENTER_NOT_SET",
+    retry = "10s",
+    max_stale = "150s",
+    wait = "5s:10s",
 
-  "addresses": {
-    "dns": "CONSUL_ADDRESS_DNS_NOT_SET"
-  },
+    log_level = "warn",
 
-  "ports": {
-    "dns": #{dns_port}
-    "http": #{http_port},
-    "rpc": #{rpc_port},
-    "serf_lan": #{serf_lan_port},
-    "serf_wan": #{serf_wan_port},
-    "server": #{server_port}
-  },
+    template {
+        source = "#{consultemplate_template_directory}\\consul\\#{consul_config_file}.ctmpl",
+        destination = "#{consul_bin_directory}\\#{consul_config_file}",
 
-  "dns_config" : {
-    "allow_stale" : true,
-    "max_stale" : "150s",
-    "node_ttl" : "300s",
-    "service_ttl": {
-      "*": "300s"
+        command = "net stop service #{service_name_consul};net start service #{service_name_consul}",
+        command_timeout = "60s",
+
+        backup = false,
+
+        wait = "2s:6s"
     }
-  },
-
-  "retry_join_wan": [],
-  "retry_interval_wan": "30s",
-
-  "retry_join": ["CONSUL_RETRY_JOIN_LAN_NOT_SET"],
-  "retry_interval": "30s",
-
-  "recursors": ["CONSUL_RECURSORS_NOT_SET"],
-
-  "disable_remote_exec": true,
-  "disable_update_check": true,
-
-  "log_level" : "debug"
 }
   JSON
 end
 
-# INSTALL CONSUL AS SERVICE
-cookbook_file "#{consul_bin_directory}\\#{win_service_name}.exe" do
+# INSTALL CONSULTEMPLATE AS SERVICE
+cookbook_file "#{consultemplate_bin_directory}\\#{win_service_name}.exe" do
   source 'winsw.exe'
   action :create
 end
 
-file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
+file "#{consultemplate_bin_directory}\\#{win_service_name}.exe.config" do
   content <<-XML
 <configuration>
     <runtime>
@@ -249,7 +183,7 @@ file "#{consul_bin_directory}\\#{win_service_name}.exe.config" do
   action :create
 end
 
-file "#{consul_bin_directory}\\#{win_service_name}.xml" do
+file "#{consultemplate_bin_directory}\\#{win_service_name}.xml" do
   content <<-XML
 <?xml version="1.0"?>
 <!--
@@ -265,12 +199,12 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
 <service>
     <id>#{service_name}</id>
     <name>#{service_name}</name>
-    <description>This service runs the consul agent.</description>
+    <description>This service runs the consul-template agent.</description>
 
-    <executable>#{consul_bin_directory}\\consul.exe</executable>
-    <arguments>agent -config-file=#{consul_bin_directory}\\#{consul_config_file} -config-dir=#{consul_config_directory}</arguments>
+    <executable>#{consultemplate_bin_directory}\\consul-template.exe</executable>
+    <arguments>-config #{consultemplate_bin_directory}\\#{consultemplate_config_file}</arguments>
 
-    <logpath>#{consul_logs_directory}</logpath>
+    <logpath>#{consultemplate_logs_directory}</logpath>
     <log mode="roll-by-size">
         <sizeThreshold>10240</sizeThreshold>
         <keepFiles>8</keepFiles>
@@ -281,7 +215,7 @@ file "#{consul_bin_directory}\\#{win_service_name}.xml" do
   action :create
 end
 
-powershell_script 'consul_as_service' do
+powershell_script 'consultemplate_as_service' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
 
@@ -296,7 +230,7 @@ powershell_script 'consul_as_service' do
     {
         New-Service `
             -Name '#{service_name}' `
-            -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
+            -BinaryPathName '#{consultemplate_bin_directory}\\#{win_service_name}.exe' `
             -Credential $credential `
             -DisplayName '#{service_name}' `
             -StartupType Disabled
@@ -320,24 +254,24 @@ end
 
 # STORE META INFORMATION
 meta_directory = node['paths']['meta']
-consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
-consul_config_file_escaped = "#{consul_bin_directory}\\#{consul_config_file}".gsub('\\', '\\\\\\\\')
+consultemplate_bin_directory_escaped = consultemplate_bin_directory.gsub('\\', '\\\\\\\\')
+consultemplate_config_file_escaped = "#{consultemplate_bin_directory}\\#{consultemplate_config_file}".gsub('\\', '\\\\\\\\')
 
-win_service_config_file_escaped = "#{consul_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
+win_service_config_file_escaped = "#{consultemplate_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
 
-consul_config_directory_escaped = consul_config_directory.gsub('\\', '\\\\\\\\')
-file "#{meta_directory}\\service_consul.json" do
+consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
+file "#{meta_directory}\\service_consultemplate.json" do
   content <<-JSON
 {
     "service" : {
-        "application" : "#{consul_exe}",
-        "application_config" : "#{consul_config_file_escaped}",
+        "application" : "#{consultemplate_exe}",
+        "application_config" : "#{consultemplate_config_file_escaped}",
 
         "win_service" : "#{service_name}",
         "win_service_config" : "#{win_service_config_file_escaped}",
 
-        "install_path": "#{consul_bin_directory_escaped}",
-        "config_path": "#{consul_config_directory_escaped}"
+        "install_path": "#{consultemplate_bin_directory_escaped}",
+        "template_path": "#{consultemplate_template_directory_escaped}"
     }
 }
   JSON
