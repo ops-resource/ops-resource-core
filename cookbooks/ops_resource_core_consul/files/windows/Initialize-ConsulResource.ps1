@@ -15,17 +15,10 @@ $commonParameterSwitches =
 class ConsulProvisioner
 {
     [hashtable] $commonParameterSwitches
-    [string] $serviceName
 
-    ConsulProvisioner ([string] $serviceName, [hashtable] $commonParameterSwitches)
+    ConsulProvisioner ([hashtable] $commonParameterSwitches)
     {
-        $this.serviceName = $serviceName
         $this.commonParameterSwitches = $commonParameterSwitches
-    }
-
-    [string] ResourceName()
-    {
-        return 'Consul'
     }
 
     [string[]] Dependencies()
@@ -33,82 +26,26 @@ class ConsulProvisioner
         return @( 'Meta', 'Provisioning' )
     }
 
-    [void] Provision([psobject] $configuration)
+    [void] EnableAndStartService([string] $serviceName)
     {
-        # Update the consul configuration
-        $configPath = 'c:\ops\consul\bin\consul_default.json'
-        $templatePath = 'c:\meta\consultemplate\templates\consul\consul_default.json.ctmpl'
-
-        $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
-        $json.datacenter = $configuration.consul_datacenter
-        $json.recursors = $configuration.consul_recursors
-        $json.retry_join = $configuration.consul_lanservers
-
-        if ($configuration.consul_isserver)
-        {
-            $json.bootstrap_expect = $configuration.consul_numberofservers
-            $json.server = $true
-            $json.domain = $configuration.consul_domain
-
-            $addresses = New-Object psobject -Property @{
-                dns = $this.MachineIp()
-            }
-            $json.addresses = $addresses
-
-            $json.retry_join_wan = $configuration.consul_wanservers
-        }
-
-        ConvertTo-Json -InputObject $json | Out-File -FilePath $configPath -Force -NoNewline @($this.commonParameterSwitches)
-
-
-
-
-
-
-
-
-        # overwrite some of the values with consul template parameters
-        ConvertTo-Json -InputObject $json | Out-File -FilePath $templatePath -Force -NoNewline @($this.commonParameterSwitches)
-
-
-
-
-
-
-
-
-
-
-
-
-        # Make sure the service starts automatically when the machine starts, and then start the service if required
         Set-Service `
-            -Name $this.serviceName `
+            -Name $serviceName `
             -StartupType Automatic `
             @($this.commonParameterSwitches)
 
-        $service = Get-Service -Name $this.serviceName @($this.commonParameterSwitches)
+        $service = Get-Service -Name $serviceName @($this.commonParameterSwitches)
         if ($service.Status -ne 'Running')
         {
-            Start-Service -Name $this.serviceName @($this.commonParameterSwitches)
+            Start-Service -Name $serviceName @($this.commonParameterSwitches)
         }
+    }
 
+    [psobject] GetServiceMetadata([string] $serviceName)
+    {
+        $configPath = "c:\meta\service_$($serviceName).json"
+        $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
 
-
-
-
-
-
-
-        # Start the consultemplate service
-
-
-
-
-
-
-
-
+        return $json
     }
 
     [string] MachineIp()
@@ -134,8 +71,105 @@ class ConsulProvisioner
 
         return $result
     }
+
+    [void] Provision([psobject] $configuration)
+    {
+        $this.ProvisionConsul($configuration)
+        $this.ProvisionConsulTemplate($configuration)
+    }
+
+    [void] ProvisionConsul([psobject] $configuration)
+    {
+        $meta = $this.GetServiceMetadata('consul')
+        $json = ConvertFrom-Json -InputObject (Get-Content -Path $meta.service.application_config)  @($this.commonParameterSwitches)
+        $json.datacenter = $configuration.consul_datacenter
+        $json.recursors = $configuration.consul_recursors
+        $json.retry_join = $configuration.consul_lanservers
+
+        if ($configuration.consul_isserver)
+        {
+            $json.bootstrap_expect = $configuration.consul_numberofservers
+            $json.server = $true
+            $json.domain = $configuration.consul_domain
+
+            $addresses = New-Object psobject -Property @{
+                dns = $this.MachineIp()
+            }
+            $json.addresses = $addresses
+
+            $json.retry_join_wan = $configuration.consul_wanservers
+        }
+
+        $textContent = ConvertTo-Json -InputObject $json
+        Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline @($this.commonParameterSwitches)
+
+        $this.EnableAndStartService($meta.service.win_service)
+    }
+
+    [void] ProvisionConsulTemplate([psobject] $configuration)
+    {
+        $metaConsul = $this.GetServiceMetadata('consul')
+        $metaConsulTemplate = $this.GetServiceMetadata('consultemplate')
+
+        # overwrite some of the values with consul template parameters
+        $textContent = Get-Content -Path $metaConsul.service.application_config
+        $lines = $textContent.Split([System.Environment]::NewLine)
+        for($i = 0; $i -lt $lines.Length; $i++)
+        {
+            $currentLine = $lines[$i]
+
+            # Replace the values in the following sections in the consul config with the consultemplate parameters
+            switch -Regex ($currentLine)
+            {
+                # "dns_config" : {
+                #    "allow_stale" : true,
+                #},
+                '("allow_stale")(\s)?(:)(\s)?(\")' {
+                    $lines[$i] = "`"allow_stale`" : {{key `"resource/$($env:COMPUTERNAME)/service/consul/config/dns/allowstale`"}},"
+                }
+
+                # "dns_config" : {
+                #    "max_stale" : "30s",
+                #},
+                '("max_stale")(\s)?(:)(\s)?(\")' {
+                    $lines[$i] = "`"max_stale`" : `"{{key `"resource/$($env:COMPUTERNAME)/service/consul/config/dns/maxstale`"}}`","
+                }
+
+                # "dns_config" : {
+                #    "node_ttl" : "60s",
+                #},
+                '("node_ttl")(\s)?(:)(\s)?(\")' {
+                    $lines[$i] = "`"node_ttl`" : `"{{key `"resource/$($env:COMPUTERNAME)/service/consul/config/dns/nodettl`"}}`","
+                }
+
+                # "dns_config" : {
+                #        "service_ttl": {
+                #        "*": "120s"
+                #        }
+                #    },
+                '("\*")(\s)?(:)(\s)?(\")' {
+                    $lines[$i] = "`"*`": `"{{key `"resource/$($env:COMPUTERNAME)/service/consul/config/dns/servicettl`"}}`""
+                }
+
+                # "log_level" : "debug"
+                '("log_level")(\s)?(:)(\s)?(\")' {
+                    $lines[$i] = "`"log_level`" : `"{{key `"resource/$($env:COMPUTERNAME)/service/consul/config/loglevel`"}}`""
+                }
+            }
+        }
+
+        Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline @($this.commonParameterSwitches)
+
+        # Make sure the service starts automatically when the machine starts, and then start the service if required
+        $this.EnableAndStartService($metaConsulTemplate.service.win_service)
+    }
+
+    [string] ResourceName()
+    {
+        return 'Consul'
+    }
 }
 
 # -------------------------- Script start ------------------------------------
 
-[ConsulProvisioner]::New('consul', $commonParameterSwitches)
+[ConsulProvisioner]::New($commonParameterSwitches)
