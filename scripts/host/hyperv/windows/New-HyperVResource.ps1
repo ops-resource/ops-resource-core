@@ -30,22 +30,6 @@
     The version of the resource that is being created.
 
 
-    .PARAMETER cookbookNames
-
-    An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
-
-
-    .PARAMETER installationDirectory
-
-    The directory in which all the installer packages and cookbooks can be found. It is expected that the cookbooks are stored
-    in a 'cookbooks' sub-directory of the installationDirectory.
-
-
-    .PARAMETER logDirectory
-
-    The directory in which all the logs should be stored.
-
-
     .PARAMETER osName
 
     The name of the OS that should be used to create the new VM.
@@ -82,31 +66,6 @@
             <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
         </Identification>
     </component>
-
-
-    .PARAMETER dataCenterName
-
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
-
-
-    .PARAMETER globalDnsServerAddress
-
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
-
-
-    .PARAMETER consulLocalAddress
-
-    The URL to the local consul agent.
 #>
 [CmdletBinding()]
 param(
@@ -121,15 +80,6 @@ param(
 
     [Parameter(Mandatory = $false)]
     [string] $resourceVersion                                   = '',
-
-    [Parameter(Mandatory = $true)]
-    [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
-
-    [Parameter(Mandatory = $false)]
-    [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
-
-    [Parameter(Mandatory = $false)]
-    [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
 
     [Parameter(Mandatory = $true)]
     [string] $osName                                            = '',
@@ -148,9 +98,6 @@ Write-Verbose "New-HyperVResource - credential = $credential"
 Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
 Write-Verbose "New-HyperVResource - resourceName = $resourceName"
 Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
-Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
-Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
 Write-Verbose "New-HyperVResource - osName = $osName"
 Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
 
@@ -168,16 +115,6 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot windows.ps1)
-
-if (-not (Test-Path $installationDirectory))
-{
-    throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
-}
-
-if (-not (Test-Path $logDirectory))
-{
-    New-Item -Path $logDirectory -ItemType Directory | Out-Null
-}
 
 $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
 $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
