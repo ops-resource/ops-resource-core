@@ -16,8 +16,6 @@
         </dependencies>
     </metadata>
     <files>
-        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\client" />
-
         <file src="$DirOutput$\scripts\host\hyperv\windows\New-HyperVResource.ps1"
               target="scripts\host" />
         <file src="$DirOutput$\scripts\host\hyperv\windows\hyperv.ps1"
