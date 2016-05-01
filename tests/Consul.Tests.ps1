@@ -64,7 +64,7 @@ Describe 'Consul installation:' {
 
             $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
             $json = ConvertFrom-Json -InputObject $response
-            $json.Config.Version | Should Be '0.5.2'
+            $json.Config.Version | Should Be '0.6.4'
         }
     }
 }
