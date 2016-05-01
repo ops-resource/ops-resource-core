@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Ops.Resource.Core.HyperV.Resource.Windows</id>
+        <version>$VersionSemantic$</version>
+        <authors>P. van der Velde</authors>
+        <owners>P. van der Velde</owners>
+        <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+        <projectUrl>$CompanyUrl$</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>
+            Provides the scripts that are used to create a new Windows machine on Hyper-V from a virtual hard drive template.
+        </description>
+        <dependencies>
+            $Dependencies$
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\client" />
+
+        <file src="$DirOutput$\scripts\host\hyperv\windows\New-HyperVResource.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\host\hyperv\windows\hyperv.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\host\sessions.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\host\WinRM.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
+    </files>
+</package>
