@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
     <metadata>
-        <id>Ops.Resource.Core.HyperV.Windows</id>
+        <id>Ops.Resource.Core.HyperV.Image.Windows</id>
         <version>$VersionSemantic$</version>
         <authors>P. van der Velde</authors>
         <owners>P. van der Velde</owners>
@@ -9,11 +9,11 @@
         <projectUrl>$CompanyUrl$</projectUrl>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>
-            Provides the core cookbooks and scripts that are used to configure new Windows machines on a Hyper-V virtual machine.
+            Provides the core cookbooks and scripts that are used to configure new Windows install on a Hyper-V virtual hard drive template.
         </description>
         <dependencies>
             $Dependencies$
-            <dependency id="Ops.Tools.Consul.Powershell" version="0.1.0" />
+            <dependency id="Ops.Tools.Consul.Powershell" version="0.2.0" />
             <dependency id="Pester" version="3.2.0" />
         </dependencies>
     </metadata>
@@ -27,12 +27,15 @@
         <file src="$DirOutput$\scripts\client\windows\*.*" target="scripts\client" />
         <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\client" />
 
-        <file src="$DirOutput$\scripts\host\hyperv\windows\*.*" target="scripts\host" />
+        <file src="$DirOutput$\scripts\host\hyperv\windows\*.*"
+              exclude="$DirOutput$\scripts\host\hyperv\windows\New-HyperVResource.ps1;$DirOutput$\scripts\host\hyperv\windows\New-StandardVhdFromWindowsIso.ps1"
+              target="scripts\host" />
         <file src="$DirOutput$\scripts\host\lan\windows\Test*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\host\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
 
-        <file src="$DirOutput$\templates\host\windows\hyperv\*.*" target="templates\host" />
+        <file src="$DirOutput$\templates\host\windows\hyperv\Initialize-HyperVImage.ps1"
+              target="templates\host" />
 
         <file src="$DirOutput$\scripts\dependencies.msbuild" />
         <file src="$DirOutput$\scripts\distribute.core.msbuild" />
