@@ -15,7 +15,7 @@
             <CookbookName>ops_resource_core</CookbookName>
             <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\consul.exe</Destination>
         </ExternalFiles>
-        <ExternalFiles Include="$(DirExternalInstallers)\consultemplate\bin\windows\consultemplate-0.14.0-x64.exe"
+        <ExternalFiles Include="$(DirExternalInstallers)\consultemplate\bin\windows\consul-template-0.14.0-x64.exe"
                        Condition=" '$(InstallConsul)' == 'true' ">
             <CookbookName>ops_resource_core</CookbookName>
             <Destination>${DestinationConfigurationCookbooks}\${CookbookName}\files\windows\consul-template.exe</Destination>
