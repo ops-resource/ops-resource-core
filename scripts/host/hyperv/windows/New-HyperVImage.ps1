@@ -191,11 +191,11 @@ if (-not (Test-Path $vhdxTemplatePath))
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Recurse -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
 
 New-HypervVmFromBaseImage `
     -vmName $machineName `
-    -baseVhdx $baseVhdx `
+    -baseVhdx $($baseVhdx.FullName) `
     -hypervHost $hypervHost `
     -vhdxStoragePath $vhdxStoragePath `
     @commonParameterSwitches

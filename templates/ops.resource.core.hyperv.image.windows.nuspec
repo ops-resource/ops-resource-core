@@ -33,6 +33,7 @@
         <file src="$DirOutput$\scripts\host\lan\windows\Test*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\host\*.*" target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\*.ps1" target="scripts\host" />
 
         <file src="$DirOutput$\templates\host\windows\hyperv\Initialize-HyperVImage.ps1"
               target="templates\host" />

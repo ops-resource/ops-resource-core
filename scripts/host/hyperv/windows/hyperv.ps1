@@ -572,7 +572,7 @@ function New-HyperVVhdxTemplateFromVm
     The full path of the directory where the virtual machine files should be stored.
 
 
-    .PARAMETER vhdStoragePath
+    .PARAMETER vhdxStoragePath
 
     The full path of the directory where the virtual hard drive files should be stored.
 #>
@@ -583,9 +583,6 @@ function New-HypervVm
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
     Param
     (
-        [Parameter(Mandatory = $false)]
-        [string] $hypervHost = $env:COMPUTERNAME,
-
         [Parameter(Mandatory = $true)]
         [string] $vmName,
 
@@ -596,19 +593,21 @@ function New-HypervVm
         [int[]] $vmAdditionalDiskSizesInGb,
 
         [Parameter(Mandatory = $false)]
-        [string] $vmStoragePath,
+        [string] $hypervHost = $env:COMPUTERNAME,
 
         [Parameter(Mandatory = $false)]
-        [string] $vhdStoragePath
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $false)]
+        [string] $vmStoragePath
     )
 
-    Write-Verbose "New-HypervVm - hypervHost: $hypervHost"
     Write-Verbose "New-HypervVm - vmName: $vmName"
     Write-Verbose "New-HypervVm - osVhdPath: $osVhdPath"
     Write-Verbose "New-HypervVm - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
-    Write-Verbose "New-HypervVm - vmNetworkSwitch: $vmNetworkSwitch"
+    Write-Verbose "New-HypervVm - hypervHost: $hypervHost"
+    Write-Verbose "New-HypervVm - vhdxStoragePath: $vhdxStoragePath"
     Write-Verbose "New-HypervVm - vmStoragePath: $vmStoragePath"
-    Write-Verbose "New-HypervVm - vhdStoragePath: $vhdStoragePath"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -681,7 +680,7 @@ function New-HypervVm
         $diskSize = $vmAdditionalDiskSizesInGb[$i]
 
         $driveLetter = Get-DriveLetter -driveNumber ($i + 1)
-        $path = Join-Path $vhdStoragePath "$($vmName)_$($driveLetter).vhdx"
+        $path = Join-Path $vhdxStoragePath "$($vmName)_$($driveLetter).vhdx"
         New-Vhd `
             -Path $path `
             -SizeBytes "$($diskSize)GB" `
@@ -768,11 +767,10 @@ function New-HypervVmFromBaseImage
 
     Write-Verbose "New-HypervVmFromBaseImage - vmName: $vmName"
     Write-Verbose "New-HypervVmFromBaseImage - baseVhdx: $baseVhdx"
-    Write-Verbose "New-HypervVmFromBaseImage - vhdxStoragePath: $vhdxStoragePath"
     Write-Verbose "New-HypervVmFromBaseImage - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
-    Write-Verbose "New-HypervVmFromBaseImage - vmNetworkSwitch: $vmNetworkSwitch"
+    Write-Verbose "New-HypervVmFromBaseImage - hypervHost: $hypervHost"
+    Write-Verbose "New-HypervVmFromBaseImage - vhdxStoragePath: $vhdxStoragePath"
     Write-Verbose "New-HypervVmFromBaseImage - vmStoragePath: $vmStoragePath"
-    Write-Verbose "New-HypervVmFromBaseImage - vhdStoragePath: $vhdStoragePath"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -793,16 +791,13 @@ function New-HypervVmFromBaseImage
         Set-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly -Value $false
     }
 
-    $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
-
     New-HypervVm `
-        -hypervHost $hypervHost `
         -vmName $vmName `
         -osVhdPath $osVhdLocalPath `
         -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
-        -vmNetworkSwitch $vmSwitch.Name `
+        -hypervHost $hypervHost `
+        -vhdxStoragePath '' `
         -vmStoragePath '' `
-        -vhdStoragePath '' `
         @commonParameterSwitches
 
     return $vm
@@ -1043,13 +1038,12 @@ function New-HypervVmOnDomain
     $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
 
     New-HypervVm `
-        -hypervHost $hypervHost `
         -vmName $vmName `
         -osVhdPath $vhdxPath `
         -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
-        -vmNetworkSwitch $vmSwitch.Name `
+        -hypervHost $hypervHost `
+        -vhdxStoragePath '' `
         -vmStoragePath '' `
-        -vhdStoragePath '' `
         @commonParameterSwitches
 }
 

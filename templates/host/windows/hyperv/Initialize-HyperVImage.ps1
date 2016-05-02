@@ -69,11 +69,9 @@ param(
 Write-Verbose "Initialize-HyperVImage - credential: $credential"
 Write-Verbose "Initialize-HyperVImage - authenticateWithCredSSP: $authenticateWithCredSSP"
 Write-Verbose "Initialize-HyperVImage - osName = $osName"
-Write-Verbose "Initialize-HyperVImage - isConsulClusterLeader: $isConsulClusterLeader"
-Write-Verbose "Initialize-HyperVImage - hypervHost: $hypervHost"
-    Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
-    Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
-    Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
+Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
 
 
 # Stop everything if there are errors
@@ -118,6 +116,9 @@ try
         -logDirectory $logDirectory `
         -osName $osName `
         -machineName $machineName `
+        -hypervHost $hypervHost `
+        -vhdxTemplatePath $vhdxTemplatePath `
+        -hypervHostVmStoragePath $hypervHostVmStoragePath `
         @commonParameterSwitches
 
     & $verificationScript `
@@ -127,6 +128,9 @@ try
         -testDirectory $testDirectory `
         -logDirectory $logDirectory `
         -machineName $machineName `
+        -hypervHost $hypervHost `
+        -vhdxTemplatePath $vhdxTemplatePath `
+        -hypervHostVmStoragePath $hypervHostVmStoragePath `
         @commonParameterSwitches
 
     # If the tests pass, then rename the image
