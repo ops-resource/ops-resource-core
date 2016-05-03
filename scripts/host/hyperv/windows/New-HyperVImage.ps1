@@ -161,30 +161,6 @@ if (-not (Test-Path $logDirectory))
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
 }
 
-if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
-{
-    . $(Join-Path $PSScriptRoot 'Consul.ps1')
-
-    $consulDomain = Get-ConsulDomain `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        @commonParameterSwitches
-    $hypervHost = "host.hyperv.service.$($consulDomain)"
-
-    $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\storagesubpath' `
-        @commonParameterSwitches
-    $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
-
-    $vhdxTemplatePath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\templatesubpath' `
-        @commonParameterSwitches
-}
-
 if (-not (Test-Path $hypervHostVmStoragePath))
 {
     throw "Unable to find the directory where the Hyper-V VMs are stored. Expected it at: $hypervHostVmStoragePath"

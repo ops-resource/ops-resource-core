@@ -19,7 +19,7 @@
     The SKU or edition of the operating system that should be taken from the ISO and applied to the disk.
 
 
-    .PARAMTER configPath
+    .PARAMETER configPath
 
     The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
     and any necessary script files which will be used during the configuration of the operating system.
@@ -63,16 +63,6 @@
     .PARAMETER scriptPath
 
     The full path to the directory that contains the Convert-WindowsImage and the Apply-WindowsUpdate scripts.
-
-
-    .PARAMETER convertWindowsImageUrl
-
-    The URL from where the Convert-WindowsImage script can be downloaded.
-
-
-    .PARAMETER applyWindowsUpdateUrl
-
-    The URL from where the Apply-WindowsUpdate script can be downloaded.
 
 
     .PARAMETER logPath
