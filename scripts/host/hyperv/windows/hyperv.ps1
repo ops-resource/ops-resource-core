@@ -575,6 +575,11 @@ function New-HyperVVhdxTemplateFromVm
     .PARAMETER vhdxStoragePath
 
     The full path of the directory where the virtual hard drive files should be stored.
+
+
+    .OUTPUTS
+
+    The VM object.
 #>
 function New-HypervVm
 {
@@ -642,7 +647,7 @@ function New-HypervVm
             -Path $vmStoragePath `
             -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmSwitch `
+            -SwitchName $vmSwitch.Name `
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
@@ -655,7 +660,7 @@ function New-HypervVm
             -Name $vmName `
             -VHDPath $osVhdLocalPath `
             -MemoryStartupBytes $vmMemoryInBytes `
-            -SwitchName $vmSwitch `
+            -SwitchName $vmSwitch.Name `
             -Generation 2 `
             -BootDevice 'VHD' `
             -ComputerName $hypervHost `
@@ -736,6 +741,11 @@ function New-HypervVm
     .PARAMETER vhdxStoragePath
 
     The full path of the directory where the virtual hard drive files should be stored.
+
+
+    .OUTPUTS
+
+    The VM object.
 #>
 function New-HypervVmFromBaseImage
 {
@@ -791,7 +801,7 @@ function New-HypervVmFromBaseImage
         Set-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly -Value $false
     }
 
-    New-HypervVm `
+    $vm = New-HypervVm `
         -vmName $vmName `
         -osVhdPath $osVhdLocalPath `
         -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
@@ -807,12 +817,12 @@ function New-HypervVmFromBaseImage
 <#
     .SYNOPSIS
 
-    Creates a new Hyper-V virtual machine with the given properties.
+    Creates a new Hyper-V virtual machine with the given properties on the given AD domain.
 
 
     .DESCRIPTION
 
-    The New-HypervVm function creates a new Hyper-V virtual machine with the provided properties.
+    The New-HypervVmOnDomain function creates a new Hyper-V virtual machine with the provided properties on the given AD domain.
 
 
     .PARAMETER vmName
@@ -871,6 +881,11 @@ function New-HypervVmFromBaseImage
             <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
         </Identification>
     </component>
+
+
+    .OUTPUTS
+
+    The VM object.
 #>
 function New-HypervVmOnDomain
 {
@@ -1035,9 +1050,7 @@ function New-HypervVmOnDomain
         Dismount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
     }
 
-    $vmSwitch = Get-VMSwitch -ComputerName $hypervHost @commonParameterSwitches | Select-Object -First 1
-
-    New-HypervVm `
+    $vm = New-HypervVm `
         -vmName $vmName `
         -osVhdPath $vhdxPath `
         -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
@@ -1045,6 +1058,8 @@ function New-HypervVmOnDomain
         -vhdxStoragePath '' `
         -vmStoragePath '' `
         @commonParameterSwitches
+
+    return $vm
 }
 
 <#

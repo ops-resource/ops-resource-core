@@ -178,7 +178,7 @@ if (-not (Test-Path $vhdxTemplatePath))
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Recurse -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
 
-New-HypervVmFromBaseImage `
+$vm = New-HypervVmFromBaseImage `
     -vmName $machineName `
     -baseVhdx $($baseVhdx.FullName) `
     -hypervHost $hypervHost `
@@ -194,7 +194,7 @@ if ($staticMacAddress -ne '')
 }
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
-timeOutInSeconds = 900
+$timeOutInSeconds = 900
 $connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
