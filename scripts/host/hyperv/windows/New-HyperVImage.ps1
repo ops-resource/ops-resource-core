@@ -119,7 +119,10 @@ param(
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines"
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = ''
 )
 
 Write-Verbose "New-HyperVImage - credential = $credential"
@@ -134,6 +137,7 @@ Write-Verbose "New-HyperVImage - machineName = $machineName"
 Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
 Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "New-HyperVImage - staticMacAddress = $staticMacAddress"
 
 
 # Stop everything if there are errors
