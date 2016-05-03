@@ -45,6 +45,11 @@
     The name of the Hyper-V host machine on which a temporary VM can be created.
 
 
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
+
+
     .PARAMETER wsusServer
 
     The name of the WSUS server that can be used to download updates from.
@@ -103,7 +108,7 @@ param(
     [string] $hypervHost,
 
     [Parameter(Mandatory = $false)]
-    [string] $staticMacAddress = '00155d026501',
+    [string] $staticMacAddress,
 
     [Parameter(Mandatory = $true)]
     [string] $wsusServer,
@@ -259,10 +264,13 @@ function New-VmFromVhdAndWaitForBoot
         -osVhdPath $vhdPath `
         @commonParameterSwitches
 
-    # Ensure that the VM has a specific Mac address so that it will get a known IP address
-    # That IP address will be added to the trustedhosts list so that we can remote into
-    # the machine without having it be attached to the domain.
-    $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    if ($staticMacAddress -ne '')
+    {
+        # Ensure that the VM has a specific Mac address so that it will get a known IP address
+        # That IP address will be added to the trustedhosts list so that we can remote into
+        # the machine without having it be attached to the domain.
+        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    }
 
     Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
     $waitResult = Wait-VmGuestOS `

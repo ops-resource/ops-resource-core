@@ -41,9 +41,9 @@
     The UNC path to the directory that stores the Hyper-V VM information.
 
 
-    .EXAMPLE
+    .PARAMETER staticMacAddress
 
-    Initialize-HyperVImage hypervhost "MyHyperVServer"
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
 #>
 [CmdletBinding()]
 param(
@@ -63,7 +63,10 @@ param(
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines"
+    [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = ''
 )
 
 Write-Verbose "Initialize-HyperVImage - credential: $credential"
@@ -119,6 +122,7 @@ try
         -hypervHost $hypervHost `
         -vhdxTemplatePath $vhdxTemplatePath `
         -hypervHostVmStoragePath $hypervHostVmStoragePath `
+        -staticMacAddress $staticMacAddress `
         @commonParameterSwitches
 
     & $verificationScript `
@@ -131,6 +135,7 @@ try
         -hypervHost $hypervHost `
         -vhdxTemplatePath $vhdxTemplatePath `
         -hypervHostVmStoragePath $hypervHostVmStoragePath `
+        -staticMacAddress $staticMacAddress `
         @commonParameterSwitches
 
     # If the tests pass, then rename the image

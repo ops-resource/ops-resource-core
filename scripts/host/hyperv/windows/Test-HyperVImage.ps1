@@ -58,6 +58,11 @@
     .PARAMETER hypervHost
 
     The name of the machine on which the hyper-v server is located.
+
+
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
 #>
 [CmdletBinding()]
 param(
@@ -85,7 +90,10 @@ param(
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines"
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = ''
 )
 
 Write-Verbose "Test-HyperVImage - credential = $credential"
@@ -97,6 +105,7 @@ Write-Verbose "Test-HyperVImage - machineName = $machineName"
 Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
 Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "Test-HyperVImage - staticMacAddress = $staticMacAddress"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -137,12 +146,20 @@ $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).v
 
 try
 {
-    New-HypervVmFromBaseImage `
+    $vm = New-HypervVmFromBaseImage `
         -vmName $machineName `
         -baseVhdx $baseVhdx `
         -hypervHost $hypervHost `
         -vhdxStoragePath $vhdxStoragePath `
         @commonParameterSwitches
+
+    if ($staticMacAddress -ne '')
+    {
+        # Ensure that the VM has a specific Mac address so that it will get a known IP address
+        # That IP address will be added to the trustedhosts list so that we can remote into
+        # the machine without having it be attached to the domain.
+        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    }
 
     Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
     timeOutInSeconds = 900
