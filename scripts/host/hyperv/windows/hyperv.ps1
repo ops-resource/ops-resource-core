@@ -125,6 +125,8 @@ function Get-ConnectionInformationForVm
                 throw "Failed to obtain an IP address for $machineName within the specified timeout of $timeOutInSeconds seconds."
             }
 
+            Write-Verbose "IP address for $machineName is: $($ipAddress). Trying to connect via WinRM ..."
+
             # The guest OS may be up and running, but that doesn't mean we can connect to the
             # machine through powershell remoting, so ...
             $waitResult = Wait-WinRM `

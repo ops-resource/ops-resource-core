@@ -18,6 +18,6 @@ function New-RandomMachineName
     [CmdletBinding()]
     param()
 
-    $name = -join (0..15 | Foreach-Object {[char][int]((65..90) + (48..57) | Get-Random)})
+    $name = -join (0..14 | Foreach-Object {[char][int]((65..90) + (48..57) | Get-Random)})
     return $name
 }

@@ -21,6 +21,11 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
+    .PARAMETER machineName
+
+    The name of the temporary machine that will be created.
+
+
     .PARAMETER osName
 
     The name of the OS that should be used to create the new VM.
@@ -54,6 +59,9 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $true)]
+    [string] $machineName                                       = $(throw 'The machine name for the template machine is required.'),
+
+    [Parameter(Mandatory = $true)]
     [string] $osName                                            = '',
 
     [Parameter(Mandatory = $true)]
@@ -71,6 +79,7 @@ param(
 
 Write-Verbose "Initialize-HyperVImage - credential: $credential"
 Write-Verbose "Initialize-HyperVImage - authenticateWithCredSSP: $authenticateWithCredSSP"
+Write-Verbose "Initialize-HyperVImage - machineName = $machineName"
 Write-Verbose "Initialize-HyperVImage - osName = $osName"
 Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
 Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
@@ -86,8 +95,6 @@ $commonParameterSwitches =
         Debug = $false;
         ErrorAction = "Stop"
     }
-
-. (Join-Path $PSScriptRoot 'utils.ps1')
 
 $startTime = [System.DateTimeOffset]::Now
 try
@@ -106,7 +113,6 @@ try
     $previewPrefix = "preview_"
     $imageName = "$($resourceName)-$($resourceVersion).vhdx"
     $previewImageName = "$($previewPrefix)$($imageName)"
-    $machineName = New-RandomMachineName @commonParameterSwitches
 
     & $installationScript `
         -credential $credential `

@@ -120,6 +120,7 @@ $commonParameterSwitches =
 # Load the helper functions
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
+. (Join-Path $PSScriptRoot WinRM.ps1)
 
 if (-not (Test-Path $testDirectory))
 {
