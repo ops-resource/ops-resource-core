@@ -735,11 +735,6 @@ function New-HypervVm
     The name of the machine which is the Hyper-V host for the domain.
 
 
-    .PARAMETER vmStoragePath
-
-    The full path of the directory where the virtual machine files should be stored.
-
-
     .PARAMETER vhdxStoragePath
 
     The full path of the directory where the virtual hard drive files should be stored.
@@ -771,10 +766,7 @@ function New-HypervVmFromBaseImage
 
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
-        [string] $vhdxStoragePath,
-
-        [Parameter(Mandatory = $false)]
-        [string] $vmStoragePath
+        [string] $vhdxStoragePath
     )
 
     Write-Verbose "New-HypervVmFromBaseImage - vmName: $vmName"
@@ -782,7 +774,6 @@ function New-HypervVmFromBaseImage
     Write-Verbose "New-HypervVmFromBaseImage - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
     Write-Verbose "New-HypervVmFromBaseImage - hypervHost: $hypervHost"
     Write-Verbose "New-HypervVmFromBaseImage - vhdxStoragePath: $vhdxStoragePath"
-    Write-Verbose "New-HypervVmFromBaseImage - vmStoragePath: $vmStoragePath"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'

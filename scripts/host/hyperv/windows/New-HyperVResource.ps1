@@ -45,6 +45,16 @@
     The name of the machine on which the hyper-v server is located.
 
 
+    .PARAMETER vhdxTemplatePath
+
+    The UNC path to the directory that contains the Hyper-V images.
+
+
+    .PARAMETER hypervHostVmStoragePath
+
+    The UNC path to the directory that stores the Hyper-V VM information.
+
+
     .PARAMETER unattendedJoinFile
 
     The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
@@ -66,6 +76,17 @@
             <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
         </Identification>
     </component>
+
+
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
+
+
+    .PARAMETER provisioningBootstrapUrl
+
+    The URL that points to the consul base section in the consul key-value store where the provisioning information
+    for the current resource is stored.
 #>
 [CmdletBinding()]
 param(
@@ -76,13 +97,7 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $false)]
-    [string] $resourceName                                      = '',
-
-    [Parameter(Mandatory = $false)]
-    [string] $resourceVersion                                   = '',
-
-    [Parameter(Mandatory = $true)]
-    [string] $osName                                            = '',
+    [string] $imageName                                         = $(throw 'An image name must be specified.'),
 
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
@@ -91,15 +106,29 @@ param(
     [string] $hypervHost                                        = '',
 
     [Parameter(Mandatory = $true)]
-    [string] $unattendedJoinFile                                = ''
+    [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
+
+    [Parameter(Mandatory = $true)]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $true)]
+    [string] $unattendedJoinFile                                = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $provisioningBootstrapUrl                          = ''
 )
 
 Write-Verbose "New-HyperVResource - credential = $credential"
 Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - resourceName = $resourceName"
-Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVResource - osName = $osName"
+Write-Verbose "New-HyperVResource - imageName = $imageName"
 Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
+Write-Verbose "New-HyperVResource - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "New-HyperVResource - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "New-HyperVResource - staticMacAddress = $staticMacAddress"
+Write-Verbose "New-HyperVResource - provisioningBootstrapUrl = $provisioningBootstrapUrl"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'

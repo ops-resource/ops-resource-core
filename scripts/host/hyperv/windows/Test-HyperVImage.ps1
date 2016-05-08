@@ -60,6 +60,16 @@
     The name of the machine on which the hyper-v server is located.
 
 
+    .PARAMETER vhdxTemplatePath
+
+    The UNC path to the directory that contains the Hyper-V images.
+
+
+    .PARAMETER hypervHostVmStoragePath
+
+    The UNC path to the directory that stores the Hyper-V VM information.
+
+
     .PARAMETER staticMacAddress
 
     An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
