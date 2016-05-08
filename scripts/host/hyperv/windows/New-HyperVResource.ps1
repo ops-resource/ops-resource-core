@@ -144,22 +144,165 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot windows.ps1)
+. (Join-Path $PSScriptRoot WinRM.ps1)
+
+
+# -------------------- Functions ------------------------
+
+function New-VmResource
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $machineName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $baseVhdx,
+
+        [Parameter(Mandatory = $true)]
+        [string] $hypervHost,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $unattendedJoinFile,
+
+        [Parameter(Mandatory = $false)]
+        [string] $staticMacAddress
+    )
+
+    Write-Verbose "New-VmResource - machineName = $machineName"
+    Write-Verbose "New-VmResource - baseVhdx = $baseVhdx"
+    Write-Verbose "New-VmResource - hypervHost = $hypervHost"
+    Write-Verbose "New-VmResource - vhdxStoragePath = $vhdxStoragePath"
+    Write-Verbose "New-VmResource - unattendedJoinFile = $unattendedJoinFile"
+    Write-Verbose "New-VmResource - staticMacAddress = $staticMacAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $registeredOwner = Get-RegisteredOwner @commonParameterSwitches
+    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
+
+    if (Test-Path $unattendedJoinFile)
+    {
+        $vm = New-HypervVmOnDomain `
+            -vmName $machineName `
+            -baseVhdx $baseVhdx `
+            -hypervHost $hypervHost `
+            -vhdxStoragePath $vhdxStoragePath `
+            -registeredOwner $registeredOwner `
+            -domainName $env:USERDNSDOMAIN `
+            -unattendedJoin $unattendedJoin `
+            @commonParameterSwitches
+    }
+    else
+    {
+        $vm = New-HypervVmFromBaseImage `
+            -vmName $machineName `
+            -baseVhdx $baseVhdx `
+            -hypervHost $hypervHost `
+            -vhdxStoragePath $vhdxStoragePath `
+            @commonParameterSwitches
+    }
+
+    if ($staticMacAddress -ne '')
+    {
+        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    }
+
+    return $vm
+}
+
+function Set-ProvisioningInformation
+{
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject] $vm,
+
+        [Parameter(Mandatory = $true)]
+        [string] $hypervHost,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $false)]
+        [string] $provisioningBootstrapUrl
+    )
+
+    Write-Verbose "Set-ProvisioningInformation - vm = $vm"
+    Write-Verbose "Set-ProvisioningInformation - hypervHost = $hypervHost"
+    Write-Verbose "Set-ProvisioningInformation - vhdxStoragePath = $vhdxStoragePath"
+    Write-Verbose "Set-ProvisioningInformation - provisioningBootstrapUrl = $provisioningBootstrapUrl"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $vhdx = $vm |
+        Select-Object vmid @commonParameterSwitches |
+        Get-VHD -Computer $hypervHost @commonParameterSwitches
+    $vhdxLocalPath = $vhdx.Path
+    $vhdxUncPath = Join-Path $vhdxStoragePath $(Split-Path $vhdxLocalPath -Leaf)
+
+    $driveLetter = Mount-Vhdx -vhdPath $vhdxUncPath @commonParameterSwitches
+    try
+    {
+        # Copy the remaining configuration scripts
+        $provisioningDirectory = "$($driveLetter):\provisioning"
+        if (-not (Test-Path $provisioningDirectory))
+        {
+            New-Item -Path $provisioningDirectory -ItemType Directory | Out-Null
+        }
+
+        $json = New-Object psobject -Property @{
+            'entrypoint' = $provisioningBootstrapUrl
+        }
+
+        ConvertTo-Json -InputObject $json @commonParameterSwitches | Out-File -FilePath (Join-Path $provisioningDirectory 'provisioning.json')
+    }
+    finally
+    {
+        Dismount-Vhdx -vhdPath $vhdxUncPath @commonParameterSwitches
+    }
+}
+
+# -------------------- Script ---------------------------
 
 $hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-$unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
-$registeredOwner = Get-RegisteredOwner @commonParameterSwitches
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1
 
-New-HypervVmOnDomain `
+$vm = New-VmResource `
     -machineName $machineName `
     -baseVhdx $baseVhdx `
-    -vhdxStoragePath $vhdxStoragePath `
     -hypervHost $hypervHost `
-    -registeredOwner $registeredOwner `
-    -domainName $env:USERDNSDOMAIN `
-    -unattendedJoin $unattendedJoin `
+    -vhdxStoragePath $vhdxStoragePath `
+    -unattendedJoinFile $unattendedJoinFile `
+    -staticMacAddress $staticMacAddress `
+    @commonParameterSwitches
+
+Set-ProvisioningInformation `
+    -vm $vm `
+    -hypervHost $hypervHost `
+    -vhdxStoragePath $vhdxStoragePath `
+    -provisioningBootstrapUrl $provisioningBootstrapUrl `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
@@ -170,4 +313,4 @@ $connection = Get-ConnectionInformationForVm `
     -timeOutInSeconds 900 `
     @commonParameterSwitches
 
-# verify
+return $connection
