@@ -132,6 +132,10 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot WinRM.ps1)
 
+# -------------------- Functions ------------------------
+
+# -------------------- Script ---------------------------
+
 if (-not (Test-Path $testDirectory))
 {
     throw "Unable to find the directory containing the test files. Expected it at: $testDirectory"
@@ -152,33 +156,25 @@ if (-not (Test-Path $vhdxTemplatePath))
     throw "Unable to find the directory where the Hyper-V templates are stored. Expected it at: $vhdxTemplatePath"
 }
 
-$vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1
-
 try
 {
-    $vm = New-HypervVmFromBaseImage `
-        -vmName $machineName `
-        -baseVhdx $baseVhdx `
-        -hypervHost $hypervHost `
-        -vhdxStoragePath $vhdxStoragePath `
-        @commonParameterSwitches
+    # Configure a consul agent that can be used as the configuration stored
 
-    if ($staticMacAddress -ne '')
-    {
-        # Ensure that the VM has a specific Mac address so that it will get a known IP address
-        # That IP address will be added to the trustedhosts list so that we can remote into
-        # the machine without having it be attached to the domain.
-        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
-    }
 
-    Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
-    timeOutInSeconds = 900
-    $connection = Get-ConnectionInformationForVm `
+    $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):8599/v1/kv/provisioning/$($staticMacAddress)/service"
+
+
+    $configurationScript = Join-Path $PSScriptRoot 'New-HyperVResource.ps1'
+    $connection = & $configurationScript `
+        -credential $credential `
+        -authenticateWithCredSSP:$authenticateWithCredSSP `
+        -imageName $imageName `
         -machineName $machineName `
         -hypervHost $hypervHost `
-        -localAdminCredential $credential `
-        -timeOutInSeconds $timeOutInSeconds `
+        -vhdxTemplatePath $vhdxTemplatePath `
+        -hypervHostVmStoragePath $hypervHostVmStoragePath `
+        -staticMacAddress $staticMacAddress `
+        -provisioningBootstrapUrl $provisioningBootstrapUrl `
         @commonParameterSwitches
 
     Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
