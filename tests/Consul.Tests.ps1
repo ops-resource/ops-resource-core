@@ -68,3 +68,6 @@ Describe 'Consul installation:' {
         }
     }
 }
+
+Describe 'Consul-template installation:' {
+}
