@@ -72,15 +72,30 @@ class ConsulProvisioner
         return $result
     }
 
-    [void] Provision([psobject] $configuration)
+    [void] Configure([string] $configurationUrl)
     {
-        $this.ProvisionConsul($configuration)
-        $this.ProvisionConsulTemplate($configuration)
+        $this.ConfigureConsul($configurationUrl)
+        $this.ConfigureConsulTemplate($configurationUrl)
     }
 
-    [void] ProvisionConsul([psobject] $configuration)
+    [void] ConfigureConsul([string] $configurationUrl)
     {
-        $meta = $this.GetServiceMetadata('consul')
+        $serviceName = 'consul'
+        $response = Invoke-WebRequest `
+            -Uri "$($configurationUrl)/$($serviceName)" `
+            -Method Get `
+            -UseDefaultCredentials `
+            -UseBasicParsing `
+            @($this.commonParameterSwitches)
+
+        if ($response.StatusCode -ne 200)
+        {
+            throw "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        }
+
+        $configuration = ConvertFrom-Json -InputObject $response.Content @($this.commonParameterSwitches)
+
+        $meta = $this.GetServiceMetadata($serviceName)
         $json = ConvertFrom-Json -InputObject (Get-Content -Path $meta.service.application_config)  @($this.commonParameterSwitches)
         $json.datacenter = $configuration.consul_datacenter
         $json.recursors = $configuration.consul_recursors
@@ -102,11 +117,9 @@ class ConsulProvisioner
 
         $textContent = ConvertTo-Json -InputObject $json
         Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline @($this.commonParameterSwitches)
-
-        $this.EnableAndStartService($meta.service.win_service)
     }
 
-    [void] ProvisionConsulTemplate([psobject] $configuration)
+    [void] ConfigureConsulTemplate([string] $configurationUrl)
     {
         $metaConsul = $this.GetServiceMetadata('consul')
         $metaConsulTemplate = $this.GetServiceMetadata('consultemplate')
@@ -159,14 +172,29 @@ class ConsulProvisioner
         }
 
         Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline @($this.commonParameterSwitches)
-
-        # Make sure the service starts automatically when the machine starts, and then start the service if required
-        $this.EnableAndStartService($metaConsulTemplate.service.win_service)
     }
 
     [string] ResourceName()
     {
         return 'Consul'
+    }
+
+    [void] Start()
+    {
+        $this.StartConsul()
+        $this.StartConsulTemplate()
+    }
+
+    [void] StartConsul()
+    {
+        $meta = $this.GetServiceMetadata('consul')
+        $this.EnableAndStartService($meta.service.win_service)
+    }
+
+    [void] StartConsulTemplate()
+    {
+        $meta = $this.GetServiceMetadata('consultemplate')
+        $this.EnableAndStartService($meta.service.win_service)
     }
 }
 

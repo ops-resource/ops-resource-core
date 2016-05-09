@@ -9,6 +9,45 @@ Requirements
 - `windows`
 - `windows_firewall`
 
+#### configuration
+
+It is expected that a consul instance is available somewhere with the configuration for the current resource.
+The expected key-value layout is:
+
+    v1
+        kv
+            provisioning
+                <RESOURCE_NAME>
+                    consul
+                        consul
+                            -->
+                                {
+                                    "consul_datacenter" : "",
+                                    "consul_recursors" : "",
+                                    "consul_lanservers" : "",
+
+                                    "consul_isserver" : true|false,
+                                    "consul_numberofservers" : 1,
+                                    "consul_domain" : "",
+                                    "consul_wanservers" : ""
+
+                                }
+            resource
+                <RESOURCE_NAME>
+                    service
+                        consul
+                            config
+                                dns
+                                    allowstale
+                                        -->
+                                    maxstale
+                                        -->
+                                    nodettl
+                                        -->
+                                    servicettl
+                                loglevel
+                                    --> debug|
+
 Attributes
 ----------
 
