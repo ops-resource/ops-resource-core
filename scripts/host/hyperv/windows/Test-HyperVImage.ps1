@@ -160,6 +160,43 @@ try
 {
     # Configure a consul agent that can be used as the configuration stored
 
+    <#
+        Set up the key-value pairs in the consul agent as:
+
+            v1
+                kv
+                    provisioning
+                        <RESOURCE_NAME>
+                            consul
+                                consul
+                                    -->
+                                        {
+                                            "consul_datacenter" : "",
+                                            "consul_recursors" : "",
+                                            "consul_lanservers" : "",
+
+                                            "consul_isserver" : true|false,
+                                            "consul_numberofservers" : 1,
+                                            "consul_domain" : "",
+                                            "consul_wanservers" : ""
+
+                                        }
+                    resource
+                        <RESOURCE_NAME>
+                            service
+                                consul
+                                    config
+                                        dns
+                                            allowstale
+                                                -->
+                                            maxstale
+                                                -->
+                                            nodettl
+                                                -->
+                                            servicettl
+                                        loglevel
+                                            --> debug|
+    #>
 
     $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):8599/v1/kv/provisioning/$($staticMacAddress)/service"
 
