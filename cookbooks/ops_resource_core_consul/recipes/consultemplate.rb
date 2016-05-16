@@ -233,7 +233,8 @@ powershell_script 'consultemplate_as_service' do
             -BinaryPathName '#{consultemplate_bin_directory}\\#{win_service_name}.exe' `
             -Credential $credential `
             -DisplayName '#{service_name}' `
-            -StartupType Disabled
+            -StartupType Disabled `
+            -DependsOn '#{service_name_consul}'
     }
 
     # Set the service to restart if it fails
