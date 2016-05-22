@@ -80,22 +80,27 @@ Describe 'Consul installation:' {
             $dependencies.Contains('dnscache') | Should Be $true
         }
 
-        It 'has the correct version number' {
+        It 'is running' {
             $psService.Status | Should Be [System.ServiceProcess.ServiceControllerStatus]::Running
+        }
 
+        It 'has the correct version number' {
             $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
             $json = ConvertFrom-Json -InputObject $response
             $json.Config.Version | Should Be '0.6.4'
         }
 
         It 'has the correct configuration' {
-            # Is server
+            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
+            $json = ConvertFrom-Json -InputObject $response
 
-            # datacenter
+            # This assumes that these values are only set for the duration of the test
+            $json.Config.Server | Should Be $true
+            $json.Config.Datacenter | Should be 'TestHyperVImage'
+            $json.Config.Domain | Should be 'imagetest'
 
-            # recursors
-
-            # domain
+            $recursors = @($json.Config.DNSRecursors)
+            $recursors.Length -ge 1 | Should Be $true
         }
     }
 }
@@ -171,7 +176,7 @@ Describe 'Consul-template installation:' {
             $dependencies.Contains('consul') | Should Be $true
         }
 
-        It 'has the correct version number' {
+        It 'is running' {
             $psService.Status | Should Be [System.ServiceProcess.ServiceControllerStatus]::Running
         }
     }

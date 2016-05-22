@@ -117,7 +117,6 @@ Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
 Write-Verbose "Test-HyperVImage - staticMacAddress = $staticMacAddress"
 
-# Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
 
 $commonParameterSwitches =
@@ -128,11 +127,74 @@ $commonParameterSwitches =
     }
 
 # Load the helper functions
+. (Join-Path $PSScriptRoot consul.ps1)
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot WinRM.ps1)
 
 # -------------------- Functions ------------------------
+
+function New-TestConsulConfig
+{
+    [CmdletBinding()]
+    param(
+        [string] $datacenter,
+        [int] $basePort = 8900,
+        [string] $configPath
+    )
+
+    Write-Verbose "New-TestConsulConfig - basePort = $basePort"
+    Write-Verbose "New-TestConsulConfig - configPath = $configPath"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $consulConfig = @"
+{
+  "bootstrap_expect" : 1,
+  "server": true,
+  "datacenter": "$($datacenter)",
+
+  "ports": {
+    "http": $($basePort + 0),
+    "dns": $($basePort + 1)
+    "rpc": $($basePort + 2),
+    "serf_lan": "dns": $($basePort + 3),
+    "serf_wan": "dns": $($basePort + 4),
+    "server": "dns": $($basePort + 5)
+  },
+
+  "dns_config" : {
+    "allow_stale" : true,
+    "max_stale" : "150s",
+    "node_ttl" : "300s",
+    "service_ttl": {
+      "*": "300s"
+    }
+  },
+
+  "retry_join_wan": [],
+  "retry_interval_wan": "30s",
+
+  "retry_join": [],
+  "retry_interval": "30s",
+
+  "recursors": [],
+
+  "disable_remote_exec": true,
+  "disable_update_check": true,
+
+  "log_level" : "warn"
+}
+"@
+    $consulConfig | Out-File -FilePath $configPath @commonParameterSwitches
+}
 
 # -------------------- Script ---------------------------
 
@@ -159,65 +221,71 @@ if (-not (Test-Path $vhdxTemplatePath))
 try
 {
     # Configure a consul agent that can be used as the configuration stored
-
-    <#
-        Set up the key-value pairs in the consul agent as:
-
-            v1
-                kv
-                    provisioning
-                        <RESOURCE_NAME>
-                            consul
-                                consul
-                                    -->
-                                        {
-                                            "consul_datacenter" : "",
-                                            "consul_recursors" : "",
-                                            "consul_lanservers" : "",
-
-                                            "consul_isserver" : true|false,
-                                            "consul_numberofservers" : 1,
-                                            "consul_domain" : "",
-                                            "consul_wanservers" : ""
-
-                                        }
-                    resource
-                        <RESOURCE_NAME>
-                            service
-                                consul
-                                    config
-                                        dns
-                                            allowstale
-                                                -->
-                                            maxstale
-                                                -->
-                                            nodettl
-                                                -->
-                                            servicettl
-                                        loglevel
-                                            --> debug|
-    #>
-
-    $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):8599/v1/kv/provisioning/$($staticMacAddress)/service"
-
-
-    $configurationScript = Join-Path $PSScriptRoot 'New-HyperVResource.ps1'
-    $connection = & $configurationScript `
-        -credential $credential `
-        -authenticateWithCredSSP:$authenticateWithCredSSP `
-        -imageName $imageName `
-        -machineName $machineName `
-        -hypervHost $hypervHost `
-        -vhdxTemplatePath $vhdxTemplatePath `
-        -hypervHostVmStoragePath $hypervHostVmStoragePath `
-        -staticMacAddress $staticMacAddress `
-        -provisioningBootstrapUrl $provisioningBootstrapUrl `
+    $datacenter = "TestHyperVImage"
+    $basePort = 8950
+    $consulConfig = Join-Path $PSScriptRoot 'testconsul_default.json'
+    New-TestConsulConfig `
+        -datacenter $datacenter `
+        -basePort $basePort `
+        -configPath $consulConfig `
         @commonParameterSwitches
 
-    Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
+    $arguments = @(
+        "agent",
+        "-config-file=$($consulConfig)"
+    )
+    $consulProcess = Start-Process `
+        -FilePath (Join-Path $PSScriptRoot 'consul.exe') `
+        -ArgumentList $arguments `
+        -WindowStyle Minimized `
+        -PassThru `
+        @commonParameterSwitches
+    try
+    {
+        $dnsIPAddresses = @(Get-DnsServerIPAddressesFromCurrentMachine @commonParameterSwitches)
+        $jsonObject = New-Object psobject -Property @{
+            "consul_datacenter" = "TestHyperVImage"
+            "consul_recursors" = $dnsIPAddresses
+            "consul_lanservers" = ""
 
-    $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
-    & $testWindowsResource -session $connection.Session -testDirectory $testDirectory -logDirectory $logDirectory
+            "consul_isserver" = $true
+            "consul_numberofservers" = 1
+            "consul_domain" = "imagetest"
+            "consul_wanservers" = ""
+        }
+
+        $consultestconfig = ConvertTo-Json -InputObject $jsonObject @commonParameterSwitches
+        $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):$($basePort)"
+        Set-ConsulKeyValue `
+            -httpUrl $provisioningBootstrapUrl `
+            -dataCenter $datacenter `
+            -keyPath "provisioning/$($machineName)/service/consul" `
+            -value $consultestconfig `
+            @commonParameterSwitches
+
+        $configurationScript = Join-Path $PSScriptRoot 'New-HyperVResource.ps1'
+        $connection = & $configurationScript `
+            -credential $credential `
+            -authenticateWithCredSSP:$authenticateWithCredSSP `
+            -imageName $imageName `
+            -machineName $machineName `
+            -hypervHost $hypervHost `
+            -vhdxTemplatePath $vhdxTemplatePath `
+            -hypervHostVmStoragePath $hypervHostVmStoragePath `
+            -staticMacAddress $staticMacAddress `
+            -provisioningBootstrapUrl $provisioningBootstrapUrl `
+            @commonParameterSwitches
+
+        Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
+
+        $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
+        & $testWindowsResource -session $connection.Session -testDirectory $testDirectory -logDirectory $logDirectory
+    }
+    finally
+    {
+        # Stop consul
+        $consulProcess.Kill()
+    }
 }
 finally
 {
