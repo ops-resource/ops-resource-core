@@ -785,18 +785,62 @@ function New-HypervVmFromBaseImage
             ErrorAction = 'Stop'
         }
 
-    # Copy the template VHDX file
-    $osVhdLocalPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
-    Copy-Item -Path $baseVhdx -Destination $osVhdLocalPath @commonParameterSwitches
+    # Create the unattend.xml file to set the machine name
+    $unattendContent = @"
+<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+    <!--
+        This file describes the different configuration phases for a windows machine.
 
-    if (Get-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly)
+        For more information about the different stages see: https://technet.microsoft.com/en-us/library/hh824982.aspx
+    -->
+
+    <!--
+         This configuration pass is used to create and configure information in the Windows image, and is specific to the hardware that the
+         Windows image is installing to.
+
+        After the Windows image boots for the first time, the specialize configuration pass runs. During this pass, unique security IDs (SIDs)
+        are created. Additionally, you can configure many Windows features, including network settings, international settings, and domain information.
+        The answer file settings for the specialize pass appear in audit mode. When a computer boots to audit mode, the auditSystem pass runs, and
+        the computer processes the auditUser settings.
+    -->
+    <settings pass="specialize">
+
+        <component name="Microsoft-Windows-Shell-Setup"
+                   processorArchitecture="amd64"
+                   publicKeyToken="31bf3856ad364e35"
+                   language="neutral"
+                   versionScope="nonSxS"
+                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+            <ComputerName>$vmName</ComputerName>
+        </component>
+    </settings>
+</unattend>
+"@
+
+    # Create a copy of the VHDX file and then mount it
+    $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
+    Copy-Item -Path $baseVhdx -Destination $vhdxPath -Verbose
+    if (Get-ItemProperty -Path $vhdxPath -Name IsReadOnly)
     {
-        Set-ItemProperty -Path $osVhdLocalPath -Name IsReadOnly -Value $false
+        Set-ItemProperty -Path $vhdxPath -Name IsReadOnly -Value $false
+    }
+
+    try
+    {
+        $driveLetter = Mount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
+
+        Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
+    }
+    finally
+    {
+        Dismount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
     }
 
     $vm = New-HypervVm `
         -vmName $vmName `
-        -osVhdPath $osVhdLocalPath `
+        -osVhdPath $vhdxPath `
         -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
         -hypervHost $hypervHost `
         -vhdxStoragePath '' `
