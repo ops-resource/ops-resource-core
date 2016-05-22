@@ -101,6 +101,9 @@ class ConsulProvisioner
         $json.recursors = $configuration.consul_recursors
         $json.retry_join = $configuration.consul_lanservers
 
+        # Clear the addresses and only set it if we're on a server
+        $json.addresses = @()
+
         if ($configuration.consul_isserver)
         {
             $json.bootstrap_expect = $configuration.consul_numberofservers
