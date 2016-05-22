@@ -1212,6 +1212,7 @@
         <NuGetPackageSpecs Include="$(DirTemplates)\*.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
+                $(DirWorkspace)\packages.config
             </IncludedDependencies>
             <ExcludedDependencies>
             </ExcludedDependencies>
@@ -1226,6 +1227,8 @@
     <ItemGroup>
         <DesignTimeDependencies Include="nBuildKit" />
         <DesignTimeDependencies Include="nUnit" />
+        <DesignTimeDependencies Include="GitReleaseNotes" />
+        <DesignTimeDependencies Include="GitVersion" />
     </ItemGroup>
 
 
