@@ -245,7 +245,7 @@ try
         throw $text
     }
 
-    $provisioningBaseUri = "$($provisioningBaseUri)/$($env:COMPUTERNAME)/service"
+    $provisioningBaseUri = "$($provisioningBaseUri)/v1/kv/provisioning/$($env:COMPUTERNAME)/service"
     foreach($provisioner in $provisioners)
     {
         $resourceName = $provisioner.ResourceName()
