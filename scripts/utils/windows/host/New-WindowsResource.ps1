@@ -43,12 +43,12 @@
 
     .PARAMETER remoteConfigurationDirectory
 
-    The full path to the directory on the remote machine where the configuration files should be placed. Defaults to 'c:\temp\configuration'.
+    The full path to the directory on the remote machine where the configuration files should be placed. Defaults to 'c:\init\configuration'.
 
 
     .PARAMETER remoteLogDirectory
 
-    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\temp\logs'.
+    The full path to the directory on the remote machine where the log files should be placed. Defaults to 'c:\init\logs'.
 
 
     .EXAMPLE
@@ -76,10 +76,10 @@ param(
     [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
 
     [Parameter(Mandatory = $false)]
-    [string] $remoteConfigurationDirectory                      = 'c:\temp\configuration',
+    [string] $remoteConfigurationDirectory                      = 'c:\init\configuration',
 
     [Parameter(Mandatory = $false)]
-    [string] $remoteLogDirectory                                = 'c:\temp\logs'
+    [string] $remoteLogDirectory                                = 'c:\init\logs'
 )
 
 Write-Verbose "New-WindowsResource - session: $($session.Name)"

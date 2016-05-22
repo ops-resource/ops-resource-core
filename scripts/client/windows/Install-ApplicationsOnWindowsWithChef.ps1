@@ -38,14 +38,14 @@
 
     .EXAMPLE
 
-    Install-ApplicationsOnWindowsWithChef -configurationDirectory "c:\temp\configuration" -logDirectory "c:\temp\logs" -cookbookNames "myCookbook", "myOtherCookbook"
+    Install-ApplicationsOnWindowsWithChef -configurationDirectory "c:\init\configuration" -logDirectory "c:\init\logs" -cookbookNames "myCookbook", "myOtherCookbook"
 #>
 [CmdletBinding()]
 param(
     [string] $resourceName           = '',
     [string] $resourceVersion        = '',
-    [string] $configurationDirectory = "c:\temp\configuration",
-    [string] $logDirectory           = "c:\temp\logs",
+    [string] $configurationDirectory = "c:\init\configuration",
+    [string] $logDirectory           = "c:\init\logs",
     [string[]] $cookbookNames        = ""
 )
 
