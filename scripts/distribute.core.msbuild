@@ -156,6 +156,9 @@
         <Copy SourceFiles="@(HostVerificationScriptFiles)"
               DestinationFiles="@(HostVerificationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
 
+        <Copy SourceFiles="@(TestTools)"
+              DestinationFiles="@(TestTools->'$(DirOutput)\%(Name)')" />
+
         <ItemGroup>
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Test*.ps1" />
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
