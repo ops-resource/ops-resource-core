@@ -113,7 +113,7 @@ powershell_script 'provisioning_as_service' do
     # http://stackoverflow.com/questions/313622/powershell-script-to-change-service-account#comment14535084_315616
     # Using the LocalSystem account so that the scripts that we run have access to everything:
     # https://msdn.microsoft.com/en-us/library/windows/desktop/ms684190%28v=vs.85%29.aspx
-    $credential = New-Object pscredential((".\\LocalSystem", $securePassword)
+    $credential = New-Object pscredential(".\\LocalSystem", $securePassword)
 
     $service = Get-Service -Name '#{service_name}' -ErrorAction SilentlyContinue
     if ($service -eq $null)
