@@ -315,11 +315,15 @@ try
     try
     {
         $cookbook = $cookbookNames -join ','
-        & $chefClient --local-mode --override-runlist $cookbook --log_level info --logfile "$(Join-Path $logDirectory 'chef_client.log')"
+        $expression = "& $chefClient --local-mode --override-runlist `"$cookbook`" --log_level debug --logfile `"$(Join-Path $logDirectory 'chef_client.log')`""
+        Write-Output "Invoking chef client as:"
+        Write-Output $expression
+        Invoke-Expression -Command $expression @commonParameterSwitches
     }
     catch
     {
-        Write-Output ("chef-client failed. Error was: " + $_.Exception.ToString())
+        $errorText = "chef-client failed. Error was: " + $_.Exception.ToString()
+        Write-Output $errorText
     }
 
     if (($LastExitCode -ne $null) -and ($LastExitCode -ne 0))
@@ -328,7 +332,7 @@ try
         $chefPath = "$userProfile\.chef\local-mode-cache\cache"
         if (Test-Path $chefPath)
         {
-            Get-ChildItem -Path $chefPath -Recurse -Force | Copy-Item -Destination $logDirectory
+            Get-ChildItem -Path $chefPath -Recurse -Force | Copy-Item -Destination $logDirectory -Force @commonParameterSwitches
         }
 
         throw "Chef-client failed. Exit code: $LastExitCode"
