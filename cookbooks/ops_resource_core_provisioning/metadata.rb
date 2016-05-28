@@ -8,3 +8,4 @@ version '${VersionSemantic}'
 
 depends 'windows', '~>1'
 depends 'ops_resource_core_meta', '~>${VersionMajor}'
+depends 'powershell', '>= 3.3.1'

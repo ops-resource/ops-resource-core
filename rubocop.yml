@@ -8,6 +8,8 @@ Documentation:
 AllCops:
   Exclude:
     - 'build/temp/core/cookbooks/chef_handler/**/*'
+    - 'build/temp/core/cookbooks/ms_dotnet/**/*'
+    - 'build/temp/core/cookbooks/powershell/**/*'
     - 'build/temp/core/cookbooks/windows/**/*'
     - 'build/temp/core/cookbooks/windows_firewall/**/*'
     - 'cookbooks/**/*'
