@@ -312,18 +312,22 @@ try
     }
 
     Write-Output "Running chef-client ..."
+    $previousErrorPreference = $ErrorActionPreference
+    $ErrorActionPreference = 'SilentlyContinue'
     try
     {
         $cookbook = $cookbookNames -join ','
-        $expression = "& $chefClient --local-mode --override-runlist `"$cookbook`" --log_level debug --logfile `"$(Join-Path $logDirectory 'chef_client.log')`""
+
+        # Redirect the error stream to the output stream because ruby writes warnings to the error stream which makes powershell consider the run as a failure,
+        # even if it isn't
+        $expression = "& $chefClient --local-mode --override-runlist `"$cookbook`" --log_level debug --logfile `"$(Join-Path $logDirectory 'chef_client.log')`" 2>&1"
         Write-Output "Invoking chef client as:"
         Write-Output $expression
         Invoke-Expression -Command $expression @commonParameterSwitches
     }
-    catch
+    finally
     {
-        $errorText = "chef-client failed. Error was: " + $_.Exception.ToString()
-        Write-Output $errorText
+        $ErrorActionPreference = $previousErrorPreference
     }
 
     if (($LastExitCode -ne $null) -and ($LastExitCode -ne 0))
