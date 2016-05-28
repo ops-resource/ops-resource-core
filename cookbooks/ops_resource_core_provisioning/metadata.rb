@@ -6,6 +6,6 @@ description 'Configures a server with the scripts and tools necessary to provide
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version '${VersionSemantic}'
 
-depends 'windows', '~>1'
-depends 'ops_resource_core_meta', '~>${VersionMajor}'
+depends 'windows', '>= 1.41'
 depends 'powershell', '>= 3.3.1'
+depends 'ops_resource_core_meta', '>= ${VersionMajor}.${VersionMinor}'
