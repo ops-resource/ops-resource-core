@@ -7,6 +7,8 @@
 # All rights reserved - Do Not Redistribute
 #
 
+include_recipe 'powershell::powershell5'
+
 log_directory = node['paths']['log']
 directory log_directory do
   rights :read, 'Everyone', applies_to_children: true
