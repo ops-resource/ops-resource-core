@@ -268,6 +268,26 @@ if (-not (Test-Path $logDirectory))
 
 New-MetaFile -configurationDirectory $configurationDirectory -resourceName $resourceName -resourceVersion $resourceVersion
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Going to have to retool to this: https://github.com/ebsco/chefservice
+# Because we can't install Windows features / updates when running over WinRM (see here: https://github.com/test-kitchen/test-kitchen/issues/655#issuecomment-114921207)
+
+
+
+
 Install-ChefClient -configurationDirectory $configurationDirectory -logDirectory $logDirectory
 try
 {
