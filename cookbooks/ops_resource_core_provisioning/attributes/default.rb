@@ -1,5 +1,5 @@
 # Attributes from the Powershell cookbook
-default['powershell']['installation_reboot_mode'] == 'no_reboot'
+default['powershell']['installation_reboot_mode'] = 'no_reboot'
 
 # Attributes from the meta cookbook
 logs_path = node['paths']['log']
