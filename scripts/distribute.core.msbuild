@@ -70,10 +70,10 @@
 
     <ItemGroup>
         <CookbooksToUseForConfiguration Include="ops_resource_core_meta::default"/>
-        <CookbooksToUseForConfiguration Include="ops_resource_core_consul::default"
-                                        Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToUseForConfiguration Include="ops_resource_core_provisioning::default"
                                         Condition=" '$(InstallProvisioning)' == 'true' " />
+        <CookbooksToUseForConfiguration Include="ops_resource_core_consul::default"
+                                        Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToUseForConfiguration Include="$(CookbooksToInvoke)"
                                         Condition=" '$(CookbooksToInvoke)' != '' " />
     </ItemGroup>
