@@ -16,6 +16,18 @@
         <ExternalFiles Include="${DestinationConfiguration}\chef-client.msi">
             <Source>$(DirExternalInstallers)\chef\chef-12.8.1-1.msi</Source>
         </ExternalFiles>
+        <ExternalFiles Include="${DestinationConfiguration}\chefservice.exe">
+            <Source>$(DirExternalInstallers)\chefservice\chefservice.exe</Source>
+        </ExternalFiles>
+        <ExternalFiles Include="${DestinationConfiguration}\chefservice.exe.config">
+            <Source>$(DirExternalInstallers)\chefservice\chefservice.exe.config</Source>
+        </ExternalFiles>
+        <ExternalFiles Include="${DestinationConfiguration}\eis-chef.exe">
+            <Source>$(DirExternalInstallers)\chefservice\eis-chef.exe</Source>
+        </ExternalFiles>
+        <ExternalFiles Include="${DestinationConfiguration}\eis-chef.exe.config">
+            <Source>$(DirExternalInstallers)\chefservice\eis-chef.exe.config</Source>
+        </ExternalFiles>
         <ExternalFiles Include="${DestinationConfigurationCookbooks}\ops_resource_core_consul\files\windows\consul.exe"
                        Condition=" '$(InstallConsul)' == 'true' ">
             <Source>$(SourceConsulExe)</Source>

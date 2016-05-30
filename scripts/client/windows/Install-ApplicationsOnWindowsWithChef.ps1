@@ -195,12 +195,11 @@ function Install-ChefClient
         [string] $logDirectory
     )
 
-    # Download chef client. Note that this is obviously hard-coded but for now it will work. Later on we'll make this a configuration option
     $chefClientInstallFile = "chef-client.msi"
     $chefClientInstall = Join-Path $configurationDirectory $chefClientInstallFile
     if (-not (Test-Path $chefClientInstall))
     {
-        throw 'Failed to download the chef installer.'
+        throw 'Failed to find the chef installer.'
     }
 
     # Install the chef client
@@ -209,6 +208,27 @@ function Install-ChefClient
     Write-Output "Installing chef from $chefClientInstall ..."
     $chefInstallLogFile = Join-Path $logDirectory "chef.install.log"
     Install-Msi -msiFile "$chefClientInstall" -logFile "$chefInstallLogFile"
+}
+
+function Install-ChefService
+{
+    [CmdletBinding()]
+    param(
+        [string] $configurationDirectory
+    )
+
+    $chefServerInstallFile = "chefservice.exe"
+    $chefServerInstall = Join-Path $configurationDirectory $chefServerInstallFile
+    if (-not (Test-Path $chefServerInstall))
+    {
+        throw 'Failed to download the chef service executable.'
+    }
+
+    # Install the chef client
+    Unblock-File -Path $chefServerInstall
+
+    Write-Output "Installing chef service from $chefServerInstall ..."
+    & $chefServerInstall -install
 }
 
 function Uninstall-ChefClient
@@ -237,6 +257,27 @@ function Uninstall-ChefClient
     {
         Write-Output ("Failed to uninstall the chef client. Error was " + $_.Exception.ToString())
     }
+}
+
+function Uninstall-ChefService
+{
+    [CmdletBinding()]
+    param(
+        [string] $configurationDirectory
+    )
+
+    $chefServerInstallFile = "chefservice.exe"
+    $chefServerInstall = Join-Path $configurationDirectory $chefServerInstallFile
+    if (-not (Test-Path $chefServerInstall))
+    {
+        throw 'Failed to download the chef service executable.'
+    }
+
+    # Install the chef client
+    Unblock-File -Path $chefServerInstall
+
+    Write-Output "Uninstalling chef service from $chefServerInstall ..."
+    & $chefServerInstall -uninstall
 }
 
 Write-Output "Install-ApplicationsOnWindowsWithChef - resourceName: $resourceName"
@@ -268,101 +309,69 @@ if (-not (Test-Path $logDirectory))
 
 New-MetaFile -configurationDirectory $configurationDirectory -resourceName $resourceName -resourceVersion $resourceVersion
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Going to have to retool to this: https://github.com/ebsco/chefservice
-# Because we can't install Windows features / updates when running over WinRM (see here: https://github.com/test-kitchen/test-kitchen/issues/655#issuecomment-114921207)
-
-
-
-
+# This should add the location of chef and ruby to the PATH
 Install-ChefClient -configurationDirectory $configurationDirectory -logDirectory $logDirectory
 try
 {
-    # Set the path for the cookbooks
-    $chefConfigDir = Join-Path $env:UserProfile ".chef"
-    if (-not (Test-Path $chefConfigDir))
-    {
-        Write-Output "Creating the chef configuration directory ..."
-        New-Item -Path $chefConfigDir -ItemType Directory | Out-Null
-    }
-
-    $chefConfig = Join-Path $chefConfigDir 'knife.rb'
-    if (-not (Test-Path $chefConfig))
-    {
-        Write-Output "Creating the chef configuration file"
-        Set-Content -Path $chefConfig -Value ('cookbook_path ["' + $configurationDirectory.Replace('\', '/') + '/cookbooks"]') -Verbose
-
-        # Make a copy of the config for debugging purposes
-        Copy-Item $chefConfig $logDirectory -Verbose
-    }
-
-    $opscodePath = "c:\opscode"
-    if (-not (Test-Path $opscodePath))
-    {
-        throw "Chef install path not found."
-    }
-
-    # Add the ruby path to the $env:PATH for the current session.
-    $embeddedRubyPath = "$opscodePath\chef\embedded\bin"
-    if (-not (Test-Path $embeddedRubyPath))
-    {
-        throw "Embedded ruby path not found."
-    }
-
-    $env:PATH += ";" + $embeddedRubyPath
-
-    # Execute the chef client as: chef-client -z -o $cookbookname
-    $chefClient = "$opscodePath\chef\bin\chef-client.bat"
-    if (-not (Test-Path $chefClient))
-    {
-        throw "Chef client not found"
-    }
-
-    Write-Output "Running chef-client ..."
-    $previousErrorPreference = $ErrorActionPreference
-    $ErrorActionPreference = 'SilentlyContinue'
+    # We can't install Windows features / updates when running over WinRM (see here: https://github.com/test-kitchen/test-kitchen/issues/655)
+    # So we have to run this via a service like this one: https://github.com/ebsco/chefservice
+    Install-ChefService -configurationDirectory $configurationDirectory
     try
     {
-        $cookbook = $cookbookNames -join ','
+        # Set the path for the cookbooks
+        $chefConfig = Join-Path $configurationDirectory 'client.rb'
+        if (-not (Test-Path $chefConfig))
+        {
+            Write-Output "Creating the chef configuration file"
+            Set-Content -Path $chefConfig -Value ('cookbook_path ["' + $configurationDirectory.Replace('\', '/') + '/cookbooks"]') -Verbose
 
-        # Redirect the error stream to the output stream because ruby writes warnings to the error stream which makes powershell consider the run as a failure,
-        # even if it isn't
-        $expression = "& $chefClient --local-mode --override-runlist `"$cookbook`" --log_level debug --logfile `"$(Join-Path $logDirectory 'chef_client.log')`" 2>&1"
-        Write-Output "Invoking chef client as:"
-        Write-Output $expression
-        Invoke-Expression -Command $expression @commonParameterSwitches
+            # Make a copy of the config for debugging purposes
+            Copy-Item $chefConfig $logDirectory -Verbose
+        }
+
+        $chefClient = "$configurationDirectory\eis-chef.exe"
+        if (-not (Test-Path $chefClient))
+        {
+            throw "Chef client not found"
+        }
+
+        Write-Output "Running chef-client ..."
+        $previousErrorPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'SilentlyContinue'
+        try
+        {
+            $cookbook = $cookbookNames -join ','
+
+            # Redirect the error stream to the output stream because ruby writes warnings to the error stream which makes powershell consider the run as a failure,
+            # even if it isn't
+            $expression = "& $chefClient --local-mode --config `"$chefConfig`" --override-runlist `"$cookbook`" --log_level debug --logfile `"$(Join-Path $logDirectory 'chef_client.log')`" 2>&1"
+            Write-Output "Invoking chef client as:"
+            Write-Output $expression
+            Invoke-Expression -Command $expression @commonParameterSwitches
+        }
+        finally
+        {
+            $ErrorActionPreference = $previousErrorPreference
+        }
+
+        if (($LastExitCode -ne $null) -and ($LastExitCode -ne 0))
+        {
+            $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+            $chefPath = "$userProfile\.chef\local-mode-cache\cache"
+            if (Test-Path $chefPath)
+            {
+                Get-ChildItem -Path $chefPath -Recurse -Force | Copy-Item -Destination $logDirectory -Force @commonParameterSwitches
+            }
+
+            throw "Chef-client failed. Exit code: $LastExitCode"
+        }
+
+        Write-Output "Chef-client completed."
     }
     finally
     {
-        $ErrorActionPreference = $previousErrorPreference
+        Uninstall-ChefService -configurationDirectory $configurationDirectory
     }
-
-    if (($LastExitCode -ne $null) -and ($LastExitCode -ne 0))
-    {
-        $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
-        $chefPath = "$userProfile\.chef\local-mode-cache\cache"
-        if (Test-Path $chefPath)
-        {
-            Get-ChildItem -Path $chefPath -Recurse -Force | Copy-Item -Destination $logDirectory -Force @commonParameterSwitches
-        }
-
-        throw "Chef-client failed. Exit code: $LastExitCode"
-    }
-
-    Write-Output "Chef-client completed."
 }
 finally
 {
