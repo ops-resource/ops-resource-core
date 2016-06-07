@@ -249,6 +249,97 @@ function Invoke-Sysprep
 <#
     .SYNOPSIS
 
+    Waits for a machine to complete the initialization after start up.
+
+
+    .DESCRIPTION
+
+    The Wait-MachineCompletesInitialization function waits for a machine to complete initialization after start up.
+
+
+    .PARAMETER session
+
+    The powershell remote session that can be used to connect to the machine.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for VM to enter
+    the off state.
+#>
+function Wait-MachineCompletesInitialization
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session,
+
+        [Parameter()]
+        [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
+        [int] $timeOutInSeconds = 3600 #seconds
+    )
+
+    Write-Verbose "Wait-MachineCompletesInitialization - session = $session"
+    Write-Verbose "Wait-MachineCompletesInitialization - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Write-Verbose "Waiting for machine to complete initialization ..."
+
+    Invoke-Command `
+        -Session $session `
+        -ArgumentList @( $timeOutInSeconds ) `
+        -ScriptBlock {
+            param(
+                [int] $timeOutInSeconds
+            )
+
+            function Get-IsMachineInitializing
+            {
+                # Based on the answers from here:
+                # http://serverfault.com/questions/750885/how-to-remotely-detect-windows-has-completed-patch-configuration-after-reboot
+                # We should look for TrustedInstaller and Wuauclt. However it seems that even these disappear before
+                # the initialization is complete. So we added some others based on getting the process list while
+                # the machine was initializing
+                return (Get-Process 'cmd', 'ngen', 'TrustedInstaller', 'windeploy', 'Wuauclt' -ErrorAction SilentlyContinue).Length -ne 0
+            }
+
+            $startTime = Get-Date
+            $endTime = $startTime + (New-TimeSpan -Seconds $timeOutInSeconds)
+
+            Write-Verbose "Waiting till: $endTime"
+            while (Get-IsMachineInitializing)
+            {
+                if ((Get-Date) -ge $endTime)
+                {
+                    Write-Verbose "The machine $machineName failed to complete the initialization in the alotted time of $timeOutInSeconds"
+                    return
+                }
+
+                while (Get-IsMachineInitializing)
+                {
+                    Start-Sleep -Seconds 15 -Verbose
+                }
+
+                # Now wait another 30 seconds to see that nothing else pops back up
+                Write-Verbose "Expecting machine configuration to be complete. Waiting 30 seconds for safety ..."
+                Start-Sleep -Seconds 30 -Verbose
+            }
+
+            Write-Verbose "Installers completed configuration ..."
+        } `
+        @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
     Waits for a machine to turn off as indicated by the lack of network connection.
 
 

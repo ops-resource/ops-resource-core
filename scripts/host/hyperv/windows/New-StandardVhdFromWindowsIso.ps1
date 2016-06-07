@@ -386,56 +386,6 @@ function Update-VhdWithWindowsPatches
 
 }
 
-function Wait-MachineCompletesInitialization
-{
-    [CmdletBinding()]
-    param(
-        [System.Management.Automation.Runspaces.PSSession] $session
-    )
-
-    Write-Verbose "Wait-MachineCompletesInitialization - session = $session"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    Write-Verbose "Waiting for machine to complete initialization ..."
-
-    Invoke-Command `
-        -Session $session `
-        -ScriptBlock {
-            function Get-IsMachineInitializing
-            {
-                # Based on the answers from here:
-                # http://serverfault.com/questions/750885/how-to-remotely-detect-windows-has-completed-patch-configuration-after-reboot
-                # We should look for TrustedInstaller and Wuauclt. However it seems that even these disappear before
-                # the initialization is complete. So we added some others based on getting the process list while
-                # the machine was initializing
-                return (Get-Process 'cmd', 'ngen', 'TrustedInstaller', 'windeploy', 'Wuauclt' -ErrorAction SilentlyContinue).Length -ne 0
-            }
-
-            while (Get-IsMachineInitializing)
-            {
-                while (Get-IsMachineInitializing)
-                {
-                    Start-Sleep -Seconds 10 -Verbose
-                }
-
-                # Now wait another 30 seconds to see that nothing else pops back up
-                Write-Verbose "Expecting machine configuration to be complete. Waiting 30 seconds for safety ..."
-                Start-Sleep -Seconds 30 -Verbose
-            }
-
-            Write-Verbose "Installers completed configuration ..."
-        } `
-        @commonParameterSwitches
-}
-
 # -------------------------- Script start --------------------------------
 
 if (-not (Test-Path $tempPath))
