@@ -220,5 +220,4 @@ New-HypervVhdxTemplateFromVm `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
     -timeOutInSeconds $timeOutInSeconds `
-    -tempPath $tempPath `
     @commonParameterSwitches

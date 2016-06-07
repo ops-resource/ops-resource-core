@@ -272,11 +272,6 @@ function Get-IPAddressForVm
     .PARAMETER timeOutInSeconds
 
     The amount of time in seconds the function should wait for the guest OS to be started.
-
-
-    .PARAMETER tempPath
-
-    The full path to the directory in which temporary files can be stored.
 #>
 function Invoke-SysprepOnVmAndWaitShutdown
 {
@@ -285,15 +280,13 @@ function Invoke-SysprepOnVmAndWaitShutdown
         [string] $machineName,
         [string] $hypervHost,
         [pscredential] $localAdminCredential,
-        [int] $timeOutInSeconds,
-        [string] $tempPath
+        [int] $timeOutInSeconds
     )
 
     Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - machineName = $machineName"
     Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - hypervHost = $hypervHost"
     Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - localAdminCredential = $localAdminCredential"
     Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - timeOutInSeconds = $timeOutInSeconds"
-    Write-Verbose "Invoke-SysprepOnVmAndWaitShutdown - tempPath = $tempPath"
 
     $ErrorActionPreference = 'Stop'
 
@@ -320,7 +313,6 @@ function Invoke-SysprepOnVmAndWaitShutdown
     Invoke-Sysprep `
         -connectionInformation $result `
         -timeOutInSeconds $timeOutInSeconds `
-        -tempPath $tempPath `
         @commonParameterSwitches
 
     # Wait till machine is stopped
@@ -430,11 +422,6 @@ function Mount-Vhdx
     .PARAMETER timeOutInSeconds
 
     The maximum amount of time in seconds that this function will wait for VM to enter the off state.
-
-
-    .PARAMETER tempPath
-
-    The full path to the directory in which temporary files can be stored.
 #>
 function New-HyperVVhdxTemplateFromVm
 {
@@ -457,17 +444,13 @@ function New-HyperVVhdxTemplateFromVm
 
         [Parameter()]
         [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
-        [int] $timeOutInSeconds = 900,
-
-        [Parameter(Mandatory = $true)]
-        [string] $tempPath = $(Join-Path $env:Temp ([System.Guid]::NewGuid.ToString()))
+        [int] $timeOutInSeconds = 900
     )
 
     Write-Verbose "New-HyperVVhdxTemplateFromVm - vmName: $vmName"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - vhdPath: $vhdPath"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - hypervHost: $hypervHost"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - timeOutInSeconds: $timeOutInSeconds"
-    Write-Verbose "New-HyperVVhdxTemplateFromVm - tempPath: $tempPath"
 
     # Stop everything if there are errors
     $ErrorActionPreference = 'Stop'
@@ -484,7 +467,6 @@ function New-HyperVVhdxTemplateFromVm
         -hypervHost $hypervHost `
         -localAdminCredential $localAdminCredential `
         -timeOutInSeconds $timeOutInSeconds `
-        -tempPath $tempPath `
         @commonParameterSwitches
 
     # Delete VM
