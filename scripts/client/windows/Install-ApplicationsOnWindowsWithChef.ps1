@@ -377,5 +377,10 @@ finally
 {
     # delete chef from the machine
     Uninstall-ChefClient -configurationDirectory $configurationDirectory -logDirectory $logDirectory
-    Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction Continue
+
+    $chefConfigDir = Join-Path $env:UserProfile ".chef"
+    if (Test-Path $chefConfigDir)
+    {
+        Remove-Item -Path $chefConfigDir -Force -Recurse -ErrorAction Continue
+    }
 }
