@@ -87,7 +87,7 @@ function Invoke-Sysprep
     Wait-MachineCompletesInitialization -session $connectionInformation.Session @commonParameterSwitches
 
     # sysprep
-    if (Test-Path $unattendFile)
+    if (($unattendFile -ne $null) -and ($unattendFile -ne '') -and (Test-Path $unattendFile))
     {
         Copy-ItemToRemoteMachine -session $connectionInformation.Session -localPath $unattendFile -remotePath 'c:\unattend.xml'
     }
@@ -210,33 +210,22 @@ function Invoke-Sysprep
 </unattend>
 "@
 
-                Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
+                Set-Content -Path "$($ENV:SystemDrive)\unattend.xml" -Value $unattendContent
             }
 
             # sysprep
             # Note that apparently this can't be done just remotely because sysprep starts but doesn't actually
             # run (i.e. it exits without doing any work). So this needs to be done from the local machine
             # that is about to be sysprepped.
-            $configDir = "$($ENV:SystemDrive))\Sysprep"
-            if (-not (Test-Path $configDir))
-            {
-                New-Item -Path $configDir -ItemType Directory | Out-Null
-            }
-
-            $sysprepCmd = Join-Path $configDir 'sysprep.ps1'
-            $cmd = "Write-Output 'Executing $sysPrepScript on VM'; & c:\Windows\system32\sysprep\sysprep.exe /oobe /generalize /shutdown /unattend:`"$($ENV:SystemDrive)\Unattend.xml`""
-
-            Set-Content -Value $cmd -Path $sysprepCmd -Verbose
-
             Write-Output "Starting sysprep ..."
-            & powershell -File "$sysprepCmd"
+            Start-Process -FilePath "c:\Windows\system32\sysprep\sysprep.exe" -ArgumentList "/oobe /generalize /shutdown /unattend:`"$($ENV:SystemDrive)\Unattend.xml`""
         } `
         -Verbose `
         -ErrorAction Continue
 
     # Wait till machine is stopped
     $waitResult = Wait-MachineShutdown `
-        -machineName $connectionInformation.Name `
+        -machineName $connectionInformation.IPAddress `
         -timeOutInSeconds $timeOutInSeconds `
         @commonParameterSwitches
 
