@@ -1084,6 +1084,86 @@ function New-HypervVmOnDomain
 <#
     .SYNOPSIS
 
+    Restarts the VM with the given VM name.
+
+
+    .DESCRIPTION
+
+    The Restart-HypervVm function reboots the VM with the given name.
+
+
+    .PARAMETER machineName
+
+    The name of the VM that should be rebooted.
+
+
+    .PARAMETER hypervHost
+
+    The name of the Hyper-V host machine
+
+
+    .PARAMETER localAdminCredential
+
+    The credentials for the local administrator user.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for any action to succeed.
+#>
+function Restart-HypervVm
+{
+    [CmdletBinding()]
+    param(
+        [string] $machineName,
+        [string] $hypervHost,
+        [pscredential] $localAdminCredential,
+        [int] $timeOutInSeconds
+    )
+
+    Write-Verbose "Restart-HypervVm - machineName = $machineName"
+    Write-Verbose "Restart-HypervVm - hypervHost = $hypervHost"
+    Write-Verbose "Restart-HypervVm - localAdminCredential = $localAdminCredential"
+    Write-Verbose "Restart-HypervVm - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $result = Get-ConnectionInformationForVm `
+        -machineName $machineName `
+        -hypervHost $hypervHost `
+        -localAdminCredential $localAdminCredential `
+        -timeOutInSeconds $timeOutInSeconds `
+        @commonParameterSwitches
+    if ($result.Session -eq $null)
+    {
+        throw "Failed to connect to $machineName"
+    }
+
+    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
+
+    # Now that we know we can get into the machine we can invoke commands on the machine, so now
+    # we reboot the machine so that all updates are properly installed
+    Restart-Computer `
+        -ComputerName $result.IPAddress `
+        -Credential $localAdminCredential `
+        -Force `
+        -Wait `
+        -For PowerShell `
+        -Delay 5 `
+        -Timeout $timeOutInSeconds `
+        @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
     Waits for the guest operating system to be started.
 
 

@@ -275,56 +275,6 @@ function New-VmFromVhdAndWaitForBoot
     }
 }
 
-function Restart-MachineToApplyPatches
-{
-    [CmdletBinding()]
-    param(
-        [string] $machineName,
-        [string] $hypervHost,
-        [pscredential] $localAdminCredential,
-        [int] $timeOutInSeconds
-    )
-
-    Write-Verbose "Restart-MachineToApplyPatches - machineName = $machineName"
-    Write-Verbose "Restart-MachineToApplyPatches - hypervHost = $hypervHost"
-    Write-Verbose "Restart-MachineToApplyPatches - localAdminCredential = $localAdminCredential"
-    Write-Verbose "Restart-MachineToApplyPatches - timeOutInSeconds = $timeOutInSeconds"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    $result = Get-ConnectionInformationForVm `
-        -machineName $machineName `
-        -hypervHost $hypervHost `
-        -localAdminCredential $localAdminCredential `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-    if ($result.Session -eq $null)
-    {
-        throw "Failed to connect to $machineName"
-    }
-
-    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
-
-    # Now that we know we can get into the machine we can invoke commands on the machine, so now
-    # we reboot the machine so that all updates are properly installed
-    Restart-Computer `
-        -ComputerName $result.IPAddress `
-        -Credential $localAdminCredential `
-        -Force `
-        -Wait `
-        -For PowerShell `
-        -Delay 5 `
-        -Timeout $timeOutInSeconds `
-        @commonParameterSwitches
-}
-
 function Update-VhdWithWindowsPatches
 {
     [CmdletBinding()]
@@ -383,7 +333,6 @@ function Update-VhdWithWindowsPatches
         Foreach-Object {
             Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$([System.IO.Path]::GetFileNameWithoutExtension($_.FullName))-ApplyPatches.log") @commonParameterSwitches
         }
-
 }
 
 # -------------------------- Script start --------------------------------
@@ -418,7 +367,7 @@ New-VmFromVhdAndWaitForBoot `
     -bootWaitTimeout $timeOutInSeconds `
     @commonParameterSwitches
 
-Restart-MachineToApplyPatches `
+Restart-HypervVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
     -localAdminCredential $localAdminCredential `
