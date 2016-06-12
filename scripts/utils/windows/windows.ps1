@@ -455,9 +455,9 @@ function Wait-MachineShutdown
         try
         {
             Write-Verbose "Pinging machine ..."
-            $pingResult = Test-NetConnection -ComputerName $machineName @commonParameterSwitches
+            $pingResult = Test-NetConnection -ComputerName $machineName -Quiet @commonParameterSwitches
 
-            if ($pingResult.PingSucceeded)
+            if (-not $pingResult)
             {
                 Write-Verbose "Machine $machineName has turned off"
                 return $true

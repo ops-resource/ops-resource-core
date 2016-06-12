@@ -267,7 +267,7 @@ $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
 
 Restart-Machine `
     -connection $connection `
-    -localAdminCredential $localAdminCredential `
+    -localAdminCredential $credential `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
 
