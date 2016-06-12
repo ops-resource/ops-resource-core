@@ -49,6 +49,24 @@ param(
     [string[]] $cookbookNames        = ""
 )
 
+Write-Output "Install-ApplicationsOnWindowsWithChef - resourceName: $resourceName"
+Write-Output "Install-ApplicationsOnWindowsWithChef - resourceVersion: $resourceVersion"
+Write-Output "Install-ApplicationsOnWindowsWithChef - configurationDirectory: $configurationDirectory"
+Write-Output "Install-ApplicationsOnWindowsWithChef - logDirectory: $logDirectory"
+Write-Output "Install-ApplicationsOnWindowsWithChef - cookbookNames: $cookbookNames"
+
+# Stop everything if there are errors
+$ErrorActionPreference = 'Stop'
+
+$commonParameterSwitches =
+    @{
+        Verbose = $PSBoundParameters.ContainsKey('Verbose');
+        Debug = $false;
+        ErrorAction = "Stop"
+    }
+
+# ----------------------- SCRIPT FUNCTIONS ------------------------------------
+
 function Install-Msi
 {
     param(
@@ -280,21 +298,7 @@ function Uninstall-ChefService
     & $chefServerInstall -uninstall
 }
 
-Write-Output "Install-ApplicationsOnWindowsWithChef - resourceName: $resourceName"
-Write-Output "Install-ApplicationsOnWindowsWithChef - resourceVersion: $resourceVersion"
-Write-Output "Install-ApplicationsOnWindowsWithChef - configurationDirectory: $configurationDirectory"
-Write-Output "Install-ApplicationsOnWindowsWithChef - logDirectory: $logDirectory"
-Write-Output "Install-ApplicationsOnWindowsWithChef - cookbookNames: $cookbookNames"
-
-# Stop everything if there are errors
-$ErrorActionPreference = 'Stop'
-
-$commonParameterSwitches =
-    @{
-        Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $false;
-        ErrorAction = "Stop"
-    }
+# ----------------------- SCRIPT START ------------------------------------
 
 # The directory that contains all the installation files
 if (-not (Test-Path $configurationDirectory))
