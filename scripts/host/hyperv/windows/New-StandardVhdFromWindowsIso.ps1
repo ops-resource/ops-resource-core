@@ -367,9 +367,15 @@ New-VmFromVhdAndWaitForBoot `
     -bootWaitTimeout $timeOutInSeconds `
     @commonParameterSwitches
 
-Restart-HypervVm `
+$connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
+    -localAdminCredential $localAdminCredential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+Restart-Machine `
+    -connection $connection `
     -localAdminCredential $localAdminCredential `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches

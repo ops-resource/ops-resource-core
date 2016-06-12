@@ -238,6 +238,73 @@ function Invoke-Sysprep
 <#
     .SYNOPSIS
 
+    Restarts the VM with the given VM name.
+
+
+    .DESCRIPTION
+
+    The Restart-Machine function reboots the VM with the given name.
+
+
+    .PARAMETER connection
+
+    A custom object containing the connection information for the machine. The object is expected to
+    have the following properties:
+
+        Name
+        IPAddress
+        Session
+
+
+    .PARAMETER localAdminCredential
+
+    The credentials for the local administrator user.
+
+
+    .PARAMETER timeOutInSeconds
+
+    The maximum amount of time in seconds that this function will wait for any action to succeed.
+#>
+function Restart-Machine
+{
+    [CmdletBinding()]
+    param(
+        [PSObject] $connection,
+        [pscredential] $localAdminCredential,
+        [int] $timeOutInSeconds
+    )
+
+    Write-Verbose "Restart-Machine - connection = $connection"
+    Write-Verbose "Restart-Machine - localAdminCredential = $localAdminCredential"
+    Write-Verbose "Restart-Machine - timeOutInSeconds = $timeOutInSeconds"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Wait-MachineCompletesInitialization -session $connection.Session @commonParameterSwitches
+
+    # Now that we know we can get into the machine we can invoke commands on the machine, so now
+    # we reboot the machine so that all updates are properly installed
+    Restart-Computer `
+        -ComputerName $connection.IPAddress `
+        -Credential $localAdminCredential `
+        -Force `
+        -Wait `
+        -For PowerShell `
+        -Delay 5 `
+        -Timeout $timeOutInSeconds `
+        @commonParameterSwitches
+}
+
+<#
+    .SYNOPSIS
+
     Waits for a machine to complete the initialization after start up.
 
 

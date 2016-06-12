@@ -213,7 +213,11 @@ $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
     -logDirectory $logDirectory `
     @commonParameterSwitches
 
-Restart-HypervVm `
+Restart-Machine `
+    -connection $connection `
+    -localAdminCredential $localAdminCredential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
     -machineName $machineName `
     -hypervHost $hypervHost `
     -localAdminCredential $localAdminCredential `
