@@ -47,6 +47,11 @@ describe 'ops_resource_core_provisioning::provisioning' do
     expect(chef_run).to create_directory(provisioning_service_directory)
   end
 
+  resume_directory = 'c:\\resume'
+  it 'creates the resume directory' do
+    expect(chef_run).to create_directory(resume_directory)
+  end
+
   provisioning_logs_directory = 'c:\\logs\\provisioning'
   it 'creates the provisioning logs directory' do
     expect(chef_run).to create_directory(provisioning_logs_directory)
@@ -55,6 +60,11 @@ describe 'ops_resource_core_provisioning::provisioning' do
   provisioning_initialize_file = 'Initialize-Resource.ps1'
   it 'creates Initialize-Resource.ps1 in the provisioning directory' do
     expect(chef_run).to create_cookbook_file("#{provisioning_service_directory}\\#{provisioning_initialize_file}").with_source(provisioning_initialize_file)
+  end
+
+  provisioning_resume_file = 'Resume-ProvisioningResource.ps1'
+  it 'creates Resume-ProvisioningResource.ps1 in the resume directory' do
+    expect(chef_run).to create_cookbook_file("#{resume_directory}\\#{provisioning_resume_file}").with_source(provisioning_resume_file)
   end
 
   service_name = 'provisioning'

@@ -156,6 +156,58 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot windows.ps1)
 . (Join-Path $PSScriptRoot WinRM.ps1)
 
+# --------------------------- Functions --------------------------------------
+
+function Resume-InstalledResources
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session
+    )
+
+    Invoke-Command `
+        -Session $session `
+        -ScriptBlock {
+
+            # Stop everything if there are errors
+            $ErrorActionPreference = 'Stop'
+
+            $commonParameterSwitches =
+                @{
+                    Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                    Debug = $false;
+                    ErrorAction = 'Stop'
+                }
+
+            $resumePath = 'c:\resume'
+            if (Test-Path $resumePath)
+            {
+                $scripts = Get-ChildItem -Path $resumePath -File -Filter *.ps1 @commonParameterSwitches
+                foreach($script in $scripts)
+                {
+                    try
+                    {
+                        & $script
+                    }
+                    catch [System.Exception]
+                    {
+                        # ignore it
+                    }
+                }
+
+                Remove-Item `
+                    -Path $resumePath `
+                    -Recurse `
+                    -Force `
+                    -ErrorAction SilentlyContinue `
+                    @commonParameterSwitches
+            }
+        } `
+        @commonParameterSwitches
+}
+
+# --------------------------- Script -----------------------------------------
+
 if (-not (Test-Path $installationDirectory))
 {
     throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
@@ -218,10 +270,16 @@ Restart-Machine `
     -localAdminCredential $localAdminCredential `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
+
+$connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
-    -localAdminCredential $localAdminCredential `
+    -localAdminCredential $credential `
     -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+Resume-InstalledResources `
+    -session $connection.Session `
     @commonParameterSwitches
 
 New-HypervVhdxTemplateFromVm `

@@ -14,3 +14,5 @@ provisioning_logs_path = "#{logs_path}\\provisioning"
 default['paths']['provisioning_logs'] = provisioning_logs_path
 
 default['service']['provisioning'] = 'provisioning'
+
+default['paths']['resume_path'] = 'c:\\resume'

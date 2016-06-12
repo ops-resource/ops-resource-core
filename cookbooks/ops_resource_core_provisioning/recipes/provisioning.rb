@@ -49,6 +49,18 @@ cookbook_file "#{provisioning_service_directory}\\#{provisioning_script}" do
   action :create
 end
 
+# STORE SCRIPTS USED TO AWAKEN SERVICES FROM HIBERNATION
+provisioning_resume_directory = node['paths']['resume_path']
+directory provisioning_resume_directory do
+  action :create
+end
+
+resume_script = 'Resume-ProvisioningResource.ps1'
+cookbook_file "#{provisioning_resume_directory}\\#{resume_script}" do
+  source resume_script
+  action :create
+end
+
 # CONFIGURE SERVICE
 service_name = node['service']['provisioning']
 win_service_name = 'provisioning_service'
@@ -121,7 +133,7 @@ powershell_script 'provisioning_as_service' do
             -Name '#{service_name}' `
             -BinaryPathName '#{provisioning_service_directory}\\#{win_service_name}.exe' `
             -DisplayName '#{service_name}' `
-            -StartupType Automatic
+            -StartupType Disabled
     }
 
     # Set the service to restart if it fails
@@ -151,5 +163,3 @@ file "#{meta_directory}\\service_provisioning.json" do
   JSON
   action :create
 end
-
-# push up information to provisioning server
