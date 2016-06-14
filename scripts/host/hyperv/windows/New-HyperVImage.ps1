@@ -165,6 +165,18 @@ function Resume-InstalledResources
         [System.Management.Automation.Runspaces.PSSession] $session
     )
 
+    Write-Verbose "Resume-InstalledResources - session = $session"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
     Invoke-Command `
         -Session $session `
         -ScriptBlock {
@@ -200,7 +212,7 @@ function Resume-InstalledResources
                     -Recurse `
                     -Force `
                     -ErrorAction SilentlyContinue `
-                    @commonParameterSwitches
+                    -Verbose
             }
         } `
         @commonParameterSwitches
