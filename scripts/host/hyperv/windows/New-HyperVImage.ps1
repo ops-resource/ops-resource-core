@@ -288,5 +288,6 @@ New-HypervVhdxTemplateFromVm `
     -vhdxTemplatePath (Join-Path $vhdxTemplatePath $imageName) `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
+    -logPath $logDirectory `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches

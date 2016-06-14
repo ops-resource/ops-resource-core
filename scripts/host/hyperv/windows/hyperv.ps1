@@ -419,6 +419,11 @@ function Mount-Vhdx
     The credential for the local administrator on the new machine.
 
 
+    .PARAMETER logPath
+
+    The full path to the directory into which the log files should be copied.
+
+
     .PARAMETER timeOutInSeconds
 
     The maximum amount of time in seconds that this function will wait for VM to enter the off state.
@@ -442,6 +447,9 @@ function New-HyperVVhdxTemplateFromVm
         [Parameter(Mandatory = $true)]
         [PSCredential] $localAdminCredential,
 
+        [Parameter(Mandatory = $true)]
+        [string] $logPath,
+
         [Parameter()]
         [ValidateScript({$_ -ge 1 -and $_ -le [system.int64]::maxvalue})]
         [int] $timeOutInSeconds = 900
@@ -450,6 +458,7 @@ function New-HyperVVhdxTemplateFromVm
     Write-Verbose "New-HyperVVhdxTemplateFromVm - vmName: $vmName"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - vhdPath: $vhdPath"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - hypervHost: $hypervHost"
+    Write-Verbose "New-HyperVVhdxTemplateFromVm - logPath: $logPath"
     Write-Verbose "New-HyperVVhdxTemplateFromVm - timeOutInSeconds: $timeOutInSeconds"
 
     # Stop everything if there are errors

@@ -387,10 +387,13 @@ Restart-Machine `
     #    apply patch
     #}
 
+# reboot the machine to make sure everything is ready
+
 New-HypervVhdxTemplateFromVm `
     -vmName $machineName `
     -vhdPath $vhdPath `
     -hypervHost $hypervHost `
     -localAdminCredential $localAdminCredential `
+    -logPath $logPath `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
