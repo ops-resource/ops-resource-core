@@ -129,6 +129,7 @@ $commonParameterSwitches =
 # Load the helper functions
 . (Join-Path $PSScriptRoot consul.ps1)
 . (Join-Path $PSScriptRoot hyperv.ps1)
+. (Join-Path $PSScriptRoot networking.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot WinRM.ps1)
 
@@ -163,11 +164,11 @@ function New-TestConsulConfig
 
   "ports": {
     "http": $($basePort + 0),
-    "dns": $($basePort + 1)
+    "dns": $($basePort + 1),
     "rpc": $($basePort + 2),
-    "serf_lan": "dns": $($basePort + 3),
-    "serf_wan": "dns": $($basePort + 4),
-    "server": "dns": $($basePort + 5)
+    "serf_lan": $($basePort + 3),
+    "serf_wan": $($basePort + 4),
+    "server": $($basePort + 5)
   },
 
   "dns_config" : {
@@ -193,7 +194,7 @@ function New-TestConsulConfig
   "log_level" : "warn"
 }
 "@
-    $consulConfig | Out-File -FilePath $configPath @commonParameterSwitches
+    $consulConfig | Out-File -FilePath $configPath -Encoding ascii @commonParameterSwitches
 }
 
 # -------------------- Script ---------------------------
@@ -232,12 +233,15 @@ try
 
     $arguments = @(
         "agent",
-        "-config-file=$($consulConfig)"
+        "-config-file=$($consulConfig)",
+        "-data-dir=$(Join-Path $PSScriptRoot 'consul')"
     )
     $consulProcess = Start-Process `
         -FilePath (Join-Path $PSScriptRoot 'consul.exe') `
         -ArgumentList $arguments `
         -WindowStyle Minimized `
+        -RedirectStandardOutput (Join-Path $logDirectory 'consul_out.log') `
+        -RedirectStandardError (Join-Path $logDirectory 'consul_err.log') `
         -PassThru `
         @commonParameterSwitches
     try
@@ -281,11 +285,21 @@ try
         $testWindowsResource = Join-Path $PSScriptRoot 'Test-WindowsResource.ps1'
         & $testWindowsResource -session $connection.Session -testDirectory $testDirectory -logDirectory $logDirectory
     }
+    catch
+    {
+        Write-Output "Test failed: Error was: $($_.Exception.ToString())"
+        throw $_.Exception.Message;
+    }
     finally
     {
         # Stop consul
         $consulProcess.Kill()
     }
+}
+catch
+{
+    Write-Output "Test failed: Error was: $($_.Exception.ToString())"
+    throw $_.Exception.Message;
 }
 finally
 {
@@ -300,7 +314,7 @@ finally
     }
     catch
     {
-        # just ignore it
+        Write-Output "Stopping VM failed: Error was: $($_.Exception.ToString())"
     }
 
     # Delete the VM. If the delete goes wrong we want to know, because we'll have a random VM
