@@ -135,15 +135,46 @@ $commonParameterSwitches =
 
 # -------------------- Functions ------------------------
 
+function Close-FirewallPort
+{
+    [CmdletBinding()]
+    param(
+        [int] $port = 8950
+    )
+
+    Write-Verbose "Close-FirewallPort - port = $port"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $fwPort = New-Object -ComObject HNetCfg.FWOpenPort
+    $fwPort.Port = $port
+    $fwPort.Name = 'Test-HyperVImage-Port'
+    $fwPort.Enabled = $false
+
+    $fwMgr = New-Object -ComObject HNetCfg.FwMgr
+    $profile = $fwMgr.LocalPolicy.CurrentProfile
+    $profile.GloballyOpenPorts.Add($fwPort)
+}
+
 function New-TestConsulConfig
 {
     [CmdletBinding()]
     param(
         [string] $datacenter,
+        [string] $ipAddress,
         [int] $basePort = 8900,
         [string] $configPath
     )
 
+    Write-Verbose "New-TestConsulConfig - datacenter = $datacenter"
+    Write-Verbose "New-TestConsulConfig - ipAddress = $ipAddress"
     Write-Verbose "New-TestConsulConfig - basePort = $basePort"
     Write-Verbose "New-TestConsulConfig - configPath = $configPath"
 
@@ -161,6 +192,8 @@ function New-TestConsulConfig
   "bootstrap_expect" : 1,
   "server": true,
   "datacenter": "$($datacenter)",
+
+  "client_addr": "$($ipAddress)",
 
   "ports": {
     "http": $($basePort + 0),
@@ -197,6 +230,34 @@ function New-TestConsulConfig
     $consulConfig | Out-File -FilePath $configPath -Encoding ascii @commonParameterSwitches
 }
 
+function Open-FirewallPort
+{
+    [CmdletBinding()]
+    param(
+        [int] $port = 8950
+    )
+
+    Write-Verbose "Open-FirewallPort - port = $port"
+
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $fwPort = New-Object -ComObject HNetCfg.FWOpenPort
+    $fwPort.Port = $port
+    $fwPort.Name = 'Test-HyperVImage-Port'
+    $fwPort.Enabled = $true
+
+    $fwMgr = New-Object -ComObject HNetCfg.FwMgr
+    $profile = $fwMgr.LocalPolicy.CurrentProfile
+    $profile.GloballyOpenPorts.Add($fwPort)
+}
+
 # -------------------- Script ---------------------------
 
 if (-not (Test-Path $testDirectory))
@@ -219,18 +280,22 @@ if (-not (Test-Path $vhdxTemplatePath))
     throw "Unable to find the directory where the Hyper-V templates are stored. Expected it at: $vhdxTemplatePath"
 }
 
+$basePort = 8950
 try
 {
+    Open-FirewallPort -port $basePort @commonParameterSwitches
+
     # Configure a consul agent that can be used as the configuration stored
-    $datacenter = "TestHyperVImage"
-    $basePort = 8950
+    $datacenter = "TestHyperVImage".ToLower()
     $consulConfig = Join-Path $PSScriptRoot 'testconsul_default.json'
     New-TestConsulConfig `
         -datacenter $datacenter `
+        -ipAddress $((get-netadapter | get-netipaddress | ? addressfamily -eq 'IPv4').ipaddress) `
         -basePort $basePort `
         -configPath $consulConfig `
         @commonParameterSwitches
 
+    Write-Verbose "Starting consul ..."
     $arguments = @(
         "agent",
         "-config-file=$($consulConfig)",
@@ -244,11 +309,13 @@ try
         -RedirectStandardError (Join-Path $logDirectory 'consul_err.log') `
         -PassThru `
         @commonParameterSwitches
+
+    Write-Verbose "Consul started ..."
     try
     {
         $dnsIPAddresses = @(Get-DnsServerIPAddressesFromCurrentMachine @commonParameterSwitches)
         $jsonObject = New-Object psobject -Property @{
-            "consul_datacenter" = "TestHyperVImage"
+            "consul_datacenter" = "$($datacenter)"
             "consul_recursors" = $dnsIPAddresses
             "consul_lanservers" = ""
 
@@ -258,6 +325,7 @@ try
             "consul_wanservers" = ""
         }
 
+        Write-Verbose "Setting test configuration in consul ..."
         $consultestconfig = ConvertTo-Json -InputObject $jsonObject @commonParameterSwitches
         $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):$($basePort)"
         Set-ConsulKeyValue `
@@ -303,6 +371,15 @@ catch
 }
 finally
 {
+    try
+    {
+        Close-FirewallPort -port $basePort @commonParameterSwitches
+    }
+    catch
+    {
+
+    }
+
     # Stop the VM
     try
     {
