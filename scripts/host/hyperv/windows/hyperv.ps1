@@ -150,7 +150,7 @@ function Get-ConnectionInformationForVm
         }
         catch
         {
-            Write-Verbose "Failed to connect to the VM. Most likely due to a VM reboot. Trying another $($maxRetry - $count) times ..."
+            Write-Verbose "Failed to connect to the VM. Most likely due to a VM reboot. Trying another $($maxRetry - $count) times. Error was: $($_.Exception.ToString())"
         }
     }
 

@@ -24,6 +24,7 @@
               target="scripts\host" />
         <file src="$DirOutput$\scripts\utils\windows\host\WinRM.ps1"
               target="scripts\host" />
-        <file src="$DirOutput$\scripts\utils\windows\*.ps1" target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1"
+              target="scripts\host" />
     </files>
 </package>
