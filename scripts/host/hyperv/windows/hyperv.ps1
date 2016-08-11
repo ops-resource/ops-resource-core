@@ -721,6 +721,12 @@ function New-HypervVm
     An array containing the sizes, in Gb, of any additional VHDs that should be attached to the virtual machine.
 
 
+    .PARAMETER configPath
+
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
+
+
     .PARAMETER hypervHost
 
     The name of the machine which is the Hyper-V host for the domain.
@@ -752,6 +758,9 @@ function New-HypervVmFromBaseImage
         [Parameter(Mandatory = $false)]
         [int[]] $vmAdditionalDiskSizesInGb,
 
+        [Parameter(Mandatory = $true)]
+        [string] $configPath,
+
         [Parameter(Mandatory = $false)]
         [string] $hypervHost = $env:COMPUTERNAME,
 
@@ -763,6 +772,7 @@ function New-HypervVmFromBaseImage
     Write-Verbose "New-HypervVmFromBaseImage - vmName: $vmName"
     Write-Verbose "New-HypervVmFromBaseImage - baseVhdx: $baseVhdx"
     Write-Verbose "New-HypervVmFromBaseImage - vmAdditionalDiskSizesInGb: $vmAdditionalDiskSizesInGb"
+    Write-Verbose "New-HypervVmFromBaseImage - configPath: $configPath"
     Write-Verbose "New-HypervVmFromBaseImage - hypervHost: $hypervHost"
     Write-Verbose "New-HypervVmFromBaseImage - vhdxStoragePath: $vhdxStoragePath"
 
@@ -776,40 +786,6 @@ function New-HypervVmFromBaseImage
             ErrorAction = 'Stop'
         }
 
-    # Create the unattend.xml file to set the machine name
-    $unattendContent = @"
-<?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
-    <!--
-        This file describes the different configuration phases for a windows machine.
-
-        For more information about the different stages see: https://technet.microsoft.com/en-us/library/hh824982.aspx
-    -->
-
-    <!--
-         This configuration pass is used to create and configure information in the Windows image, and is specific to the hardware that the
-         Windows image is installing to.
-
-        After the Windows image boots for the first time, the specialize configuration pass runs. During this pass, unique security IDs (SIDs)
-        are created. Additionally, you can configure many Windows features, including network settings, international settings, and domain information.
-        The answer file settings for the specialize pass appear in audit mode. When a computer boots to audit mode, the auditSystem pass runs, and
-        the computer processes the auditUser settings.
-    -->
-    <settings pass="specialize">
-
-        <component name="Microsoft-Windows-Shell-Setup"
-                   processorArchitecture="amd64"
-                   publicKeyToken="31bf3856ad364e35"
-                   language="neutral"
-                   versionScope="nonSxS"
-                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <ComputerName>$vmName</ComputerName>
-        </component>
-    </settings>
-</unattend>
-"@
-
     # Create a copy of the VHDX file and then mount it
     $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
     Copy-Item -Path $baseVhdx -Destination $vhdxPath -Verbose
@@ -822,256 +798,15 @@ function New-HypervVmFromBaseImage
     {
         $driveLetter = Mount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
 
-        Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
-    }
-    finally
-    {
-        Dismount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
-    }
-
-    $vm = New-HypervVm `
-        -vmName $vmName `
-        -osVhdPath $vhdxPath `
-        -vmAdditionalDiskSizesInGb $vmAdditionalDiskSizesInGb `
-        -hypervHost $hypervHost `
-        -vhdxStoragePath '' `
-        -vmStoragePath '' `
-        @commonParameterSwitches
-
-    return $vm
-}
-
-
-<#
-    .SYNOPSIS
-
-    Creates a new Hyper-V virtual machine with the given properties on the given AD domain.
-
-
-    .DESCRIPTION
-
-    The New-HypervVmOnDomain function creates a new Hyper-V virtual machine with the provided properties on the given AD domain.
-
-
-    .PARAMETER vmName
-
-    The name of the machine that should be created. Will also be used as the name of the VM.
-
-
-    .PARAMETER baseVhdx
-
-    The full path of the template VHDx that contains the pre-installed OS.
-
-
-    .PARAMETER vmAdditionalDiskSizesInGb
-
-    An array containing the sizes, in Gb, of any additional VHDs that should be attached to the virtual machine.
-
-
-    .PARAMETER hypervHost
-
-    The name of the machine which is the Hyper-V host for the domain.
-
-
-    .PARAMETER vhdxStoragePath
-
-    The full path of the directory where the virtual hard drive files should be stored.
-
-
-    .PARAMETER registeredOwner
-
-    The name of the owner that owns the new machine.
-
-
-    .PARAMETER domainName
-
-    The name of the domain to which the machine should be attached.
-
-
-    .PARAMETER unattendedJoin
-
-    The XML fragment for an unattended domain join. This is expected to look like:
-
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
-
-
-    .OUTPUTS
-
-    The VM object.
-#>
-function New-HypervVmOnDomain
-{
-    [CmdletBinding()]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '')]
-    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUsePSCredentialType', '')]
-    param(
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $vmName,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $baseVhdx,
-
-        [Parameter(Mandatory = $false)]
-        [int[]] $vmAdditionalDiskSizesInGb,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $hypervHost,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $vhdxStoragePath,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $registeredOwner,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $domainName,
-
-        [Parameter(Mandatory = $true)]
-        [ValidateNotNullOrEmpty()]
-        [string] $unattendedJoin
-    )
-
-    Write-Verbose "New-HypervVmOnDomain - vmName = $vmName"
-    Write-Verbose "New-HypervVmOnDomain - baseVhdx = $baseVhdx"
-    Write-Verbose "New-HypervVmOnDomain - vmAdditionalDiskSizesInGb = $vmAdditionalDiskSizesInGb"
-    Write-Verbose "New-HypervVmOnDomain - hypervHost = $hypervHost"
-    Write-Verbose "New-HypervVmOnDomain - vhdxStoragePath = $vhdxStoragePath"
-    Write-Verbose "New-HypervVmOnDomain - registeredOwner = $registeredOwner"
-    Write-Verbose "New-HypervVmOnDomain - domainName = $domainName"
-    Write-Verbose "New-HypervVmOnDomain - unattendedJoin = $unattendedJoin"
-
-    # Stop everything if there are errors
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
+        # Copy the remaining configuration scripts
+        $unattendScriptsDirectory = "$($driveLetter):\UnattendResources"
+        if (-not (Test-Path $unattendScriptsDirectory))
+        {
+            New-Item -Path $unattendScriptsDirectory -ItemType Directory | Out-Null
         }
 
-    # Create the unattend.xml file to join the domain
-    $unattendContent = @"
-<?xml version="1.0" encoding="utf-8"?>
-<unattend xmlns="urn:schemas-microsoft-com:unattend">
-    <!--
-        This file describes the different configuration phases for a windows machine.
-
-        For more information about the different stages see: https://technet.microsoft.com/en-us/library/hh824982.aspx
-    -->
-
-    <!--
-         This configuration pass is used to create and configure information in the Windows image, and is specific to the hardware that the
-         Windows image is installing to.
-
-        After the Windows image boots for the first time, the specialize configuration pass runs. During this pass, unique security IDs (SIDs)
-        are created. Additionally, you can configure many Windows features, including network settings, international settings, and domain information.
-        The answer file settings for the specialize pass appear in audit mode. When a computer boots to audit mode, the auditSystem pass runs, and
-        the computer processes the auditUser settings.
-    -->
-    <settings pass="specialize">
-
-        <component name="Microsoft-Windows-Shell-Setup"
-                   processorArchitecture="amd64"
-                   publicKeyToken="31bf3856ad364e35"
-                   language="neutral"
-                   versionScope="nonSxS"
-                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <RegisteredOwner>$registeredOwner</RegisteredOwner>
-            <ComputerName>$vmName</ComputerName>
-        </component>
-
-        <!--
-            Join the domain
-        -->
-        $unattendedJoin
-
-        <!--
-            Set the DNS search order
-        -->
-        <component name="Microsoft-Windows-DNS-Client"
-                   processorArchitecture="amd64"
-                   publicKeyToken="31bf3856ad364e35"
-                   language="neutral"
-                   versionScope="nonSxS"
-                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <DNSDomain>$domainName</DNSDomain>
-            <DNSSuffixSearchOrder>
-                <DomainName wcm:action="add" wcm:keyValue="1">$domainName</DomainName>
-            </DNSSuffixSearchOrder>
-        </component>
-    </settings>
-
-    <!--
-        During this configuration pass, settings are applied to Windows before Windows Welcome starts.
-        This pass is typically used to configure Windows Shell options, create user accounts, and specify language and
-        locale settings. The answer file settings for the oobeSystem pass appear in Windows Welcome, also known as OOBE.
-    -->
-    <settings pass="oobeSystem">
-        <!--
-            Set the local Administrator account password and
-            add domain users to the administrators group
-        -->
-        <component name="Microsoft-Windows-Shell-Setup"
-                   processorArchitecture="amd64"
-                   publicKeyToken="31bf3856ad364e35"
-                   language="neutral"
-                   versionScope="nonSxS"
-                   xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-            <UserAccounts>
-                <DomainAccounts>
-                    <DomainAccountList wcm:action="add">
-                        <Domain>$domainName</Domain>
-                        <DomainAccount wcm:action="add">
-                            <Group>Administrators</Group>
-                            <Name>$domainAdminUserName</Name>
-                        </DomainAccount>
-                    </DomainAccountList>
-                </DomainAccounts>
-            </UserAccounts>
-        </component>
-    </settings>
-</unattend>
-"@
-
-    # Create a copy of the VHDX file and then mount it
-    $vhdxPath = Join-Path $vhdxStoragePath "$($vmName.ToLower()).vhdx"
-    Copy-Item -Path $baseVhdx -Destination $vhdxPath -Verbose
-    if (Get-ItemProperty -Path $vhdxPath -Name IsReadOnly)
-    {
-        Set-ItemProperty -Path $vhdxPath -Name IsReadOnly -Value $false
-    }
-
-    try
-    {
-        $driveLetter = Mount-Vhdx -vhdPath $vhdxPath @commonParameterSwitches
-
-        Set-Content -Path "$($driveLetter):\unattend.xml" -Value $unattendContent
+        Copy-Item -Path "$configPath\unattend.xml" -Destination "$($driveLetter):\unattend.xml" @commonParameterSwitches
+        Copy-Item -Path "$configPath\*" -Exclude "$configPath\unattend.xml" -Destination $unattendScriptsDirectory @commonParameterSwitches
     }
     finally
     {

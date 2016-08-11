@@ -55,27 +55,10 @@
     The UNC path to the directory that stores the Hyper-V VM information.
 
 
-    .PARAMETER unattendedJoinFile
+    .PARAMETER configPath
 
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
-
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
 
 
     .PARAMETER staticMacAddress
@@ -112,7 +95,7 @@ param(
     [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
 
     [Parameter(Mandatory = $true)]
-    [string] $unattendedJoinFile                                = '',
+    [string] $configPath                                        = '',
 
     [Parameter(Mandatory = $false)]
     [string] $staticMacAddress                                  = '',
@@ -127,6 +110,7 @@ Write-Verbose "New-HyperVResource - imageName = $imageName"
 Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
 Write-Verbose "New-HyperVResource - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "New-HyperVResource - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "New-HyperVResource - configPath = $configPath"
 Write-Verbose "New-HyperVResource - staticMacAddress = $staticMacAddress"
 Write-Verbose "New-HyperVResource - provisioningBootstrapUrl = $provisioningBootstrapUrl"
 
@@ -166,7 +150,7 @@ function New-VmResource
         [string] $vhdxStoragePath,
 
         [Parameter(Mandatory = $true)]
-        [string] $unattendedJoinFile,
+        [string] $configPath,
 
         [Parameter(Mandatory = $false)]
         [string] $staticMacAddress
@@ -176,7 +160,7 @@ function New-VmResource
     Write-Verbose "New-VmResource - baseVhdx = $baseVhdx"
     Write-Verbose "New-VmResource - hypervHost = $hypervHost"
     Write-Verbose "New-VmResource - vhdxStoragePath = $vhdxStoragePath"
-    Write-Verbose "New-VmResource - unattendedJoinFile = $unattendedJoinFile"
+    Write-Verbose "New-VmResource - configPath = $configPath"
     Write-Verbose "New-VmResource - staticMacAddress = $staticMacAddress"
 
     # Stop everything if there are errors
@@ -189,30 +173,13 @@ function New-VmResource
             ErrorAction = 'Stop'
         }
 
-    $registeredOwner = Get-RegisteredOwner @commonParameterSwitches
-    $unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
-
-    if (Test-Path $unattendedJoinFile)
-    {
-        $vm = New-HypervVmOnDomain `
-            -vmName $machineName `
-            -baseVhdx $baseVhdx `
-            -hypervHost $hypervHost `
-            -vhdxStoragePath $vhdxStoragePath `
-            -registeredOwner $registeredOwner `
-            -domainName $env:USERDNSDOMAIN `
-            -unattendedJoin $unattendedJoin `
-            @commonParameterSwitches
-    }
-    else
-    {
-        $vm = New-HypervVmFromBaseImage `
-            -vmName $machineName `
-            -baseVhdx $baseVhdx `
-            -hypervHost $hypervHost `
-            -vhdxStoragePath $vhdxStoragePath `
-            @commonParameterSwitches
-    }
+    $vm = New-HypervVmFromBaseImage `
+        -vmName $machineName `
+        -baseVhdx $baseVhdx `
+        -vhdxStoragePath $vhdxStoragePath `
+        -configPath $configPath `
+        -hypervHost $hypervHost `
+        @commonParameterSwitches
 
     if ($staticMacAddress -ne '')
     {
@@ -294,7 +261,7 @@ $vm = New-VmResource `
     -baseVhdx $baseVhdx `
     -hypervHost $hypervHost `
     -vhdxStoragePath $vhdxStoragePath `
-    -unattendedJoinFile $unattendedJoinFile `
+    -configPath $configPath `
     -staticMacAddress $staticMacAddress `
     @commonParameterSwitches
 

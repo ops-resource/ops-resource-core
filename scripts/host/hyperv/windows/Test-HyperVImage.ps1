@@ -70,6 +70,12 @@
     The UNC path to the directory that stores the Hyper-V VM information.
 
 
+    .PARAMETER configPath
+
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
+
+
     .PARAMETER staticMacAddress
 
     An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
@@ -102,6 +108,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
 
+    [Parameter(Mandatory = $true)]
+    [string] $configPath                                        = '',
+
     [Parameter(Mandatory = $false)]
     [string] $staticMacAddress                                  = ''
 )
@@ -115,6 +124,7 @@ Write-Verbose "Test-HyperVImage - machineName = $machineName"
 Write-Verbose "Test-HyperVImage - hypervHost = $hypervHost"
 Write-Verbose "Test-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "Test-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "Test-HyperVImage - configPath = $configPath"
 Write-Verbose "Test-HyperVImage - staticMacAddress = $staticMacAddress"
 
 $ErrorActionPreference = 'Stop'
@@ -344,6 +354,7 @@ try
             -hypervHost $hypervHost `
             -vhdxTemplatePath $vhdxTemplatePath `
             -hypervHostVmStoragePath $hypervHostVmStoragePath `
+            -configPath $configPath `
             -staticMacAddress $staticMacAddress `
             -provisioningBootstrapUrl $provisioningBootstrapUrl `
             @commonParameterSwitches
