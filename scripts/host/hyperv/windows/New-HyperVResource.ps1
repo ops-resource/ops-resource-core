@@ -251,7 +251,7 @@ function Set-ProvisioningInformation
 
 # -------------------- Script ---------------------------
 
-$hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
+$hypervHostVmStoragePath = "\\$($hypervHost)\vms\machines"
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
 $baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1

@@ -320,6 +320,9 @@ try
         -PassThru `
         @commonParameterSwitches
 
+    # Wait for Consul to spin up
+    Start-Sleep -Seconds 5
+
     Write-Verbose "Consul started ..."
     try
     {

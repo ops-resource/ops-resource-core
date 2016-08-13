@@ -131,7 +131,7 @@ try
         -resourceName $resourceName `
         -resourceVersion $resourceVersion `
         -cookbookNames $cookbookNames `
-        -imageName $imageName `
+        -imageName $previewImageName `
         -installationDirectory $installationDirectory `
         -logDirectory $logDirectory `
         -osName $osName `
