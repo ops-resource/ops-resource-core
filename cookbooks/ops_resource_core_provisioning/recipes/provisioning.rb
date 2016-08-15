@@ -49,18 +49,6 @@ cookbook_file "#{provisioning_service_directory}\\#{provisioning_script}" do
   action :create
 end
 
-# STORE SCRIPTS USED TO AWAKEN SERVICES FROM HIBERNATION
-provisioning_resume_directory = node['paths']['resume_path']
-directory provisioning_resume_directory do
-  action :create
-end
-
-resume_script = 'Resume-ProvisioningResource.ps1'
-cookbook_file "#{provisioning_resume_directory}\\#{resume_script}" do
-  source resume_script
-  action :create
-end
-
 # CONFIGURE SERVICE
 service_name = node['service']['provisioning']
 win_service_name = 'provisioning_service'

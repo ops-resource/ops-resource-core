@@ -29,12 +29,12 @@ Describe 'Provisioning installation:' {
 
     Context 'The consul service' {
         $service = Get-WmiObject win32_service | Where {$_.name -eq 'provisioning'} | Select -First 1
-        It 'is running as provisioning_user' {
+        It 'is running as LocalSystem' {
             $service | Should Not BeNullOrEmpty
-            $service.StartName | Should Be '.\provisioning_user'
+            $service.StartName | Should Be '.\LocalSystem'
         }
 
-        It 'starts automatically' {
+        It 'has been disabled' {
             $service.StartMode | Should Be 'Disabled'
         }
     }

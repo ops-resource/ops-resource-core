@@ -199,9 +199,14 @@ try
     $provisioners = @()
     foreach($script in $scriptsToExecute)
     {
+        Write-Log `
+            -message "Provisioning with provisioner object from $($script.FullName) ..." `
+            -logPath $logPath `
+            @commonParameterSwitches
+
         try
         {
-            $provisioner = & $script
+            $provisioner = & $($script.FullName)
             if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Provision' ).Length -eq 3))
             {
                 $provisioners += $provisioner
@@ -210,7 +215,7 @@ try
         catch
         {
             Write-Log `
-                -message "Failed to get the provisioner object from $($script). The error was $($_.Exception.ToString())" `
+                -message "Failed to get the provisioner object from $($script.FullName). The error was $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
         }

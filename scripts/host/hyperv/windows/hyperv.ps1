@@ -511,6 +511,13 @@ function New-HyperVVhdxTemplateFromVm
             Remove-Item -Path $userProfileDirectory.FullName -Recurse -Force @commonParameterSwitches
         }
 
+        # Clean up the event logs
+        $eventLogFiles = Get-ChildItem -Path "$($driveLetter):\windows\System32\Winevt\Logs\*" -File
+        foreach($eventLogFile in $eventLogFiles)
+        {
+            Remove-Item -Path $eventLogFile.FullName -Force @commonParameterSwitches
+        }
+
         # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
         # but saves a considerable amount of disk space.
         dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase

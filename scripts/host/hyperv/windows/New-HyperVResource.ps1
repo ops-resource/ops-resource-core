@@ -254,11 +254,11 @@ function Set-ProvisioningInformation
 $hypervHostVmStoragePath = "\\$($hypervHost)\vms\machines"
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($imageName).vhdx" | Select-Object -First 1
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter $imageName | Select-Object -First 1
 
 $vm = New-VmResource `
     -machineName $machineName `
-    -baseVhdx $baseVhdx `
+    -baseVhdx $baseVhdx.FullName `
     -hypervHost $hypervHost `
     -vhdxStoragePath $vhdxStoragePath `
     -configPath $configPath `
@@ -278,6 +278,50 @@ $connection = Get-ConnectionInformationForVm `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
     -timeOutInSeconds 900 `
+    @commonParameterSwitches
+
+Write-Verbose "Enabling provisioning ..."
+Invoke-Command `
+    -Session $connection.Session `
+    -ScriptBlock {
+
+        # Stop everything if there are errors
+        $ErrorActionPreference = 'Stop'
+
+        $commonParameterSwitches =
+            @{
+                Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                Debug = $false;
+                ErrorAction = 'Stop'
+            }
+
+        try
+        {
+            Set-Service `
+                -Name 'Provisioning' `
+                -StartupType Manual `
+                @commonParameterSwitches
+
+            Start-Service `
+                -Name 'Provisioning' `
+                @commonParameterSwitches
+
+            $killTime = (Get-Date).AddSeconds(5 * 60)
+            while ((Get-Date) -lt $killTime)
+            {
+                Write-Verbose "Waiting for provisioning to complete. Waiting another $($killTime - (Get-Date)) ..."
+                $service = Get-Service -name 'Provisioning' @commonParameterSwitches
+                if ($service.Status -eq ([System.ServiceProcess.ServiceControllerStatus]::Stopped))
+                {
+                    continue
+                }
+            }
+        }
+        catch
+        {
+            Write-Error "Failed to stop the service. Error was $($_.Exception.ToString())"
+        }
+    } `
     @commonParameterSwitches
 
 return $connection
