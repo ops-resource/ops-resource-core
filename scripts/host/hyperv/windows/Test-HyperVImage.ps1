@@ -308,6 +308,7 @@ try
     Write-Verbose "Starting consul ..."
     $arguments = @(
         "agent",
+        "-dev",
         "-config-file=$($consulConfig)",
         "-data-dir=$(Join-Path $PSScriptRoot 'consul')"
     )
@@ -344,7 +345,7 @@ try
         Set-ConsulKeyValue `
             -httpUrl $provisioningBootstrapUrl `
             -dataCenter $datacenter `
-            -keyPath "provisioning/$($machineName)/service/consul" `
+            -keyPath "provisioning/$($machineName)/service/consul/environment" `
             -value $consultestconfig `
             @commonParameterSwitches
 

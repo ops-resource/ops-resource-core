@@ -3,24 +3,10 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-$commonParameterSwitches =
-    @{
-        Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $false;
-        ErrorAction = "Stop"
-    }
-
 # -------------------------- Script classes --------------------------------
 
 class ConsulProvisioner
 {
-    [hashtable] $commonParameterSwitches
-
-    ConsulProvisioner ([hashtable] $commonParameterSwitches)
-    {
-        $this.commonParameterSwitches = $commonParameterSwitches
-    }
-
     [string[]] Dependencies()
     {
         return @( 'Meta', 'Provisioning' )
@@ -31,19 +17,19 @@ class ConsulProvisioner
         Set-Service `
             -Name $serviceName `
             -StartupType Automatic `
-            @($this.commonParameterSwitches)
+            -Verbose
 
-        $service = Get-Service -Name $serviceName @($this.commonParameterSwitches)
+        $service = Get-Service -Name $serviceName -Verbose
         if ($service.Status -ne 'Running')
         {
-            Start-Service -Name $serviceName @($this.commonParameterSwitches)
+            Start-Service -Name $serviceName -Verbose
         }
     }
 
     [psobject] GetServiceMetadata([string] $serviceName)
     {
         $configPath = "c:\meta\service_$($serviceName).json"
-        $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
+        $json = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($configPath))  -Verbose
 
         return $json
     }
@@ -51,7 +37,7 @@ class ConsulProvisioner
     [string] MachineIp()
     {
         $result = ''
-        $adapters = Get-NetAdapter @($this.commonParameterSwitches)
+        $adapters = Get-NetAdapter -Verbose
         foreach($adapter in $adapters)
         {
             if ($adapter.Status -ne 'Up')
@@ -82,21 +68,21 @@ class ConsulProvisioner
     {
         $serviceName = 'consul'
         $response = Invoke-WebRequest `
-            -Uri "$($configurationUrl)/$($serviceName)" `
+            -Uri "$($configurationUrl)/environment" `
             -Method Get `
             -UseDefaultCredentials `
             -UseBasicParsing `
-            @($this.commonParameterSwitches)
+            -Verbose
 
         if ($response.StatusCode -ne 200)
         {
             throw "Failed to get configuration data from server. Response was $($response.StatusCode)"
         }
 
-        $configuration = ConvertFrom-Json -InputObject $response.Content @($this.commonParameterSwitches)
+        $configuration = ConvertFrom-Json -InputObject $response.Content -Verbose
 
         $meta = $this.GetServiceMetadata($serviceName)
-        $json = ConvertFrom-Json -InputObject (Get-Content -Path $meta.service.application_config)  @($this.commonParameterSwitches)
+        $json = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($meta.service.application_config))  -Verbose
         $json.datacenter = $configuration.consul_datacenter
         $json.recursors = $configuration.consul_recursors
         $json.retry_join = $configuration.consul_lanservers
@@ -119,7 +105,7 @@ class ConsulProvisioner
         }
 
         $textContent = ConvertTo-Json -InputObject $json
-        Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline @($this.commonParameterSwitches)
+        Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline -Verbose
     }
 
     [void] ConfigureConsulTemplate([string] $configurationUrl)
@@ -128,8 +114,7 @@ class ConsulProvisioner
         $metaConsulTemplate = $this.GetServiceMetadata('consultemplate')
 
         # overwrite some of the values with consul template parameters
-        $textContent = Get-Content -Path $metaConsul.service.application_config
-        $lines = $textContent.Split([System.Environment]::NewLine)
+        $lines = Get-Content -Path $metaConsul.service.application_config
         for($i = 0; $i -lt $lines.Length; $i++)
         {
             $currentLine = $lines[$i]
@@ -174,7 +159,7 @@ class ConsulProvisioner
             }
         }
 
-        Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline @($this.commonParameterSwitches)
+        Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline -Verbose
     }
 
     [string] ResourceName()
@@ -203,4 +188,4 @@ class ConsulProvisioner
 
 # -------------------------- Script start ------------------------------------
 
-[ConsulProvisioner]::New($commonParameterSwitches)
+[ConsulProvisioner]::New()

@@ -134,16 +134,6 @@ Describe 'Consul-template installation:' {
             'c:\meta\consultemplate' | Should Exist
             'c:\meta\consultemplate\templates' | Should Exist
         }
-
-        It 'has the templates' {
-            'c:\meta\consultemplate\templates\Test-Disk.ps1' | Should Exist
-        }
-
-        It 'has a valid check_server file' {
-            $checkServer = 'c:/meta/consul/check_server.json'
-            $checkServer | Should Exist
-            { Get-Content $checkServer | Out-String | ConvertFrom-Json } | Should Not Throw
-        }
     }
 
     Context 'The logs install location' {

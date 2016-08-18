@@ -168,6 +168,55 @@ $commonParameterSwitches =
 
 # --------------------------- Functions --------------------------------------
 
+function Clear-UnnecessaryData
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session
+    )
+
+    Write-Verbose "Clear-UnnecessaryData - session = $session"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Invoke-Command `
+        -Session $session `
+        -ScriptBlock {
+
+            # Stop everything if there are errors
+            $ErrorActionPreference = 'Stop'
+
+            $commonParameterSwitches =
+                @{
+                    Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                    Debug = $false;
+                    ErrorAction = 'Stop'
+                }
+
+            Write-Verbose "Cleaning SxS..."
+            Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
+
+            @(
+                'Desktop-Experience',
+                'InkAndHandwritingServices',
+                'Server-Media-Foundation' ) |
+                Remove-WindowsFeature
+
+            Get-WindowsFeature |
+                Where-Object { $_.InstallState -eq 'Available' } |
+                Uninstall-WindowsFeature -Remove
+        } `
+        @commonParameterSwitches
+}
+
 function Resume-InstalledResources
 {
     [CmdletBinding()]
@@ -302,6 +351,10 @@ $connection = Get-ConnectionInformationForVm `
     @commonParameterSwitches
 
 Resume-InstalledResources `
+    -session $connection.Session `
+    @commonParameterSwitches
+
+Clear-UnnecessaryData `
     -session $connection.Session `
     @commonParameterSwitches
 

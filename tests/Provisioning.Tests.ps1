@@ -31,7 +31,7 @@ Describe 'Provisioning installation:' {
         $service = Get-WmiObject win32_service | Where {$_.name -eq 'provisioning'} | Select -First 1
         It 'is running as LocalSystem' {
             $service | Should Not BeNullOrEmpty
-            $service.StartName | Should Be '.\LocalSystem'
+            $service.StartName | Should Be 'LocalSystem'
         }
 
         It 'has been disabled' {

@@ -511,22 +511,50 @@ function New-HyperVVhdxTemplateFromVm
             Remove-Item -Path $userProfileDirectory.FullName -Recurse -Force @commonParameterSwitches
         }
 
-        # Clean up the event logs
-        $eventLogFiles = Get-ChildItem -Path "$($driveLetter):\windows\System32\Winevt\Logs\*" -File
-        foreach($eventLogFile in $eventLogFiles)
-        {
-            Remove-Item -Path $eventLogFile.FullName -Force @commonParameterSwitches
-        }
-
         # Clean up the WinSXS store, and remove any superceded components. Updates will no longer be able to be uninstalled,
         # but saves a considerable amount of disk space.
         dism.exe /image:$($driveLetter):\ /Cleanup-Image /StartComponentCleanup /ResetBase
+
+        $pathsToRemove = @(
+            "$env:localappdata\Nuget",
+            "$env:localappdata\temp\*",
+            "$($driveLetter):\windows\logs",
+            "$($driveLetter):\windows\System32\Winevt\Logs",
+            "$($driveLetter):\windows\panther",
+            "$($driveLetter):\windows\temp\*",
+            "$($driveLetter):\windows\winsxs\manifestcache")
+        foreach($path in $pathsToRemove)
+        {
+            if (Test-Path $path)
+            {
+                try
+                {
+                    Remove-Item $path -Recurse -Force @commonParameterSwitches
+                }
+                catch
+                {
+                    # ignore it
+                }
+            }
+        }
 
         Get-ChildItem -Path (Split-Path $vhdPath -Parent) -Filter *.log |
             Foreach-Object {
                 $fileName = [System.IO.Path]::GetFileNameWithoutExtension($_.FullName)
                 Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$($fileName)-cleanimage.log") @commonParameterSwitches
             }
+
+        Remove-Item -Path "$($driveLetter):\*.log" -Force @commonParameterSwitches
+
+        Write-Verbose "defragging ..."
+        if (Test-Command -commandName 'Optimize-Volume')
+        {
+            Optimize-Volume -DriveLetter $driveLetter -Defrag @commonParameterSwitches
+        }
+            else
+        {
+            Defrag.exe $driveLetter /H
+        }
     }
     finally
     {

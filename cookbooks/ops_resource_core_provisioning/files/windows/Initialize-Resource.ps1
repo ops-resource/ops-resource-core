@@ -207,7 +207,7 @@ try
         try
         {
             $provisioner = & $($script.FullName)
-            if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Provision' ).Length -eq 3))
+            if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Start' ).Length -eq 3))
             {
                 $provisioners += $provisioner
             }
@@ -218,19 +218,34 @@ try
                 -message "Failed to get the provisioner object from $($script.FullName). The error was $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
         }
     }
 
-    $provisioners = SortBy-Dependencies `
+    $provisioners = Order-ByDependencies `
         -provisionersToSort $provisioners `
         @commonParameterSwitches
 
     $provisioningBaseUri = ''
-    $expectedConfigurationFile = Join-Path $env:HOMEDRIVE 'provisioning\provisioning.json'
+    $homeDrive = $env:HOMEDRIVE
+    if (($homeDrive -eq $null) -or ($homeDrive -eq ''))
+    {
+        $homeDrive = 'c:'
+    }
+    $expectedConfigurationFile = Join-Path $homeDrive 'provisioning\provisioning.json'
     if (Test-Path $expectedConfigurationFile)
     {
         # Read configuration file
-        $content = Get-Content -Path $expectedConfigurationFile @commonParameterSwitches
+        $content = [System.IO.File]::ReadAllText($expectedConfigurationFile)
         $json = ConvertFrom-Json $content
         $provisioningBaseUri = $json.entrypoint
     }
@@ -269,6 +284,16 @@ try
                 -message "Failure during the configuration of $($resourceName). Error was: $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
         }
     }
 
@@ -290,7 +315,29 @@ try
                 -message "Failure during the starting of $($resourceName). Error was: $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
         }
+    }
+}
+catch
+{
+    $ErrorRecord=$Error[0]
+    $ErrorRecord | Format-List * -Force
+    $ErrorRecord.InvocationInfo |Format-List *
+    $Exception = $ErrorRecord.Exception
+    for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+    {
+        "$i" * 80
+        $Exception |Format-List * -Force
     }
 }
 finally
