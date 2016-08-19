@@ -247,7 +247,7 @@ try
         # Read configuration file
         $content = [System.IO.File]::ReadAllText($expectedConfigurationFile)
         $json = ConvertFrom-Json $content
-        $provisioningBaseUri = $json.entrypoint
+        $provisioningBaseUri = $json.consul
     }
     else
     {
@@ -265,7 +265,6 @@ try
         throw $text
     }
 
-    $provisioningBaseUri = "$($provisioningBaseUri)/v1/kv/provisioning/$($env:COMPUTERNAME)/service"
     foreach($provisioner in $provisioners)
     {
         $resourceName = $provisioner.ResourceName()

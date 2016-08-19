@@ -159,7 +159,7 @@ class ConsulProvisioner
             }
         }
 
-        Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline -Verbose
+        Out-File -FilePath (Join-Path $metaConsulTemplate.Service.template_path 'consul_default.json.ctmpl') -InputObject $lines -Force -NoNewline -Verbose
     }
 
     [string] ResourceName()

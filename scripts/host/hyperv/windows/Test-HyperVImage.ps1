@@ -341,7 +341,7 @@ try
 
         Write-Verbose "Setting test configuration in consul ..."
         $consultestconfig = ConvertTo-Json -InputObject $jsonObject @commonParameterSwitches
-        $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):$($basePort)"
+        $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):$($basePort)/v1/kv/provisioning/$($machineName)/service"
         Set-ConsulKeyValue `
             -httpUrl $provisioningBootstrapUrl `
             -dataCenter $datacenter `

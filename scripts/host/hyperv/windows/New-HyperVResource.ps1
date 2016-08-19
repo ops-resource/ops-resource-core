@@ -238,7 +238,7 @@ function Set-ProvisioningInformation
         }
 
         $json = New-Object psobject -Property @{
-            'entrypoint' = $provisioningBootstrapUrl
+            'consul' = $provisioningBootstrapUrl
         }
 
         ConvertTo-Json -InputObject $json @commonParameterSwitches | Out-File -FilePath (Join-Path $provisioningDirectory 'provisioning.json')
