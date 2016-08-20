@@ -341,11 +341,12 @@ try
 
         Write-Verbose "Setting test configuration in consul ..."
         $consultestconfig = ConvertTo-Json -InputObject $jsonObject @commonParameterSwitches
-        $provisioningBootstrapUrl = "http://$($env:COMPUTERNAME):$($basePort)/v1/kv/provisioning/$($machineName)/service"
+        $consulBaseUrl = "http://$($env:COMPUTERNAME):$($basePort)"
+        $keyPath = "provisioning/$($machineName)/service"
         Set-ConsulKeyValue `
-            -httpUrl $provisioningBootstrapUrl `
+            -httpUrl $consulBaseUrl `
             -dataCenter $datacenter `
-            -keyPath "provisioning/$($machineName)/service/consul/environment" `
+            -keyPath "$($keyPath)/consul/environment" `
             -value $consultestconfig `
             @commonParameterSwitches
 
@@ -360,7 +361,7 @@ try
             -hypervHostVmStoragePath $hypervHostVmStoragePath `
             -configPath $configPath `
             -staticMacAddress $staticMacAddress `
-            -provisioningBootstrapUrl $provisioningBootstrapUrl `
+            -provisioningBootstrapUrl "$($consulBaseUrl)/v1/kv/$($keyPath)" `
             @commonParameterSwitches
 
         Write-Verbose "Connected to $computerName via $($connection.Session.Name)"
