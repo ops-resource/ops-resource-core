@@ -106,7 +106,9 @@ class ConsulProvisioner
         }
 
         $textContent = ConvertTo-Json -InputObject $json
-        Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline -Verbose
+
+        # Make sure we write this as UTF-8 without BOM, otherwise consul chokes
+        [IO.File]::WriteAllLines($meta.service.application_config, $textContent)
     }
 
     [void] ConfigureConsulTemplate([string] $configurationUrl)
