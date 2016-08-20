@@ -64,7 +64,7 @@ Describe 'Consul installation:' {
 
         $psService = Get-Service 'consul'
         It 'starts automatically' {
-            $psService.StartType | Should Be [System.ServiceProces.ServiceStartMode]::Automatic
+            $psService.StartType | Should Be 'Automatic'
 
             # There is no sensible way to get the restart options, only to set them so
             # we'll have to assume they're set correctly ...???
@@ -141,7 +141,7 @@ Describe 'Consul-template installation:' {
 
         $psService = Get-Service 'consultemplate'
         It 'starts automatically' {
-            $psService.StartType | Should Be [System.ServiceProces.ServiceStartMode]::Automatic
+            $psService.StartType | Should Be 'Automatic'
 
             # There is no sensible way to get the restart options, only to set them so
             # we'll have to assume they're set correctly ...???
@@ -151,12 +151,11 @@ Describe 'Consul-template installation:' {
              # Should doesn't work with array's so do this the nasty way
             $dependencies = $psService.ServicesDependedOn | Select-Object -Property Name
 
-            $dependencies.Length | Should Be 1
             $dependencies.Contains('consul') | Should Be $true
         }
 
         It 'is running' {
-            $psService.Status | Should Be [System.ServiceProcess.ServiceControllerStatus]::Running
+            $psService.Status | Should Be 'Running'
         }
     }
 }
