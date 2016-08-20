@@ -114,7 +114,6 @@ Describe 'Consul-template installation:' {
         It 'has a valid default configuration file' {
             $consulConfiguration = 'c:\ops\consultemplate\bin\consultemplate_default.json'
             $consulConfiguration | Should Exist
-            { Get-Content $consulConfiguration | Out-String | ConvertFrom-Json } | Should Not Throw
         }
     }
 

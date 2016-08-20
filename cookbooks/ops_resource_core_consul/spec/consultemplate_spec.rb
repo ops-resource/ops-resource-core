@@ -156,26 +156,22 @@ describe 'ops_resource_core_consul::consultemplate' do
     end
 
     consultemplate_default_config_content = <<-JSON
-{
-    consul = "127.0.0.1:2,
+consul = "127.0.0.1:2"
 
-    retry = "10s",
-    max_stale = "150s",
-    wait = "5s:10s",
+retry = "10s"
+max_stale = "150s"
+wait = "5s:10s"
 
-    log_level = "warn",
+log_level = "warn"
 
-    template {
-        source = "c:\\meta\\consultemplate\\templates\\consul\\consul_default.json.ctmpl",
-        destination = "c:\\ops\\consul\\bin\\consul_default.json",
+template {
+    source = "c:\\\\meta\\\\consultemplate\\\\templates\\\\consul\\\\consul_default.json.ctmpl"
+    destination = "c:\\\\ops\\\\consul\\\\bin\\\\consul_default.json"
 
-        command = "net stop service consul;net start service consul",
-        command_timeout = "60s",
+    command = "net stop service consul;net start service consul"
+    command_timeout = "60s"
 
-        backup = false,
-
-        wait = "2s:6s"
-    }
+    backup = false
 }
     JSON
     it 'creates consultemplate_default.json in the consul-template ops directory' do

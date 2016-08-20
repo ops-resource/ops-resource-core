@@ -135,29 +135,28 @@ consul_bin_directory = node['paths']['consul_bin']
 consul_config_file = node['file_name']['consul_config_file']
 service_name_consul = node['service']['consul']
 
+consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
+consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
 consultemplate_config_file = 'consultemplate_default.json'
 file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
   content <<-JSON
-{
-    consul = "127.0.0.1:#{consul_port},
 
-    retry = "10s",
-    max_stale = "150s",
-    wait = "5s:10s",
+consul = "127.0.0.1:#{consul_port}"
 
-    log_level = "warn",
+retry = "10s"
+max_stale = "150s"
+wait = "5s:10s"
 
-    template {
-        source = "#{consultemplate_template_directory}\\consul\\#{consul_config_file}.ctmpl",
-        destination = "#{consul_bin_directory}\\#{consul_config_file}",
+log_level = "warn"
 
-        command = "net stop service #{service_name_consul};net start service #{service_name_consul}",
-        command_timeout = "60s",
+template {
+    source = "#{consultemplate_template_directory_escaped}\\\\consul\\\\#{consul_config_file}.ctmpl"
+    destination = "#{consul_bin_directory_escaped}\\\\#{consul_config_file}"
 
-        backup = false,
+    command = "net stop service #{service_name_consul};net start service #{service_name_consul}"
+    command_timeout = "60s"
 
-        wait = "2s:6s"
-    }
+    backup = false
 }
   JSON
 end
@@ -259,8 +258,6 @@ consultemplate_bin_directory_escaped = consultemplate_bin_directory.gsub('\\', '
 consultemplate_config_file_escaped = "#{consultemplate_bin_directory}\\#{consultemplate_config_file}".gsub('\\', '\\\\\\\\')
 
 win_service_config_file_escaped = "#{consultemplate_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
-
-consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
 file "#{meta_directory}\\service_consultemplate.json" do
   content <<-JSON
 {
