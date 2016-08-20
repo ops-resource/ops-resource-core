@@ -303,8 +303,7 @@ powershell_script 'consul_as_service' do
             -BinaryPathName '#{consul_bin_directory}\\#{win_service_name}.exe' `
             -Credential $credential `
             -DisplayName '#{service_name}' `
-            -StartupType Disabled `
-            -DependsOn 'tcpip,dhcp,dnscache' # Consul depends on the network being up
+            -StartupType Disabled
     }
 
     # Set the service to restart if it fails
