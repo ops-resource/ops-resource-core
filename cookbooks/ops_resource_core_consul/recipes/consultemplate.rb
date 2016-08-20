@@ -15,8 +15,8 @@ win_service_name = 'consultemplate_service'
 # Create user
 # - limited user
 # - Reduce access to files. User should only have write access to consul dir
-service_username = 'consultemplate_user'
-service_password = SecureRandom.uuid
+service_username = node['service']['consultemplate_user_name']
+service_password = node['service']['consultemplate_user_password']
 user service_username do
   password service_password
   action :create
