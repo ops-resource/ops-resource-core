@@ -163,7 +163,7 @@ class ConsulProvisioner
         }
 
         # Make sure we write this as UTF-8 without BOM, otherwise consul chokes
-        [IO.File]::WriteAllLines((Join-Path $metaConsulTemplate.Service.template_path 'consul_default.json.ctmpl'), ($lines | Out-String))
+        [IO.File]::WriteAllLines((Join-Path (Join-Path $metaConsulTemplate.service.template_path 'consul') 'consul_default.json.ctmpl'), ($lines | Out-String))
     }
 
     [string] ResourceName()
