@@ -79,7 +79,8 @@ class ConsulProvisioner
             throw "Failed to get configuration data from server. Response was $($response.StatusCode)"
         }
 
-        $configuration = ConvertFrom-Json -InputObject $response.Content -Verbose
+        $consulInformation = ConvertFrom-Json -InputObject $response.Content -Verbose
+        $configuration = ConvertFrom-Json -InputObject ([System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($consulInformation.Value))) -Verbose
 
         $meta = $this.GetServiceMetadata($serviceName)
         $json = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($meta.service.application_config))  -Verbose
