@@ -209,7 +209,7 @@ describe 'ops_resource_core_consul::consul' do
   },
 
   "ports": {
-    "dns": 1
+    "dns": 1,
     "http": 2,
     "rpc": 3,
     "serf_lan": 4,

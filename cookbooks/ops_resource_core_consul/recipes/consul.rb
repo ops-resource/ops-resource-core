@@ -199,7 +199,7 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
   },
 
   "ports": {
-    "dns": #{dns_port}
+    "dns": #{dns_port},
     "http": #{http_port},
     "rpc": #{rpc_port},
     "serf_lan": #{serf_lan_port},
