@@ -331,12 +331,12 @@ try
         $jsonObject = New-Object psobject -Property @{
             "consul_datacenter" = "$($datacenter)"
             "consul_recursors" = $dnsIPAddresses
-            "consul_lanservers" = ""
+            "consul_lanservers" = @("")
 
             "consul_isserver" = $true
             "consul_numberofservers" = 1
             "consul_domain" = "imagetest"
-            "consul_wanservers" = ""
+            "consul_wanservers" = @("")
         }
 
         Write-Verbose "Setting test configuration in consul ..."
