@@ -70,18 +70,8 @@ Describe 'Consul installation:' {
             # we'll have to assume they're set correctly ...???
         }
 
-        It 'depends on the network' {
-            # Should doesn't work with array's so do this the nasty way
-            $dependencies = $psService.ServicesDependedOn | Select-Object -Property Name
-
-            $dependencies.Length | Should Be 3
-            $dependencies.Contains('tcpip') | Should Be $true
-            $dependencies.Contains('dhcp') | Should Be $true
-            $dependencies.Contains('dnscache') | Should Be $true
-        }
-
         It 'is running' {
-            $psService.Status | Should Be [System.ServiceProcess.ServiceControllerStatus]::Running
+            $psService.Status | Should Be 'Running'
         }
 
         It 'has the correct version number' {
