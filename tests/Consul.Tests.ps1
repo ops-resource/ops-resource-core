@@ -70,6 +70,13 @@ Describe 'Consul installation:' {
         }
 
         $psService = Get-Service 'consul'
+
+        # the service is about to start, so we can wait for a bit
+        $killTime = (Get-Date).AddSeconds(60)
+        while (($psService.Status -eq 'StartPending') -and ($killTime -gt (Get-Date)) )
+        {
+            Start-Sleep -Seconds 1
+        }
         It 'is running' {
             $psService.Status | Should Be 'Running'
         }
@@ -147,6 +154,13 @@ Describe 'Consul-template installation:' {
         }
 
         $psService = Get-Service 'consultemplate'
+        # the service is about to start, so we can wait for a bit
+        $killTime = (Get-Date).AddSeconds(60)
+        while (($psService.Status -eq 'StartPending') -and ($killTime -gt (Get-Date)) )
+        {
+            Start-Sleep -Seconds 1
+        }
+
         It 'depends on consul' {
              # Should doesn't work with array's so do this the nasty way
             $dependencies = $psService.ServicesDependedOn | Select-Object -Property Name
