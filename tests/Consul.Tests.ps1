@@ -56,20 +56,20 @@ Describe 'Consul installation:' {
     }
 
     Context 'The service' {
-        $wmiSservice = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consul'} | Select-Object -First 1
+        $wmiService = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consul'} | Select-Object -First 1
         It 'is running as the correct user' {
-            $wmiSservice | Should Not BeNullOrEmpty
-            $wmiSservice.StartName | Should Be '.\consul_user'
+            $wmiService | Should Not BeNullOrEmpty
+            $wmiService.StartName | Should Be '.\consul_user'
         }
 
-        $psService = Get-Service 'consul'
         It 'starts automatically' {
-            $psService.StartType | Should Be 'Automatic'
+            $wmiService.StartMode | Should Be 'Auto'
 
             # There is no sensible way to get the restart options, only to set them so
             # we'll have to assume they're set correctly ...???
         }
 
+        $psService = Get-Service 'consul'
         It 'is running' {
             $psService.Status | Should Be 'Running'
         }
@@ -133,25 +133,25 @@ Describe 'Consul-template installation:' {
     }
 
     Context 'The service' {
-        $wmiSservice = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consultemplate'} | Select-Object -First 1
+        $wmiService = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consultemplate'} | Select-Object -First 1
         It 'is running as the correct user' {
-            $wmiSservice | Should Not BeNullOrEmpty
-            $wmiSservice.StartName | Should Be '.\consultemplate_user'
+            $wmiService | Should Not BeNullOrEmpty
+            $wmiService.StartName | Should Be '.\consultemplate_user'
         }
 
-        $psService = Get-Service 'consultemplate'
         It 'starts automatically' {
-            $psService.StartType | Should Be 'Automatic'
+            $wmiService.StartMode | Should Be 'Auto'
 
             # There is no sensible way to get the restart options, only to set them so
             # we'll have to assume they're set correctly ...???
         }
 
+        $psService = Get-Service 'consultemplate'
         It 'depends on consul' {
              # Should doesn't work with array's so do this the nasty way
             $dependencies = $psService.ServicesDependedOn | Select-Object -Property Name
 
-            $dependencies.Contains('consul') | Should Be $true
+            $dependencies.Name | Should Be 'consul'
         }
 
         It 'is running' {
