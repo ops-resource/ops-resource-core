@@ -7,6 +7,8 @@
 # All rights reserved - Do Not Redistribute
 #
 
+include_recipe 'powershell::powershell5'
+
 log_directory = node['paths']['log']
 directory log_directory do
   rights :read, 'Everyone', applies_to_children: true
@@ -107,23 +109,19 @@ powershell_script 'provisioning_as_service' do
   code <<-POWERSHELL
     $ErrorActionPreference = 'Stop'
 
-    $securePassword = ConvertTo-SecureString "" -AsPlainText -Force
-
-    # Note the .\\ is to get the local machine account as per here:
-    # http://stackoverflow.com/questions/313622/powershell-script-to-change-service-account#comment14535084_315616
     # Using the LocalSystem account so that the scripts that we run have access to everything:
     # https://msdn.microsoft.com/en-us/library/windows/desktop/ms684190%28v=vs.85%29.aspx
-    $credential = New-Object pscredential((".\\LocalSystem", $securePassword)
-
+    #
+    # Provide no credential to run as the LocalSystem account:
+    # http://stackoverflow.com/questions/14708825/how-to-create-a-windows-service-in-powershell-for-network-service-account
     $service = Get-Service -Name '#{service_name}' -ErrorAction SilentlyContinue
     if ($service -eq $null)
     {
         New-Service `
             -Name '#{service_name}' `
             -BinaryPathName '#{provisioning_service_directory}\\#{win_service_name}.exe' `
-            -Credential $credential `
             -DisplayName '#{service_name}' `
-            -StartupType Automatic
+            -StartupType Disabled
     }
 
     # Set the service to restart if it fails
@@ -153,5 +151,3 @@ file "#{meta_directory}\\service_provisioning.json" do
   JSON
   action :create
 end
-
-# push up information to provisioning server

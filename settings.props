@@ -1209,23 +1209,10 @@
         All file paths allow build templates, e.g. $(DirSrc)\${ProductName}\myproject.nuspec.
     -->
     <ItemGroup>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.azure.windows.nuspec">
+        <NuGetPackageSpecs Include="$(DirTemplates)\*.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
-            </IncludedDependencies>
-            <ExcludedDependencies>
-            </ExcludedDependencies>
-        </NuGetPackageSpecs>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.hyperv.windows.nuspec">
-            <ShouldBuildSymbols>false</ShouldBuildSymbols>
-            <IncludedDependencies>
-            </IncludedDependencies>
-            <ExcludedDependencies>
-            </ExcludedDependencies>
-        </NuGetPackageSpecs>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.lan.windows.nuspec">
-            <ShouldBuildSymbols>false</ShouldBuildSymbols>
-            <IncludedDependencies>
+                $(DirWorkspace)\packages.config
             </IncludedDependencies>
             <ExcludedDependencies>
             </ExcludedDependencies>
@@ -1240,6 +1227,8 @@
     <ItemGroup>
         <DesignTimeDependencies Include="nBuildKit" />
         <DesignTimeDependencies Include="nUnit" />
+        <DesignTimeDependencies Include="GitReleaseNotes" />
+        <DesignTimeDependencies Include="GitVersion" />
     </ItemGroup>
 
 

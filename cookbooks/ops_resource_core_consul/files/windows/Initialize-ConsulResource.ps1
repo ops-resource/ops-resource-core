@@ -3,24 +3,10 @@ param()
 
 $ErrorActionPreference = 'Stop'
 
-$commonParameterSwitches =
-    @{
-        Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $false;
-        ErrorAction = "Stop"
-    }
-
 # -------------------------- Script classes --------------------------------
 
 class ConsulProvisioner
 {
-    [hashtable] $commonParameterSwitches
-
-    ConsulProvisioner ([hashtable] $commonParameterSwitches)
-    {
-        $this.commonParameterSwitches = $commonParameterSwitches
-    }
-
     [string[]] Dependencies()
     {
         return @( 'Meta', 'Provisioning' )
@@ -31,19 +17,19 @@ class ConsulProvisioner
         Set-Service `
             -Name $serviceName `
             -StartupType Automatic `
-            @($this.commonParameterSwitches)
+            -Verbose
 
-        $service = Get-Service -Name $serviceName @($this.commonParameterSwitches)
+        $service = Get-Service -Name $serviceName -Verbose
         if ($service.Status -ne 'Running')
         {
-            Start-Service -Name $serviceName @($this.commonParameterSwitches)
+            Start-Service -Name $serviceName -Verbose
         }
     }
 
     [psobject] GetServiceMetadata([string] $serviceName)
     {
         $configPath = "c:\meta\service_$($serviceName).json"
-        $json = ConvertFrom-Json -InputObject (Get-Content -Path $configPath)  @($this.commonParameterSwitches)
+        $json = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($configPath))  -Verbose
 
         return $json
     }
@@ -51,7 +37,7 @@ class ConsulProvisioner
     [string] MachineIp()
     {
         $result = ''
-        $adapters = Get-NetAdapter @($this.commonParameterSwitches)
+        $adapters = Get-NetAdapter -Verbose
         foreach($adapter in $adapters)
         {
             if ($adapter.Status -ne 'Up')
@@ -72,19 +58,38 @@ class ConsulProvisioner
         return $result
     }
 
-    [void] Provision([psobject] $configuration)
+    [void] Configure([string] $configurationUrl)
     {
-        $this.ProvisionConsul($configuration)
-        $this.ProvisionConsulTemplate($configuration)
+        $this.ConfigureConsul($configurationUrl)
+        $this.ConfigureConsulTemplate($configurationUrl)
     }
 
-    [void] ProvisionConsul([psobject] $configuration)
+    [void] ConfigureConsul([string] $configurationUrl)
     {
-        $meta = $this.GetServiceMetadata('consul')
-        $json = ConvertFrom-Json -InputObject (Get-Content -Path $meta.service.application_config)  @($this.commonParameterSwitches)
+        $serviceName = 'consul'
+        $response = Invoke-WebRequest `
+            -Uri "$($configurationUrl)/environment" `
+            -Method Get `
+            -UseDefaultCredentials `
+            -UseBasicParsing `
+            -Verbose
+
+        if ($response.StatusCode -ne 200)
+        {
+            throw "Failed to get configuration data from server. Response was $($response.StatusCode)"
+        }
+
+        $consulInformation = ConvertFrom-Json -InputObject $response.Content -Verbose
+        $configuration = ConvertFrom-Json -InputObject ([System.Text.Encoding]::ASCII.GetString([System.Convert]::FromBase64String($consulInformation.Value))) -Verbose
+
+        $meta = $this.GetServiceMetadata($serviceName)
+        $json = ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText($meta.service.application_config))  -Verbose
         $json.datacenter = $configuration.consul_datacenter
         $json.recursors = $configuration.consul_recursors
         $json.retry_join = $configuration.consul_lanservers
+
+        # Clear the addresses and only set it if we're on a server
+        $json.addresses = @()
 
         if ($configuration.consul_isserver)
         {
@@ -101,19 +106,18 @@ class ConsulProvisioner
         }
 
         $textContent = ConvertTo-Json -InputObject $json
-        Out-File -FilePath $meta.service.application_config -InputObject $textContent -Force -NoNewline @($this.commonParameterSwitches)
 
-        $this.EnableAndStartService($meta.service.win_service)
+        # Make sure we write this as UTF-8 without BOM, otherwise consul chokes
+        [IO.File]::WriteAllLines($meta.service.application_config, $textContent)
     }
 
-    [void] ProvisionConsulTemplate([psobject] $configuration)
+    [void] ConfigureConsulTemplate([string] $configurationUrl)
     {
         $metaConsul = $this.GetServiceMetadata('consul')
         $metaConsulTemplate = $this.GetServiceMetadata('consultemplate')
 
         # overwrite some of the values with consul template parameters
-        $textContent = Get-Content -Path $metaConsul.service.application_config
-        $lines = $textContent.Split([System.Environment]::NewLine)
+        $lines = Get-Content -Path $metaConsul.service.application_config
         for($i = 0; $i -lt $lines.Length; $i++)
         {
             $currentLine = $lines[$i]
@@ -158,18 +162,34 @@ class ConsulProvisioner
             }
         }
 
-        Out-File -FilePath $metaConsulTemplate.Service.template_path -InputObject $lines -Force -NoNewline @($this.commonParameterSwitches)
-
-        # Make sure the service starts automatically when the machine starts, and then start the service if required
-        $this.EnableAndStartService($metaConsulTemplate.service.win_service)
+        # Make sure we write this as UTF-8 without BOM, otherwise consul chokes
+        [IO.File]::WriteAllLines((Join-Path (Join-Path $metaConsulTemplate.service.template_path 'consul') 'consul_default.json.ctmpl'), ($lines | Out-String))
     }
 
     [string] ResourceName()
     {
         return 'Consul'
     }
+
+    [void] Start()
+    {
+        $this.StartConsul()
+        $this.StartConsulTemplate()
+    }
+
+    [void] StartConsul()
+    {
+        $meta = $this.GetServiceMetadata('consul')
+        $this.EnableAndStartService($meta.service.win_service)
+    }
+
+    [void] StartConsulTemplate()
+    {
+        $meta = $this.GetServiceMetadata('consultemplate')
+        $this.EnableAndStartService($meta.service.win_service)
+    }
 }
 
 # -------------------------- Script start ------------------------------------
 
-[ConsulProvisioner]::New($commonParameterSwitches)
+[ConsulProvisioner]::New()

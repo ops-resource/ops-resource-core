@@ -19,7 +19,7 @@
     The SKU or edition of the operating system that should be taken from the ISO and applied to the disk.
 
 
-    .PARAMTER configPath
+    .PARAMETER configPath
 
     The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
     and any necessary script files which will be used during the configuration of the operating system.
@@ -45,6 +45,11 @@
     The name of the Hyper-V host machine on which a temporary VM can be created.
 
 
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
+
+
     .PARAMETER wsusServer
 
     The name of the WSUS server that can be used to download updates from.
@@ -58,16 +63,6 @@
     .PARAMETER scriptPath
 
     The full path to the directory that contains the Convert-WindowsImage and the Apply-WindowsUpdate scripts.
-
-
-    .PARAMETER convertWindowsImageUrl
-
-    The URL from where the Convert-WindowsImage script can be downloaded.
-
-
-    .PARAMETER applyWindowsUpdateUrl
-
-    The URL from where the Apply-WindowsUpdate script can be downloaded.
 
 
     .PARAMETER logPath
@@ -103,7 +98,7 @@ param(
     [string] $hypervHost,
 
     [Parameter(Mandatory = $false)]
-    [string] $staticMacAddress = '00155d026501',
+    [string] $staticMacAddress,
 
     [Parameter(Mandatory = $true)]
     [string] $wsusServer,
@@ -259,10 +254,13 @@ function New-VmFromVhdAndWaitForBoot
         -osVhdPath $vhdPath `
         @commonParameterSwitches
 
-    # Ensure that the VM has a specific Mac address so that it will get a known IP address
-    # That IP address will be added to the trustedhosts list so that we can remote into
-    # the machine without having it be attached to the domain.
-    $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    if ($staticMacAddress -ne '')
+    {
+        # Ensure that the VM has a specific Mac address so that it will get a known IP address
+        # That IP address will be added to the trustedhosts list so that we can remote into
+        # the machine without having it be attached to the domain.
+        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    }
 
     Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
     $waitResult = Wait-VmGuestOS `
@@ -275,56 +273,6 @@ function New-VmFromVhdAndWaitForBoot
     {
         throw "Waiting for $machineName to start past the given timeout of $bootWaitTimeout"
     }
-}
-
-function Restart-MachineToApplyPatches
-{
-    [CmdletBinding()]
-    param(
-        [string] $machineName,
-        [string] $hypervHost,
-        [pscredential] $localAdminCredential,
-        [int] $timeOutInSeconds
-    )
-
-    Write-Verbose "Restart-MachineToApplyPatches - machineName = $machineName"
-    Write-Verbose "Restart-MachineToApplyPatches - hypervHost = $hypervHost"
-    Write-Verbose "Restart-MachineToApplyPatches - localAdminCredential = $localAdminCredential"
-    Write-Verbose "Restart-MachineToApplyPatches - timeOutInSeconds = $timeOutInSeconds"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    $result = Get-ConnectionInformationForVm `
-        -machineName $machineName `
-        -hypervHost $hypervHost `
-        -localAdminCredential $localAdminCredential `
-        -timeOutInSeconds $timeOutInSeconds `
-        @commonParameterSwitches
-    if ($result.Session -eq $null)
-    {
-        throw "Failed to connect to $machineName"
-    }
-
-    Wait-MachineCompletesInitialization -session $result.Session @commonParameterSwitches
-
-    # Now that we know we can get into the machine we can invoke commands on the machine, so now
-    # we reboot the machine so that all updates are properly installed
-    Restart-Computer `
-        -ComputerName $result.IPAddress `
-        -Credential $localAdminCredential `
-        -Force `
-        -Wait `
-        -For PowerShell `
-        -Delay 5 `
-        -Timeout $timeOutInSeconds `
-        @commonParameterSwitches
 }
 
 function Update-VhdWithWindowsPatches
@@ -385,57 +333,6 @@ function Update-VhdWithWindowsPatches
         Foreach-Object {
             Copy-Item -Path $_.FullName -Destination (Join-Path $logPath "$([System.IO.Path]::GetFileNameWithoutExtension($_.FullName))-ApplyPatches.log") @commonParameterSwitches
         }
-
-}
-
-function Wait-MachineCompletesInitialization
-{
-    [CmdletBinding()]
-    param(
-        [System.Management.Automation.Runspaces.PSSession] $session
-    )
-
-    Write-Verbose "Wait-MachineCompletesInitialization - session = $session"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = 'Stop'
-        }
-
-    Write-Verbose "Waiting for machine to complete initialization ..."
-
-    Invoke-Command `
-        -Session $session `
-        -ScriptBlock {
-            function Get-IsMachineInitializing
-            {
-                # Based on the answers from here:
-                # http://serverfault.com/questions/750885/how-to-remotely-detect-windows-has-completed-patch-configuration-after-reboot
-                # We should look for TrustedInstaller and Wuauclt. However it seems that even these disappear before
-                # the initialization is complete. So we added some others based on getting the process list while
-                # the machine was initializing
-                return (Get-Process 'cmd', 'ngen', 'TrustedInstaller', 'windeploy', 'Wuauclt' -ErrorAction SilentlyContinue).Length -ne 0
-            }
-
-            while (Get-IsMachineInitializing)
-            {
-                while (Get-IsMachineInitializing)
-                {
-                    Start-Sleep -Seconds 10 -Verbose
-                }
-
-                # Now wait another 30 seconds to see that nothing else pops back up
-                Write-Verbose "Expecting machine configuration to be complete. Waiting 30 seconds for safety ..."
-                Start-Sleep -Seconds 30 -Verbose
-            }
-
-            Write-Verbose "Installers completed configuration ..."
-        } `
-        @commonParameterSwitches
 }
 
 # -------------------------- Script start --------------------------------
@@ -470,9 +367,15 @@ New-VmFromVhdAndWaitForBoot `
     -bootWaitTimeout $timeOutInSeconds `
     @commonParameterSwitches
 
-Restart-MachineToApplyPatches `
+$connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
+    -localAdminCredential $localAdminCredential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+Restart-Machine `
+    -connection $connection `
     -localAdminCredential $localAdminCredential `
     -timeOutInSeconds $timeOutInSeconds `
     @commonParameterSwitches
@@ -484,11 +387,13 @@ Restart-MachineToApplyPatches `
     #    apply patch
     #}
 
+# reboot the machine to make sure everything is ready
+
 New-HypervVhdxTemplateFromVm `
     -vmName $machineName `
     -vhdPath $vhdPath `
     -hypervHost $hypervHost `
     -localAdminCredential $localAdminCredential `
+    -logPath $logPath `
     -timeOutInSeconds $timeOutInSeconds `
-    -tempPath $tempPath `
     @commonParameterSwitches

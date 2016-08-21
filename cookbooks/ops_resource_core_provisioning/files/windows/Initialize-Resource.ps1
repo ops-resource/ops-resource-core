@@ -16,6 +16,33 @@
         {
             "entrypoint": "http://example.com/provisioning"
         }
+
+    The individual services will be provisioned by executing code in a separate provisioning script provided when the individual
+    services are installed. The service provisioning script should be installed in the c:\ops\provisioning directory.
+    Each script should return a class with the following members:
+
+        class MyProvisioner
+        {
+            [string[]] Dependencies()
+            {
+                # return an array containing the names of all the resources we depend on
+            }
+
+            [void] Configure([string] $provisioningUrl)
+            {
+                # execute the provisioning code here
+            }
+
+            [string] ResourceName()
+            {
+                # return the name of the resource
+            }
+
+            [void] Start()
+            {
+                # execute the service starting code here
+            }
+        }
 #>
 [Cmdletbinding()]
 param(
@@ -31,304 +58,6 @@ $commonParameterSwitches =
     }
 
 # -------------------------- Script functions --------------------------------
-
-<#
-    .SYNOPSIS
-
-    Gets information describing the configuration of the current resource
-
-
-    .DESCRIPTION
-
-    The Get-ConfigurationInformation function gets information that describes the configuration of the current resource
-
-
-    .PARAMETER configurationUri
-
-    The URI for the configuration server in the environment that the current resource is added to.
-
-
-    .PARAMETER resourceNames
-
-    An array containing the names of all the resources that need to be configured.
-
-
-    .PARAMETER logPath
-
-    The full path to the log file.
-
-
-    .OUTPUTS
-
-    A custom object describing the configuration. The object is expected to have the following properties:
-
-
-#>
-function Get-ConfigurationInformation
-{
-    [CmdletBinding()]
-    param(
-        [string] $configurationUri,
-        [string[]] $resourceNames,
-        [string] $logPath
-    )
-
-    Write-Output "Get-ConfigurationInformation - configurationUri: $configurationUri"
-    Write-Output "Get-ConfigurationInformation - resourceNames: $resourceNames"
-    Write-Output "Get-ConfigurationInformation - logPath: $logPath"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = "Stop"
-        }
-
-    $configurationRequest = New-ConfigurationRequest `
-        -resourceNames $resourceNames `
-        @commonParameterSwitches
-
-    $body = ConvertTo-Json $configurationRequest
-    Write-Log `
-        -message "Requesting configuration information from $($configurationUri) ..." `
-        -logPath $logPath `
-        @commonParameterSwitches
-
-    $response = Invoke-WebRequest `
-        -Uri $configurationUri `
-        -Method Get `
-        -Body $body `
-        -ContentType 'application/json' `
-        -UseDefaultCredentials `
-        -UseBasicParsing `
-        @commonParameterSwitches
-
-    if ($response.StatusCode -ne 200)
-    {
-        $text = "Failed to get configuration data from server. Response was $($response.StatusCode)"
-        Write-Log `
-            -message $text `
-            -logPath $logPath `
-            @commonParameterSwitches
-
-        throw $text
-    }
-
-    $json = ConvertFrom-Json -InputObject $response.Content @commonParameterSwitches
-    Write-Log `
-        -message "Successfully received configuration" `
-        -logPath $logPath `
-        @commonParameterSwitches
-
-    return $json
-}
-
-<#
-    .SYNOPSIS
-
-    Gets information describing the environment that the current resource should be connected to.
-
-
-    .DESCRIPTION
-
-    The Get-EnvironmentInformation function gets the information that describes the environment to which the current resource should be connected.
-
-
-    .PARAMETER logPath
-
-    The full path to the log file.
-
-
-    .OUTPUTS
-
-    A custom object describing the environment. The object is expected to have the following properties:
-
-        Name
-        ID
-        ConfigurationUri
-#>
-function Get-EnvironmentInformation
-{
-    [CmdletBinding()]
-    param(
-        [string] $logPath
-    )
-
-    Write-Output "Get-EnvironmentInformation - logPath: $logPath"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = "Stop"
-        }
-
-    $provisioningBaseUri = ''
-
-    $expectedConfigurationFile = Join-Path $env:HOMEDRIVE 'provisioning\provisioning.json'
-    if (Test-Path $expectedConfigurationFile)
-    {
-        # Read configuration file
-        $content = Get-Content -Path $expectedConfigurationFile @commonParameterSwitches
-        $json = ConvertFrom-Json $content
-        $provisioningBaseUri = $json.entrypoint
-    }
-    else
-    {
-        $provisioningBaseUri = $env:ProvisioningEntryPoint
-    }
-
-    if (($provisioningBaseUri -eq $null) -or ($provisioningBaseUri -eq ''))
-    {
-        $text = 'Failed to get the environment request URI. This may mean that there is no environment yet.'
-        Write-Log `
-            -message $text `
-            -logPath $logPath `
-            @commonParameterSwitches
-
-        throw $text
-    }
-
-    $machineIdentifiers = New-MachineIdentifiers `
-        @commonParameterSwitches
-
-    $body = ConvertTo-Json $machineIdentifiers
-    Write-Log `
-        -message "Requesting environment information from $($provisioningBaseUri) ..." `
-        -logPath $logPath `
-        @commonParameterSwitches
-
-    $response = Invoke-WebRequest `
-        -Uri $provisioningBaseUri `
-        -Method Get `
-        -Body $body `
-        -ContentType 'application/json' `
-        -UseDefaultCredentials `
-        -UseBasicParsing `
-        @commonParameterSwitches
-
-    if ($response.StatusCode -ne 200)
-    {
-        $text = "Failed to get configuration data from server. Response was $($response.StatusCode)"
-        Write-Log `
-            -message $text `
-            -logPath $logPath `
-            @commonParameterSwitches
-
-        throw $text
-    }
-
-    $json = ConvertFrom-Json -InputObject $response.Content @commonParameterSwitches
-
-    Write-Log `
-        -message "Successfully obtained environment information" `
-        -logPath $logPath `
-        @commonParameterSwitches
-
-    return $json
-}
-
-<#
-    .SYNOPSIS
-
-    Creates a new custom object containing the information about the resources that should be configured.
-
-
-    .DESCRIPTION
-
-    The New-ConfigurationRequest function creates a new custom object containing the information about the resources that should be configured.
-
-
-    .PARAMETER resourceNames
-
-    An array containing the names of all the resources that need to be configured.
-
-
-    .OUTPUTS
-
-    A custom object containing the information regarding the resources that should be configured.
-#>
-function New-ConfigurationRequest
-{
-    [CmdletBinding()]
-    param(
-        [string[]] $resourceNames
-    )
-
-    Write-Output "New-ConfigurationRequest - resourceNames: $resourceNames"
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = "Stop"
-        }
-
-    $result = New-Object psobject
-    Add-Member -InputObject $result -MemberType NoteProperty -Name Resources -Value $resourceNames
-
-    return $result
-}
-
-<#
-    .SYNOPSIS
-
-    Gets the MAC and IP addresses for all active network adapters.
-
-
-    .DESCRIPTION
-
-    The New-MachineIdentifiers function gets the information that describes the machine.
-
-
-    .OUTPUTS
-
-    An array containing custom objects that store the MacAddress and the IP address for all active network adapters on the machine.
-#>
-function New-MachineIdentifiers
-{
-    [CmdletBinding()]
-    param()
-
-    $ErrorActionPreference = 'Stop'
-
-    $commonParameterSwitches =
-        @{
-            Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $false;
-            ErrorAction = "Stop"
-        }
-
-    $info = @()
-    $adapters = Get-NetAdapter @commonParameterSwitches
-    foreach($adapter in $adapters)
-    {
-        if ($adapter.Status -ne 'Up')
-        {
-            continue
-        }
-
-        $address = Get-NetIPAddress -InterfaceAlias $adapter.InterfaceAlias |
-            Where-Object { $_.AddressFamily -ne 'IPv6' }
-
-        if (($address -ne $null) -and ($address -ne ''))
-        {
-            $result = New-Object psobject
-            Add-Member -InputObject $result -MemberType NoteProperty -Name MacAddress -Value $adapter.MacAddress
-            Add-Member -InputObject $result -MemberType NoteProperty -Name IPAddresses -Value $address
-
-            $info += $result
-        }
-    }
-
-    return $info
-}
 
 <#
     .SYNOPSIS
@@ -470,10 +199,15 @@ try
     $provisioners = @()
     foreach($script in $scriptsToExecute)
     {
+        Write-Log `
+            -message "Provisioning with provisioner object from $($script.FullName) ..." `
+            -logPath $logPath `
+            @commonParameterSwitches
+
         try
         {
-            $provisioner = & $script
-            if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Provision' ).Length -eq 3))
+            $provisioner = & $($script.FullName)
+            if (($provisioner -ne $null) -and (($provisioner | Get-Member -MemberType Method -Name 'ResourceName','Dependencies','Start' ).Length -eq 3))
             {
                 $provisioners += $provisioner
             }
@@ -481,77 +215,128 @@ try
         catch
         {
             Write-Log `
-                -message "Failed to get the provisioner object from $($script). The error was $($_.Exception.ToString())" `
+                -message "Failed to get the provisioner object from $($script.FullName). The error was $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
         }
     }
 
-    $provisioners = SortBy-Dependencies `
+    $provisioners = Order-ByDependencies `
         -provisionersToSort $provisioners `
         @commonParameterSwitches
 
-
-    [psobject] $configurationInformation = $null
-    try
+    $provisioningBaseUri = ''
+    $homeDrive = $env:HOMEDRIVE
+    if (($homeDrive -eq $null) -or ($homeDrive -eq ''))
     {
-        $environmentInformation = Get-EnvironmentInformation `
-            -logPath $logPath `
-            @commonParameterSwitches
-
-        $resourceNames = @()
-        foreach($provisioner in $provisioners)
-        {
-            $resourceName = $provisioner.ResourceName
-            if ($resourceName -ne '')
-            {
-                $resourceNames += $resourceName
-            }
-        }
-
-        $configurationInformation = Get-ConfigurationInformation `
-            -configurationUri $environmentInformation.ConfigurationUri `
-            -resourceNames $resourceNames `
-            -logPath $logPath `
-            @commonParameterSwitches
+        $homeDrive = 'c:'
     }
-    catch
+    $expectedConfigurationFile = Join-Path $homeDrive 'provisioning\provisioning.json'
+    if (Test-Path $expectedConfigurationFile)
     {
-        # Connecting to the configuration server failed. This may be due to a network issue, a missing
-        # configuration server or due to the fact that the provisioning step is run for the first resource
-        # in the environment(s). In this case we use the default values.
+        # Read configuration file
+        $content = [System.IO.File]::ReadAllText($expectedConfigurationFile)
+        $json = ConvertFrom-Json $content
+        $provisioningBaseUri = $json.consul
+    }
+    else
+    {
+        $provisioningBaseUri = $env:ProvisioningEntryPoint
+    }
+
+    if (($provisioningBaseUri -eq $null) -or ($provisioningBaseUri -eq ''))
+    {
+        $text = 'Failed to get the environment request URI. This may mean that there is no environment yet.'
         Write-Log `
-            -message "Failed to acquire configuration information. This may mean that no environment is defined. Provisioning scripts will run with default values." `
+            -message $text `
             -logPath $logPath `
             @commonParameterSwitches
+
+        throw $text
     }
 
     foreach($provisioner in $provisioners)
     {
+        $resourceName = $provisioner.ResourceName()
         try
         {
-            $configuration = $null
-
-            $resourceName = $provisioner.ResourceName()
-            if (($resourceName -ne '') -and ($configurationInformation -ne $null))
-            {
-                $configuration = $configurationInformation."$resourceName"
-            }
-
             Write-Log `
-                -message "Invoking provisioning for the $($resourceName) through $($script) ..." `
+                -message "Invoking provisioning for the $($resourceName) ..." `
                 -logPath $logPath `
                 @commonParameterSwitches
 
-            $provisioner.Provision($configuration)
+            $provisioner.Configure("$($provisioningBaseUri)/$($resourceName.ToLower())")
         }
         catch
         {
              Write-Log `
-                -message "Failure during the invocation of $($script). Error was: $($_.Exception.ToString())" `
+                -message "Failure during the configuration of $($resourceName). Error was: $($_.Exception.ToString())" `
                 -logPath $logPath `
                 @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
         }
+    }
+
+    foreach($provisioner in $provisioners)
+    {
+        $resourceName = $provisioner.ResourceName()
+        try
+        {
+            Write-Log `
+                -message "Starting $($resourceName) services ..." `
+                -logPath $logPath `
+                @commonParameterSwitches
+
+            $provisioner.Start()
+        }
+        catch
+        {
+             Write-Log `
+                -message "Failure during the starting of $($resourceName). Error was: $($_.Exception.ToString())" `
+                -logPath $logPath `
+                @commonParameterSwitches
+
+            $ErrorRecord=$Error[0]
+            $ErrorRecord | Format-List * -Force
+            $ErrorRecord.InvocationInfo |Format-List *
+            $Exception = $ErrorRecord.Exception
+            for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+            {
+                "$i" * 80
+                $Exception |Format-List * -Force
+            }
+        }
+    }
+}
+catch
+{
+    $ErrorRecord=$Error[0]
+    $ErrorRecord | Format-List * -Force
+    $ErrorRecord.InvocationInfo |Format-List *
+    $Exception = $ErrorRecord.Exception
+    for ($i = 0; $Exception; $i++, ($Exception = $Exception.InnerException))
+    {
+        "$i" * 80
+        $Exception |Format-List * -Force
     }
 }
 finally

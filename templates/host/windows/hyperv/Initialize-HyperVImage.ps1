@@ -21,6 +21,11 @@
     A flag that indicates whether remote powershell sessions should be authenticated with the CredSSP mechanism.
 
 
+    .PARAMETER machineName
+
+    The name of the temporary machine that will be created.
+
+
     .PARAMETER osName
 
     The name of the OS that should be used to create the new VM.
@@ -41,9 +46,15 @@
     The UNC path to the directory that stores the Hyper-V VM information.
 
 
-    .EXAMPLE
+    .PARAMETER configPath
 
-    Initialize-HyperVImage hypervhost "MyHyperVServer"
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
+
+
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
 #>
 [CmdletBinding()]
 param(
@@ -52,6 +63,9 @@ param(
 
     [Parameter(Mandatory = $false)]
     [switch] $authenticateWithCredSSP,
+
+    [Parameter(Mandatory = $true)]
+    [string] $machineName                                       = $(throw 'The machine name for the template machine is required.'),
 
     [Parameter(Mandatory = $true)]
     [string] $osName                                            = '',
@@ -63,17 +77,24 @@ param(
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines"
+    [string] $hypervHostVmStoragePath                           = "\\$(hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $true)]
+    [string] $configPath                                        = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = ''
 )
 
 Write-Verbose "Initialize-HyperVImage - credential: $credential"
 Write-Verbose "Initialize-HyperVImage - authenticateWithCredSSP: $authenticateWithCredSSP"
+Write-Verbose "Initialize-HyperVImage - machineName = $machineName"
 Write-Verbose "Initialize-HyperVImage - osName = $osName"
-Write-Verbose "Initialize-HyperVImage - isConsulClusterLeader: $isConsulClusterLeader"
-Write-Verbose "Initialize-HyperVImage - hypervHost: $hypervHost"
-    Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
-    Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
-    Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "Initialize-HyperVImage - hypervHost = $hypervHost"
+Write-Verbose "Initialize-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "Initialize-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "Initialize-HyperVImage - configPath = $configPath"
+Write-Verbose "Initialize-HyperVImage - staticMacAddress = $staticMacAddress"
 
 
 # Stop everything if there are errors
@@ -85,8 +106,6 @@ $commonParameterSwitches =
         Debug = $false;
         ErrorAction = "Stop"
     }
-
-. (Join-Path $PSScriptRoot 'utils.ps1')
 
 $startTime = [System.DateTimeOffset]::Now
 try
@@ -105,7 +124,6 @@ try
     $previewPrefix = "preview_"
     $imageName = "$($resourceName)-$($resourceVersion).vhdx"
     $previewImageName = "$($previewPrefix)$($imageName)"
-    $machineName = New-RandomMachineName @commonParameterSwitches
 
     & $installationScript `
         -credential $credential `
@@ -113,11 +131,16 @@ try
         -resourceName $resourceName `
         -resourceVersion $resourceVersion `
         -cookbookNames $cookbookNames `
-        -imageName $imageName `
+        -imageName $previewImageName `
         -installationDirectory $installationDirectory `
         -logDirectory $logDirectory `
         -osName $osName `
         -machineName $machineName `
+        -hypervHost $hypervHost `
+        -vhdxTemplatePath $vhdxTemplatePath `
+        -hypervHostVmStoragePath $hypervHostVmStoragePath `
+        -configPath $configPath `
+        -staticMacAddress $staticMacAddress `
         @commonParameterSwitches
 
     & $verificationScript `
@@ -127,6 +150,11 @@ try
         -testDirectory $testDirectory `
         -logDirectory $logDirectory `
         -machineName $machineName `
+        -hypervHost $hypervHost `
+        -vhdxTemplatePath $vhdxTemplatePath `
+        -hypervHostVmStoragePath $hypervHostVmStoragePath `
+        -configPath $configPath `
+        -staticMacAddress $staticMacAddress `
         @commonParameterSwitches
 
     # If the tests pass, then rename the image

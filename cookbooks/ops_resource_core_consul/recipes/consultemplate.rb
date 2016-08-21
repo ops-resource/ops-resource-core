@@ -15,8 +15,8 @@ win_service_name = 'consultemplate_service'
 # Create user
 # - limited user
 # - Reduce access to files. User should only have write access to consul dir
-service_username = 'consultemplate_user'
-service_password = SecureRandom.uuid
+service_username = node['service']['consultemplate_user_name']
+service_password = node['service']['consultemplate_user_password']
 user service_username do
   password service_password
   action :create
@@ -135,29 +135,27 @@ consul_bin_directory = node['paths']['consul_bin']
 consul_config_file = node['file_name']['consul_config_file']
 service_name_consul = node['service']['consul']
 
+consul_bin_directory_escaped = consul_bin_directory.gsub('\\', '\\\\\\\\')
+consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
 consultemplate_config_file = 'consultemplate_default.json'
 file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
   content <<-JSON
-{
-    consul = "127.0.0.1:#{consul_port},
+consul = "127.0.0.1:#{consul_port}"
 
-    retry = "10s",
-    max_stale = "150s",
-    wait = "5s:10s",
+retry = "10s"
+max_stale = "150s"
+wait = "5s:10s"
 
-    log_level = "warn",
+log_level = "warn"
 
-    template {
-        source = "#{consultemplate_template_directory}\\consul\\#{consul_config_file}.ctmpl",
-        destination = "#{consul_bin_directory}\\#{consul_config_file}",
+template {
+    source = "#{consultemplate_template_directory_escaped}\\\\consul\\\\#{consul_config_file}.ctmpl"
+    destination = "#{consul_bin_directory_escaped}\\\\#{consul_config_file}"
 
-        command = "net stop service #{service_name_consul};net start service #{service_name_consul}",
-        command_timeout = "60s",
+    command = "net stop service #{service_name_consul};net start service #{service_name_consul}"
+    command_timeout = "60s"
 
-        backup = false,
-
-        wait = "2s:6s"
-    }
+    backup = false
 }
   JSON
 end
@@ -233,7 +231,8 @@ powershell_script 'consultemplate_as_service' do
             -BinaryPathName '#{consultemplate_bin_directory}\\#{win_service_name}.exe' `
             -Credential $credential `
             -DisplayName '#{service_name}' `
-            -StartupType Disabled
+            -StartupType Disabled `
+            -DependsOn '#{service_name_consul}'
     }
 
     # Set the service to restart if it fails
@@ -258,8 +257,6 @@ consultemplate_bin_directory_escaped = consultemplate_bin_directory.gsub('\\', '
 consultemplate_config_file_escaped = "#{consultemplate_bin_directory}\\#{consultemplate_config_file}".gsub('\\', '\\\\\\\\')
 
 win_service_config_file_escaped = "#{consultemplate_bin_directory}\\#{win_service_name}.xml".gsub('\\', '\\\\\\\\')
-
-consultemplate_template_directory_escaped = consultemplate_template_directory.gsub('\\', '\\\\\\\\')
 file "#{meta_directory}\\service_consultemplate.json" do
   content <<-JSON
 {

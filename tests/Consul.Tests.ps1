@@ -16,14 +16,14 @@ Describe 'Consul installation:' {
             'c:\ops\consul\data' | Should Exist
         }
 
-        It 'has the Consul binaries' {
+        It 'has the binaries' {
             'c:\ops\consul\bin\consul_service.exe' | Should Exist
             'c:\ops\consul\bin\consul_service.xml' | Should Exist
             'c:\ops\consul\bin\consul_service.exe.config' | Should Exist
             'c:\ops\consul\bin\consul.exe' | Should Exist
         }
 
-        It 'has a valid default consul configuration file' {
+        It 'has a valid default configuration file' {
             $consulConfiguration = 'c:\ops\consul\bin\consul_default.json'
             $consulConfiguration | Should Exist
             { Get-Content $consulConfiguration | Out-String | ConvertFrom-Json } | Should Not Throw
@@ -37,7 +37,7 @@ Describe 'Consul installation:' {
             'c:\meta\consul\checks' | Should Exist
         }
 
-        It 'has the Consul checks' {
+        It 'has the checks' {
             'c:\meta\consul\checks\Test-Disk.ps1' | Should Exist
         }
 
@@ -48,23 +48,114 @@ Describe 'Consul installation:' {
         }
     }
 
-    Context 'The consul service' {
-        $service = Get-WmiObject win32_service | Where {$_.name -eq 'consul'} | Select -First 1
-        It 'is running as consul_user' {
-            $service | Should Not BeNullOrEmpty
-            $service.StartName | Should Be '.\consul_user'
+    Context 'The logs install location' {
+        It 'has the directories' {
+            'c:\logs' | Should Exist
+            'c:\logs\consul' | Should Exist
+        }
+    }
+
+    Context 'The service' {
+        $wmiService = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consul'} | Select-Object -First 1
+        It 'is running as the correct user' {
+            $wmiService | Should Not BeNullOrEmpty
+            $wmiService.StartName | Should Be '.\consul_user'
         }
 
         It 'starts automatically' {
-            $service.StartMode | Should Be 'Auto'
+            $wmiService.StartMode | Should Be 'Auto'
+
+            # There is no sensible way to get the restart options, only to set them so
+            # we'll have to assume they're set correctly ...???
         }
 
-        It 'responds to queries' {
-            $service.Started | Should Be 'True'
+        $psService = Get-Service 'consul'
+        It 'is running' {
+            $psService.Status | Should Be 'Running'
+        }
 
+        It 'has the correct version number' {
             $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
             $json = ConvertFrom-Json -InputObject $response
             $json.Config.Version | Should Be '0.6.4'
+        }
+
+        It 'has the correct configuration' {
+            $response = Invoke-WebRequest -Uri 'http://localhost:8500/v1/agent/self' -UseBasicParsing -UseDefaultCredentials
+            $json = ConvertFrom-Json -InputObject $response
+
+            # This assumes that these values are only set for the duration of the test
+            $json.Config.Server | Should Be $true
+            $json.Config.Datacenter | Should be 'TestHyperVImage'
+            $json.Config.Domain | Should be 'imagetest'
+
+            $recursors = @($json.Config.DNSRecursors)
+            $recursors.Length -ge 1 | Should Be $true
+        }
+    }
+}
+
+Describe 'Consul-template installation:' {
+
+    Context 'The install location' {
+        It 'has the directories' {
+            'c:\ops' | Should Exist
+            'c:\ops\consultemplate' | Should Exist
+            'c:\ops\consultemplate\bin' | Should Exist
+        }
+
+        It 'has the binaries' {
+            'c:\ops\consultemplate\bin\consultemplate_service.exe' | Should Exist
+            'c:\ops\consultemplate\bin\consultemplate_service.xml' | Should Exist
+            'c:\ops\consultemplate\bin\consultemplate_service.exe.config' | Should Exist
+            'c:\ops\consultemplate\bin\consul-template.exe' | Should Exist
+        }
+
+        It 'has a valid default configuration file' {
+            $consulConfiguration = 'c:\ops\consultemplate\bin\consultemplate_default.json'
+            $consulConfiguration | Should Exist
+        }
+    }
+
+    Context 'The meta install location' {
+        It 'has the directories' {
+            'c:\meta' | Should Exist
+            'c:\meta\consultemplate' | Should Exist
+            'c:\meta\consultemplate\templates' | Should Exist
+        }
+    }
+
+    Context 'The logs install location' {
+        It 'has the directories' {
+            'c:\logs' | Should Exist
+            'c:\logs\consultemplate' | Should Exist
+        }
+    }
+
+    Context 'The service' {
+        $wmiService = Get-WmiObject win32_service | Where-Object {$_.name -eq 'consultemplate'} | Select-Object -First 1
+        It 'is running as the correct user' {
+            $wmiService | Should Not BeNullOrEmpty
+            $wmiService.StartName | Should Be '.\consultemplate_user'
+        }
+
+        It 'starts automatically' {
+            $wmiService.StartMode | Should Be 'Auto'
+
+            # There is no sensible way to get the restart options, only to set them so
+            # we'll have to assume they're set correctly ...???
+        }
+
+        $psService = Get-Service 'consultemplate'
+        It 'depends on consul' {
+             # Should doesn't work with array's so do this the nasty way
+            $dependencies = $psService.ServicesDependedOn | Select-Object -Property Name
+
+            $dependencies.Name | Should Be 'consul'
+        }
+
+        It 'is running' {
+            $psService.Status | Should Be 'Running'
         }
     }
 }

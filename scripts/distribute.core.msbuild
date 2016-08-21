@@ -8,6 +8,13 @@
 
         <!-- The full path to the settings file that contains all the settings for the build process -->
         <BuildPropertyFile Condition=" '$(BuildPropertyFile)' == '' ">UNDEFINED</BuildPropertyFile>
+
+        <!--
+            Define the DirWorkspace before importing the BuildPropertyFile so that it is defined and can be used by
+            the properties in the BuildPropertyFile. Note that we can't define it in the BuildPropertyFile because that
+            is imported which means there is no way to get the path of the file.
+        -->
+        <DirWorkspace Condition=" '$(DirWorkspace)' == '' ">$([System.IO.Path]::GetDirectoryName('$(BuildPropertyFile)'))</DirWorkspace>
     </PropertyGroup>
 
     <Import Project="$(BuildPropertyFile)"
@@ -63,10 +70,10 @@
 
     <ItemGroup>
         <CookbooksToUseForConfiguration Include="ops_resource_core_meta::default"/>
-        <CookbooksToUseForConfiguration Include="ops_resource_core_consul::default"
-                                        Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToUseForConfiguration Include="ops_resource_core_provisioning::default"
                                         Condition=" '$(InstallProvisioning)' == 'true' " />
+        <CookbooksToUseForConfiguration Include="ops_resource_core_consul::default"
+                                        Condition=" '$(InstallConsul)' == 'true' " />
         <CookbooksToUseForConfiguration Include="$(CookbooksToInvoke)"
                                         Condition=" '$(CookbooksToInvoke)' != '' " />
     </ItemGroup>
@@ -131,10 +138,7 @@
                  Condition="!Exists('$(DirOutputVerification)')" />
 
         <ItemGroup>
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\New*.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\Consul.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\WinRm.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\sessions.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\*.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(HostConfigurationScriptFiles)"
               DestinationFiles="@(HostConfigurationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
@@ -151,6 +155,9 @@
         </ItemGroup>
         <Copy SourceFiles="@(HostVerificationScriptFiles)"
               DestinationFiles="@(HostVerificationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
+
+        <Copy SourceFiles="@(TestTools)"
+              DestinationFiles="@(TestTools->'$(DirOutput)\%(Name)')" />
 
         <ItemGroup>
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Test*.ps1" />
@@ -251,9 +258,6 @@
             <TemplateTokens Include="DestinationVerification">
                 <ReplacementValue>$(DirOutputVerification)</ReplacementValue>
             </TemplateTokens>
-            <TemplateTokens Include="CookbookName" Condition=" '%(ExternalFiles.CookbookName)' != '' ">
-                <ReplacementValue>%(ExternalFiles.CookbookName)</ReplacementValue>
-            </TemplateTokens>
             <TemplateTokens Include="RecursiveDir">
                 <ReplacementValue>%(ExternalFiles.RecursiveDir)</ReplacementValue>
             </TemplateTokens>
@@ -264,7 +268,7 @@
                 <ReplacementValue>%(ExternalFiles.Extension)</ReplacementValue>
             </TemplateTokens>
         </ItemGroup>
-        <TemplateText Template="%(ExternalFiles.Destination)"
+        <TemplateText Template="%(ExternalFiles.Identity)"
                       Tokens="@(TemplateTokens)">
             <Output TaskParameter="Result" PropertyName="ExternalFilesForScriptsDestination" />
         </TemplateText>
@@ -283,7 +287,7 @@
         <MakeDir Directories="$(DirToCreate)"
                  Condition="!Exists('$(DirToCreate)') AND '$(ShouldExecute)' == 'true' " />
 
-        <Copy SourceFiles="%(ExternalFiles.Identity)"
+        <Copy SourceFiles="%(ExternalFiles.Source)"
               DestinationFiles="$(ExternalFilesForScriptsDestinationWithoutSpaces)" />
     </Target>
 </Project>

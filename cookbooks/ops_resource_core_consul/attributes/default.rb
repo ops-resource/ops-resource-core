@@ -36,3 +36,9 @@ default['paths']['consul_template'] = "#{consultemplate_templates_path}\\consul"
 # SERVICE NAMES
 default['service']['consul'] = 'consul'
 default['service']['consultemplate'] = 'consultemplate'
+
+# USER INFORMATION
+default['service']['consul_user_name'] = 'consul_user'
+default['service']['consul_user_password'] = SecureRandom.uuid
+default['service']['consultemplate_user_name'] = 'consultemplate_user'
+default['service']['consultemplate_user_password'] = SecureRandom.uuid

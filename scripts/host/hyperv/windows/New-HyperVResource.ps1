@@ -30,22 +30,6 @@
     The version of the resource that is being created.
 
 
-    .PARAMETER cookbookNames
-
-    An array containing the names of the cookbooks that should be executed to install all the required applications on the machine.
-
-
-    .PARAMETER installationDirectory
-
-    The directory in which all the installer packages and cookbooks can be found. It is expected that the cookbooks are stored
-    in a 'cookbooks' sub-directory of the installationDirectory.
-
-
-    .PARAMETER logDirectory
-
-    The directory in which all the logs should be stored.
-
-
     .PARAMETER osName
 
     The name of the OS that should be used to create the new VM.
@@ -61,52 +45,31 @@
     The name of the machine on which the hyper-v server is located.
 
 
-    .PARAMETER unattendedJoinFile
+    .PARAMETER vhdxTemplatePath
 
-    The full path to the file that contains the XML fragment for an unattended domain join. This is expected to look like:
-
-    <component name="Microsoft-Windows-UnattendedJoin"
-               processorArchitecture="amd64"
-               publicKeyToken="31bf3856ad364e35"
-               language="neutral"
-               versionScope="nonSxS"
-               xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State"
-               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-        <Identification>
-            <MachineObjectOU>MACHINE_ORGANISATIONAL_UNIT_HERE</MachineObjectOU>
-            <Credentials>
-                <Domain>DOMAIN_NAME_HERE</Domain>
-                <Password>ENCRYPTED_DOMAIN_ADMIN_PASSWORD</Password>
-                <Username>DOMAIN_ADMIN_USERNAME</Username>
-            </Credentials>
-            <JoinDomain>DOMAIN_NAME_HERE</JoinDomain>
-        </Identification>
-    </component>
+    The UNC path to the directory that contains the Hyper-V images.
 
 
-    .PARAMETER dataCenterName
+    .PARAMETER hypervHostVmStoragePath
 
-    The name of the consul data center to which the remote machine should belong once configuration is completed.
-
-
-    .PARAMETER clusterEntryPointAddress
-
-    The DNS name of a machine that is part of the consul cluster to which the remote machine should be joined.
+    The UNC path to the directory that stores the Hyper-V VM information.
 
 
-    .PARAMETER globalDnsServerAddress
+    .PARAMETER configPath
 
-    The DNS name or IP address of the DNS server that will be used by Consul to handle DNS fallback.
-
-
-    .PARAMETER environmentName
-
-    The name of the environment to which the remote machine should be added.
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
 
 
-    .PARAMETER consulLocalAddress
+    .PARAMETER staticMacAddress
 
-    The URL to the local consul agent.
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
+
+
+    .PARAMETER provisioningBootstrapUrl
+
+    The URL that points to the consul base section in the consul key-value store where the provisioning information
+    for the current resource is stored.
 #>
 [CmdletBinding()]
 param(
@@ -117,22 +80,7 @@ param(
     [switch] $authenticateWithCredSSP,
 
     [Parameter(Mandatory = $false)]
-    [string] $resourceName                                      = '',
-
-    [Parameter(Mandatory = $false)]
-    [string] $resourceVersion                                   = '',
-
-    [Parameter(Mandatory = $true)]
-    [string[]] $cookbookNames                                   = $(throw 'Please specify the names of the cookbooks that should be executed.'),
-
-    [Parameter(Mandatory = $false)]
-    [string] $installationDirectory                             = $(Join-Path $PSScriptRoot 'configuration'),
-
-    [Parameter(Mandatory = $false)]
-    [string] $logDirectory                                      = $(Join-Path $PSScriptRoot 'logs'),
-
-    [Parameter(Mandatory = $true)]
-    [string] $osName                                            = '',
+    [string] $imageName                                         = $(throw 'An image name must be specified.'),
 
     [Parameter(Mandatory = $true)]
     [string] $machineName                                       = '',
@@ -141,18 +89,30 @@ param(
     [string] $hypervHost                                        = '',
 
     [Parameter(Mandatory = $true)]
-    [string] $unattendedJoinFile                                = ''
+    [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
+
+    [Parameter(Mandatory = $true)]
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $true)]
+    [string] $configPath                                        = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $provisioningBootstrapUrl                          = ''
 )
 
 Write-Verbose "New-HyperVResource - credential = $credential"
 Write-Verbose "New-HyperVResource - authenticateWithCredSSP = $authenticateWithCredSSP"
-Write-Verbose "New-HyperVResource - resourceName = $resourceName"
-Write-Verbose "New-HyperVResource - resourceVersion = $resourceVersion"
-Write-Verbose "New-HyperVResource - cookbookNames = $cookbookNames"
-Write-Verbose "New-HyperVResource - installationDirectory = $installationDirectory"
-Write-Verbose "New-HyperVResource - logDirectory = $logDirectory"
-Write-Verbose "New-HyperVResource - osName = $osName"
+Write-Verbose "New-HyperVResource - imageName = $imageName"
 Write-Verbose "New-HyperVResource - hypervHost = $hypervHost"
+Write-Verbose "New-HyperVResource - vhdxTemplatePath = $vhdxTemplatePath"
+Write-Verbose "New-HyperVResource - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "New-HyperVResource - configPath = $configPath"
+Write-Verbose "New-HyperVResource - staticMacAddress = $staticMacAddress"
+Write-Verbose "New-HyperVResource - provisioningBootstrapUrl = $provisioningBootstrapUrl"
 
 # Stop everything if there are errors
 $ErrorActionPreference = 'Stop'
@@ -168,32 +128,148 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot windows.ps1)
+. (Join-Path $PSScriptRoot WinRM.ps1)
 
-if (-not (Test-Path $installationDirectory))
+
+# -------------------- Functions ------------------------
+
+function New-VmResource
 {
-    throw "Unable to find the directory containing the installation files. Expected it at: $installationDirectory"
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $machineName,
+
+        [Parameter(Mandatory = $true)]
+        [string] $baseVhdx,
+
+        [Parameter(Mandatory = $true)]
+        [string] $hypervHost,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $true)]
+        [string] $configPath,
+
+        [Parameter(Mandatory = $false)]
+        [string] $staticMacAddress
+    )
+
+    Write-Verbose "New-VmResource - machineName = $machineName"
+    Write-Verbose "New-VmResource - baseVhdx = $baseVhdx"
+    Write-Verbose "New-VmResource - hypervHost = $hypervHost"
+    Write-Verbose "New-VmResource - vhdxStoragePath = $vhdxStoragePath"
+    Write-Verbose "New-VmResource - configPath = $configPath"
+    Write-Verbose "New-VmResource - staticMacAddress = $staticMacAddress"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $vm = New-HypervVmFromBaseImage `
+        -vmName $machineName `
+        -baseVhdx $baseVhdx `
+        -vhdxStoragePath $vhdxStoragePath `
+        -configPath $configPath `
+        -hypervHost $hypervHost `
+        @commonParameterSwitches
+
+    if ($staticMacAddress -ne '')
+    {
+        $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+    }
+
+    return $vm
 }
 
-if (-not (Test-Path $logDirectory))
+function Set-ProvisioningInformation
 {
-    New-Item -Path $logDirectory -ItemType Directory | Out-Null
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject] $vm,
+
+        [Parameter(Mandatory = $true)]
+        [string] $hypervHost,
+
+        [Parameter(Mandatory = $true)]
+        [string] $vhdxStoragePath,
+
+        [Parameter(Mandatory = $false)]
+        [string] $provisioningBootstrapUrl
+    )
+
+    Write-Verbose "Set-ProvisioningInformation - vm = $vm"
+    Write-Verbose "Set-ProvisioningInformation - hypervHost = $hypervHost"
+    Write-Verbose "Set-ProvisioningInformation - vhdxStoragePath = $vhdxStoragePath"
+    Write-Verbose "Set-ProvisioningInformation - provisioningBootstrapUrl = $provisioningBootstrapUrl"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    $vhdx = $vm |
+        Select-Object vmid @commonParameterSwitches |
+        Get-VHD -Computer $hypervHost @commonParameterSwitches
+    $vhdxLocalPath = $vhdx.Path
+    $vhdxUncPath = Join-Path $vhdxStoragePath $(Split-Path $vhdxLocalPath -Leaf)
+
+    $driveLetter = Mount-Vhdx -vhdPath $vhdxUncPath @commonParameterSwitches
+    try
+    {
+        # Copy the remaining configuration scripts
+        $provisioningDirectory = "$($driveLetter):\provisioning"
+        if (-not (Test-Path $provisioningDirectory))
+        {
+            New-Item -Path $provisioningDirectory -ItemType Directory | Out-Null
+        }
+
+        $json = New-Object psobject -Property @{
+            'consul' = $provisioningBootstrapUrl
+        }
+
+        ConvertTo-Json -InputObject $json @commonParameterSwitches | Out-File -FilePath (Join-Path $provisioningDirectory 'provisioning.json')
+    }
+    finally
+    {
+        Dismount-Vhdx -vhdPath $vhdxUncPath @commonParameterSwitches
+    }
 }
 
-$hypervHostVmStoragePath = "\\$(hypervHost)\vms\machines"
-$unattendedJoin = Get-Content -Path $unattendedJoinFile -Encoding Ascii @commonParameterSwitches
+# -------------------- Script ---------------------------
+
+$hypervHostVmStoragePath = "\\$($hypervHost)\vms\machines"
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
-$registeredOwner = Get-RegisteredOwner @commonParameterSwitches
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter $imageName | Select-Object -First 1
 
-New-HypervVmOnDomain `
+$vm = New-VmResource `
     -machineName $machineName `
-    -baseVhdx $baseVhdx `
-    -vhdxStoragePath $vhdxStoragePath `
+    -baseVhdx $baseVhdx.FullName `
     -hypervHost $hypervHost `
-    -registeredOwner $registeredOwner `
-    -domainName $env:USERDNSDOMAIN `
-    -unattendedJoin $unattendedJoin `
+    -vhdxStoragePath $vhdxStoragePath `
+    -configPath $configPath `
+    -staticMacAddress $staticMacAddress `
+    @commonParameterSwitches
+
+Set-ProvisioningInformation `
+    -vm $vm `
+    -hypervHost $hypervHost `
+    -vhdxStoragePath $vhdxStoragePath `
+    -provisioningBootstrapUrl $provisioningBootstrapUrl `
     @commonParameterSwitches
 
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
@@ -204,4 +280,48 @@ $connection = Get-ConnectionInformationForVm `
     -timeOutInSeconds 900 `
     @commonParameterSwitches
 
-# verify
+Write-Verbose "Enabling provisioning ..."
+Invoke-Command `
+    -Session $connection.Session `
+    -ScriptBlock {
+
+        # Stop everything if there are errors
+        $ErrorActionPreference = 'Stop'
+
+        $commonParameterSwitches =
+            @{
+                Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                Debug = $false;
+                ErrorAction = 'Stop'
+            }
+
+        try
+        {
+            Set-Service `
+                -Name 'Provisioning' `
+                -StartupType Manual `
+                @commonParameterSwitches
+
+            Start-Service `
+                -Name 'Provisioning' `
+                @commonParameterSwitches
+
+            $killTime = (Get-Date).AddSeconds(5 * 60)
+            while ((Get-Date) -lt $killTime)
+            {
+                Write-Verbose "Waiting for provisioning to complete. Waiting another $($killTime - (Get-Date)) ..."
+                $service = Get-Service -name 'Provisioning' @commonParameterSwitches
+                if ($service.Status -eq ([System.ServiceProcess.ServiceControllerStatus]::Stopped))
+                {
+                    continue
+                }
+            }
+        }
+        catch
+        {
+            Write-Error "Failed to stop the service. Error was $($_.Exception.ToString())"
+        }
+    } `
+    @commonParameterSwitches
+
+return $connection

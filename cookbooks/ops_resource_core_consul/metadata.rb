@@ -6,7 +6,7 @@ description 'Configures a server with a consul service'
 long_description IO.read(File.join(File.dirname(__FILE__), 'README.md'))
 version '${VersionSemantic}'
 
-depends 'windows', '~>1.38.3'
-depends 'windows_firewall', '~>3.0.0'
-depends 'ops_resource_core_meta', '~>${VersionSemantic}'
-depends 'ops_resource_core_provisioning', '~>${VersionSemantic}'
+depends 'windows', '>= 1.41'
+depends 'windows_firewall', '>= 3.0'
+depends 'ops_resource_core_meta', '>= ${VersionMajor}.${VersionMinor}'
+depends 'ops_resource_core_provisioning', '>= ${VersionMajor}.${VersionMinor}'

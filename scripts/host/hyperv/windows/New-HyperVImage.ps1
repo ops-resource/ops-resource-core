@@ -74,6 +74,17 @@
     .PARAMETER hypervHostVmStoragePath
 
     The UNC path to the directory that stores the Hyper-V VM information.
+
+
+    .PARAMETER configPath
+
+    The full path to the directory that contains the unattended file that contains the parameters for an unattended setup
+    and any necessary script files which will be used during the configuration of the operating system.
+
+
+    .PARAMETER staticMacAddress
+
+    An optional static MAC address that is applied to the VM so that it can be given a consistent IP address.
 #>
 [CmdletBinding()]
 param(
@@ -114,7 +125,13 @@ param(
     [string] $vhdxTemplatePath                                  = "\\$($hypervHost)\vmtemplates",
 
     [Parameter(Mandatory = $true)]
-    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines"
+    [string] $hypervHostVmStoragePath                           = "\\$($hypervHost)\vms\machines",
+
+    [Parameter(Mandatory = $true)]
+    [string] $configPath                                        = '',
+
+    [Parameter(Mandatory = $false)]
+    [string] $staticMacAddress                                  = ''
 )
 
 Write-Verbose "New-HyperVImage - credential = $credential"
@@ -129,6 +146,8 @@ Write-Verbose "New-HyperVImage - machineName = $machineName"
 Write-Verbose "New-HyperVImage - hypervHost = $hypervHost"
 Write-Verbose "New-HyperVImage - vhdxTemplatePath = $vhdxTemplatePath"
 Write-Verbose "New-HyperVImage - hypervHostVmStoragePath = $hypervHostVmStoragePath"
+Write-Verbose "New-HyperVImage - configPath = $configPath"
+Write-Verbose "New-HyperVImage - staticMacAddress = $staticMacAddress"
 
 
 # Stop everything if there are errors
@@ -145,6 +164,120 @@ $commonParameterSwitches =
 . (Join-Path $PSScriptRoot hyperv.ps1)
 . (Join-Path $PSScriptRoot sessions.ps1)
 . (Join-Path $PSScriptRoot windows.ps1)
+. (Join-Path $PSScriptRoot WinRM.ps1)
+
+# --------------------------- Functions --------------------------------------
+
+function Clear-UnnecessaryData
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session
+    )
+
+    Write-Verbose "Clear-UnnecessaryData - session = $session"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Invoke-Command `
+        -Session $session `
+        -ScriptBlock {
+
+            # Stop everything if there are errors
+            $ErrorActionPreference = 'Stop'
+
+            $commonParameterSwitches =
+                @{
+                    Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                    Debug = $false;
+                    ErrorAction = 'Stop'
+                }
+
+            Write-Verbose "Cleaning SxS..."
+            Dism.exe /online /Cleanup-Image /StartComponentCleanup /ResetBase
+
+            @(
+                'Desktop-Experience',
+                'InkAndHandwritingServices',
+                'Server-Media-Foundation' ) |
+                Remove-WindowsFeature
+
+            Get-WindowsFeature |
+                Where-Object { $_.InstallState -eq 'Available' } |
+                Uninstall-WindowsFeature -Remove
+        } `
+        @commonParameterSwitches
+}
+
+function Resume-InstalledResources
+{
+    [CmdletBinding()]
+    param(
+        [System.Management.Automation.Runspaces.PSSession] $session
+    )
+
+    Write-Verbose "Resume-InstalledResources - session = $session"
+
+    # Stop everything if there are errors
+    $ErrorActionPreference = 'Stop'
+
+    $commonParameterSwitches =
+        @{
+            Verbose = $PSBoundParameters.ContainsKey('Verbose');
+            Debug = $false;
+            ErrorAction = 'Stop'
+        }
+
+    Invoke-Command `
+        -Session $session `
+        -ScriptBlock {
+
+            # Stop everything if there are errors
+            $ErrorActionPreference = 'Stop'
+
+            $commonParameterSwitches =
+                @{
+                    Verbose = $PSBoundParameters.ContainsKey('Verbose');
+                    Debug = $false;
+                    ErrorAction = 'Stop'
+                }
+
+            $resumePath = 'c:\resume'
+            if (Test-Path $resumePath)
+            {
+                $scripts = Get-ChildItem -Path $resumePath -File -Filter *.ps1 @commonParameterSwitches
+                foreach($script in $scripts)
+                {
+                    try
+                    {
+                        & $script
+                    }
+                    catch [System.Exception]
+                    {
+                        # ignore it
+                    }
+                }
+
+                Remove-Item `
+                    -Path $resumePath `
+                    -Recurse `
+                    -Force `
+                    -ErrorAction SilentlyContinue `
+                    -Verbose
+            }
+        } `
+        @commonParameterSwitches
+}
+
+# --------------------------- Script -----------------------------------------
 
 if (-not (Test-Path $installationDirectory))
 {
@@ -154,30 +287,6 @@ if (-not (Test-Path $installationDirectory))
 if (-not (Test-Path $logDirectory))
 {
     New-Item -Path $logDirectory -ItemType Directory | Out-Null
-}
-
-if ($psCmdlet.ParameterSetName -eq 'FromMetaCluster')
-{
-    . $(Join-Path $PSScriptRoot 'Consul.ps1')
-
-    $consulDomain = Get-ConsulDomain `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        @commonParameterSwitches
-    $hypervHost = "host.hyperv.service.$($consulDomain)"
-
-    $hypervHostVmStorageSubPath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\storagesubpath' `
-        @commonParameterSwitches
-    $hypervHostVmStoragePath = "\\$($hypervHost)\$($hypervHostVmStorageSubPath)"
-
-    $vhdxTemplatePath = Get-ConsulKeyValue `
-        -environment $environmentName `
-        -consulLocalAddress $consulLocalAddress `
-        -keyPath 'service\hyperv\templatesubpath' `
-        @commonParameterSwitches
 }
 
 if (-not (Test-Path $hypervHostVmStoragePath))
@@ -191,17 +300,26 @@ if (-not (Test-Path $vhdxTemplatePath))
 }
 
 $vhdxStoragePath = "$($hypervHostVmStoragePath)\hdd"
-$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
+$baseVhdx = Get-ChildItem -Path $vhdxTemplatePath -File -Recurse -Filter "$($osName)*.vhdx" | Sort-Object LastWriteTime | Select-Object -First 1
 
-New-HypervVmFromBaseImage `
+$vm = New-HypervVmFromBaseImage `
     -vmName $machineName `
-    -baseVhdx $baseVhdx `
-    -hypervHost $hypervHost `
+    -baseVhdx $($baseVhdx.FullName) `
     -vhdxStoragePath $vhdxStoragePath `
+    -configPath $configPath `
+    -hypervHost $hypervHost `
     @commonParameterSwitches
 
+if ($staticMacAddress -ne '')
+{
+    # Ensure that the VM has a specific Mac address so that it will get a known IP address
+    # That IP address will be added to the trustedhosts list so that we can remote into
+    # the machine without having it be attached to the domain.
+    $vm | Get-VMNetworkAdapter | Set-VMNetworkAdapter -StaticMacAddress $staticMacAddress @commonParameterSwitches
+}
+
 Start-VM -Name $machineName -ComputerName $hypervHost @commonParameterSwitches
-timeOutInSeconds = 900
+$timeOutInSeconds = 900
 $connection = Get-ConnectionInformationForVm `
     -machineName $machineName `
     -hypervHost $hypervHost `
@@ -219,12 +337,33 @@ $newWindowsResource = Join-Path $PSScriptRoot 'New-WindowsResource.ps1'
     -logDirectory $logDirectory `
     @commonParameterSwitches
 
+Restart-Machine `
+    -connection $connection `
+    -localAdminCredential $credential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+$connection = Get-ConnectionInformationForVm `
+    -machineName $machineName `
+    -hypervHost $hypervHost `
+    -localAdminCredential $credential `
+    -timeOutInSeconds $timeOutInSeconds `
+    @commonParameterSwitches
+
+Resume-InstalledResources `
+    -session $connection.Session `
+    @commonParameterSwitches
+
+Clear-UnnecessaryData `
+    -session $connection.Session `
+    @commonParameterSwitches
+
 New-HypervVhdxTemplateFromVm `
     -vmName $machineName `
     -vhdPath (Join-Path $vhdxStoragePath "$($machineName).vhdx") `
     -vhdxTemplatePath (Join-Path $vhdxTemplatePath $imageName) `
     -hypervHost $hypervHost `
     -localAdminCredential $credential `
+    -logPath $logDirectory `
     -timeOutInSeconds $timeOutInSeconds `
-    -tempPath $tempPath `
     @commonParameterSwitches

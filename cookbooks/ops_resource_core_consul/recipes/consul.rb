@@ -16,8 +16,8 @@ win_service_name = 'consul_service'
 # Create user
 # - limited user
 # - Reduce access to files. User should only have write access to consul dir
-service_username = 'consul_user'
-service_password = SecureRandom.uuid
+service_username = node['service']['consul_user_name']
+service_password = node['service']['consul_user_password']
 user service_username do
   password service_password
   action :create
@@ -178,9 +178,13 @@ server_port = node[environment]['consul_server_port']
 
 consul_config_file = node['file_name']['consul_config_file']
 
+# Get the user that runs the consul template service so that we can give it access to the consul config files.
+consultemplate_service_username = node['service']['consultemplate_user_name']
+
 # We need to multiple-escape the escape character because of ruby string and regex etc. etc. See here: http://stackoverflow.com/a/6209532/539846
 consul_data_directory_json_escaped = consul_data_directory.gsub('\\', '\\\\\\\\')
 file "#{consul_bin_directory}\\#{consul_config_file}" do
+  rights :modify, consultemplate_service_username, applies_to_children: true, applies_to_self: true
   content <<-JSON
 {
   "data_dir": "#{consul_data_directory_json_escaped}",
@@ -195,7 +199,7 @@ file "#{consul_bin_directory}\\#{consul_config_file}" do
   },
 
   "ports": {
-    "dns": #{dns_port}
+    "dns": #{dns_port},
     "http": #{http_port},
     "rpc": #{rpc_port},
     "serf_lan": #{serf_lan_port},

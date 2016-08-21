@@ -1,6 +1,6 @@
 #
 # Cookbook Name:: ops_resource_core_meta
-# Recipe:: default_meta
+# Recipe:: default
 #
 # Copyright 2015, P. van der Velde
 #
