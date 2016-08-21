@@ -53,23 +53,23 @@ function New-Session
     $commonParameterSwitches =
         @{
             Verbose = $PSBoundParameters.ContainsKey('Verbose');
-            Debug = $PSBoundParameters.ContainsKey('Debug');
+            Debug = $false;
             ErrorAction = 'Stop'
         }
 
     if ($authenticateWithCredSSP -and ($credential -ne $null))
     {
-        $session = New-PSSession -ComputerName $computerName -Authentication Credssp -Credential $credential
+        $session = New-PSSession -ComputerName $computerName -Authentication Credssp -Credential $credential @commonParameterSwitches
     }
     else
     {
         if ($credential -ne $null)
         {
-            $session = New-PSSession -ComputerName $computerName -Credential $credential
+            $session = New-PSSession -ComputerName $computerName -Credential $credential @commonParameterSwitches
         }
         else
         {
-            $session = New-PSSession -ComputerName $computerName
+            $session = New-PSSession -ComputerName $computerName @commonParameterSwitches
         }
     }
 

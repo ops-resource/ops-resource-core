@@ -65,7 +65,7 @@
 
     .EXAMPLE
 
-    New-AzureImage -configFile 'c:\temp\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\temp\source'
+    New-AzureImage -configFile 'c:\init\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\init\source'
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
@@ -105,7 +105,7 @@ $ErrorActionPreference = 'Stop'
 $commonParameterSwitches =
     @{
         Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $PSBoundParameters.ContainsKey('Debug');
+        Debug = $false;
         ErrorAction = "Stop"
     }
 

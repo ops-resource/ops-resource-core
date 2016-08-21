@@ -16,8 +16,8 @@
 #>
 [CmdletBinding()]
 param(
-    [string] $testDirectory = "c:\temp\verification",
-    [string] $logDirectory  = "c:\temp\logs"
+    [string] $testDirectory = "c:\init\verification",
+    [string] $logDirectory  = "c:\init\logs"
 )
 
 Write-Verbose "Test-ConfigurationOnWindowsMachine - testDirectory: $testDirectory"

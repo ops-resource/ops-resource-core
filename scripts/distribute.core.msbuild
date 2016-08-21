@@ -8,6 +8,13 @@
 
         <!-- The full path to the settings file that contains all the settings for the build process -->
         <BuildPropertyFile Condition=" '$(BuildPropertyFile)' == '' ">UNDEFINED</BuildPropertyFile>
+
+        <!--
+            Define the DirWorkspace before importing the BuildPropertyFile so that it is defined and can be used by
+            the properties in the BuildPropertyFile. Note that we can't define it in the BuildPropertyFile because that
+            is imported which means there is no way to get the path of the file.
+        -->
+        <DirWorkspace Condition=" '$(DirWorkspace)' == '' ">$([System.IO.Path]::GetDirectoryName('$(BuildPropertyFile)'))</DirWorkspace>
     </PropertyGroup>
 
     <Import Project="$(BuildPropertyFile)"
@@ -18,8 +25,8 @@
         <ShouldDisplayDebugLog Condition=" '$(ShouldDisplayDebugLog)' == '' ">false</ShouldDisplayDebugLog>
         <ShouldExecute Condition=" '$(ShouldExecute)' == '' ">true</ShouldExecute>
 
-        <InstallMeta Condition=" '$(InstallMeta)' == '' ">true</InstallMeta>
         <InstallConsul Condition=" '$(InstallConsul)' == '' ">true</InstallConsul>
+        <InstallProvisioning Condition=" '$(InstallProvisioning)' == '' OR '$(InstallConsul)' == 'true' ">true</InstallProvisioning>
 
         <!-- Properties -->
         <ConsulDatacenter Condition=" '$(ConsulDatacenter)' == '' ">UNDEFINED</ConsulDatacenter>
@@ -56,14 +63,19 @@
 
         <FileInitializeLocalNetworkScriptTemplate>$(DirOriginTemplates)\host\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptTemplate>
         <FileInitializeLocalNetworkScriptGenerated>$(DirOutput)\Initialize-LocalNetworkResource.ps1</FileInitializeLocalNetworkScriptGenerated>
+
+        <FileInitializeHypervScriptTemplate>$(DirOriginTemplates)\host\Initialize-HyperVImage.ps1</FileInitializeHypervScriptTemplate>
+        <FileInitializeHypervScriptGenerated>$(DirOutput)\Initialize-HyperVImage.ps1</FileInitializeHypervScriptGenerated>
     </PropertyGroup>
 
     <ItemGroup>
-        <CookbooksToInvoke Include="ops_resource_core::default_meta"
-                           Condition=" '$(InstallMeta)' == 'true' " />
-        <CookbooksToInvoke Include="ops_resource_core::default_consul"
-                           Condition=" '$(InstallConsul)' == 'true' " />
-        <CookbooksToInvoke Include="$(CookbooksToInvoke)" />
+        <CookbooksToUseForConfiguration Include="ops_resource_core_meta::default"/>
+        <CookbooksToUseForConfiguration Include="ops_resource_core_provisioning::default"
+                                        Condition=" '$(InstallProvisioning)' == 'true' " />
+        <CookbooksToUseForConfiguration Include="ops_resource_core_consul::default"
+                                        Condition=" '$(InstallConsul)' == 'true' " />
+        <CookbooksToUseForConfiguration Include="$(CookbooksToInvoke)"
+                                        Condition=" '$(CookbooksToInvoke)' != '' " />
     </ItemGroup>
 
     <Import Project="$(MSBuildProjectDirectory)\dependencies.msbuild"
@@ -102,8 +114,8 @@
 
         <Message Text="External dependencies file is located at:                            $(FileNonCoreDependencies)" />
         <Message Text="Cookbooks that should be invoked are:                                $(CookbooksToInvoke)" />
-        <Message Text="Install meta:                                                        $(InstallMeta)" />
         <Message Text="Install consul:                                                      $(InstallConsul)" />
+        <Message Text="Install provisioning:                                                $(InstallProvisioning)" />
         <Message Text=" " />
 
         <Message Text="The directory containing the nBuildKit files is located at:          $(DirNBuildKitMsBuild)"/>
@@ -126,10 +138,7 @@
                  Condition="!Exists('$(DirOutputVerification)')" />
 
         <ItemGroup>
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\New*.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\Consul.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\WinRm.ps1" />
-            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\sessions.ps1" />
+            <HostConfigurationScriptFiles Include="$(DirOriginScriptsHost)\*.ps1" />
         </ItemGroup>
         <Copy SourceFiles="@(HostConfigurationScriptFiles)"
               DestinationFiles="@(HostConfigurationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
@@ -147,6 +156,9 @@
         <Copy SourceFiles="@(HostVerificationScriptFiles)"
               DestinationFiles="@(HostVerificationScriptFiles->'$(DirOutput)\%(Filename)%(Extension)')" />
 
+        <Copy SourceFiles="@(TestTools)"
+              DestinationFiles="@(TestTools->'$(DirOutput)\%(Name)')" />
+
         <ItemGroup>
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Test*.ps1" />
             <ClientVerificationScriptFiles Include="$(DirOriginScriptsClient)\Consul.ps1" />
@@ -162,7 +174,7 @@
 
         <ItemGroup>
             <TemplateTokens Include="CookbookNames" >
-                <ReplacementValue>@(CookbooksToInvoke)</ReplacementValue>
+                <ReplacementValue>@(CookbooksToUseForConfiguration)</ReplacementValue>
             </TemplateTokens>
         </ItemGroup>
 
@@ -170,6 +182,11 @@
                       OutputFileName="$(FileInitializeLocalNetworkScriptGenerated)"
                       Tokens="@(TemplateTokens)"
                       Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeLocalNetworkScriptTemplate)')"/>
+
+        <TemplateFile Template="$(FileInitializeHypervScriptTemplate)"
+                      OutputFileName="$(FileInitializeHypervScriptGenerated)"
+                      Tokens="@(TemplateTokens)"
+                      Condition=" '$(ShouldExecute)' == 'true' AND Exists('$(FileInitializeHypervScriptTemplate)')"/>
     </Target>
 
     <Target Name="_Distribute_Core_Cookbooks"
@@ -197,10 +214,11 @@
                  Condition="!Exists('$(DirOutputVerificationTests)')" />
 
         <ItemGroup>
-            <TestFiles Include="$(DirOriginTests)\Meta.Tests.ps1"
-                       Condition=" '$(InstallMeta)' == 'true' " />
+            <TestFiles Include="$(DirOriginTests)\Meta.Tests.ps1"/>
             <TestFiles Include="$(DirOriginTests)\Consul.Tests.ps1"
                        Condition=" '$(InstallConsul)' == 'true' " />
+            <TestFiles Include="$(DirOriginTests)\Provisioning.Tests.ps1"
+                       Condition=" '$(InstallProvisioning)' == 'true' " />
         </ItemGroup>
         <Copy SourceFiles="@(TestFiles)"
               DestinationFiles="@(TestFiles->'$(DirOutputVerificationTests)\%(Filename)%(Extension)')" />
@@ -240,9 +258,6 @@
             <TemplateTokens Include="DestinationVerification">
                 <ReplacementValue>$(DirOutputVerification)</ReplacementValue>
             </TemplateTokens>
-            <TemplateTokens Include="CookbookName" Condition=" '%(ExternalFiles.CookbookName)' != '' ">
-                <ReplacementValue>%(ExternalFiles.CookbookName)</ReplacementValue>
-            </TemplateTokens>
             <TemplateTokens Include="RecursiveDir">
                 <ReplacementValue>%(ExternalFiles.RecursiveDir)</ReplacementValue>
             </TemplateTokens>
@@ -253,7 +268,7 @@
                 <ReplacementValue>%(ExternalFiles.Extension)</ReplacementValue>
             </TemplateTokens>
         </ItemGroup>
-        <TemplateText Template="%(ExternalFiles.Destination)"
+        <TemplateText Template="%(ExternalFiles.Identity)"
                       Tokens="@(TemplateTokens)">
             <Output TaskParameter="Result" PropertyName="ExternalFilesForScriptsDestination" />
         </TemplateText>
@@ -272,7 +287,7 @@
         <MakeDir Directories="$(DirToCreate)"
                  Condition="!Exists('$(DirToCreate)') AND '$(ShouldExecute)' == 'true' " />
 
-        <Copy SourceFiles="%(ExternalFiles.Identity)"
+        <Copy SourceFiles="%(ExternalFiles.Source)"
               DestinationFiles="$(ExternalFilesForScriptsDestinationWithoutSpaces)" />
     </Target>
 </Project>

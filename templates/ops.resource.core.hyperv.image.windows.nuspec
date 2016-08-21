@@ -1,0 +1,50 @@
+<?xml version="1.0"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Ops.Resource.Core.HyperV.Image.Windows</id>
+        <version>$VersionSemantic$</version>
+        <authors>P. van der Velde</authors>
+        <owners>P. van der Velde</owners>
+        <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
+        <projectUrl>$CompanyUrl$</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>
+            Provides the core cookbooks and scripts that are used to configure new Windows install on a Hyper-V virtual hard drive template.
+        </description>
+        <dependencies>
+            $Dependencies$
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="$DirOutput$\cookbooks\**\*"
+              exclude="$DirOutput$\cookbooks\**\*_spec.rb"
+              target="cookbooks" />
+        <file src="$DirOutput$\tools\**\*.*"
+              target="tools" />
+        <file src="$DirOutput$\tests\**\*.*"
+              target="tests" />
+
+        <file src="$DirOutput$\scripts\client\windows\*.*"
+              target="scripts\client" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1"
+              target="scripts\client" />
+
+        <file src="$DirOutput$\scripts\host\hyperv\windows\*.*"
+              exclude="$DirOutput$\scripts\host\hyperv\windows\New-StandardVhdFromWindowsIso.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\host\lan\windows\Test*.*"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\host\*.*"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\windows\*.ps1"
+              target="scripts\host" />
+        <file src="$DirOutput$\scripts\utils\*.ps1"
+              target="scripts\host" />
+
+        <file src="$DirOutput$\templates\host\windows\hyperv\Initialize-HyperVImage.ps1"
+              target="templates\host" />
+
+        <file src="$DirOutput$\scripts\dependencies.msbuild" />
+        <file src="$DirOutput$\scripts\distribute.core.msbuild" />
+    </files>
+</package>

@@ -40,7 +40,7 @@
 
     .EXAMPLE
 
-    Verify-AzureWindowsImage -configFile 'c:\temp\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\temp\source'
+    Verify-AzureWindowsImage -configFile 'c:\init\azurejenkinsmaster.xml' -azureScriptDirectory 'c:\init\source'
 #>
 [CmdletBinding(SupportsShouldProcess = $True)]
 param(
@@ -61,7 +61,7 @@ $ErrorActionPreference = 'Stop'
 $commonParameterSwitches =
     @{
         Verbose = $PSBoundParameters.ContainsKey('Verbose');
-        Debug = $PSBoundParameters.ContainsKey('Debug');
+        Debug = $false;
         ErrorAction = "Stop"
     }
 

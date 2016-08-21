@@ -274,7 +274,9 @@
         <DirBuildTempCoreScripts>$(DirBuildTempCore)\scripts</DirBuildTempCoreScripts>
         <DirBuildTempCoreTemplates>$(DirBuildTempCore)\templates</DirBuildTempCoreTemplates>
         <DirBuildTempCoreCookbooks>$(DirBuildTempCore)\cookbooks</DirBuildTempCoreCookbooks>
-        <DirBuildTempCoreCookbooksResourceCore>$(DirBuildTempCoreCookbooks)\ops_resource_core</DirBuildTempCoreCookbooksResourceCore>
+        <DirBuildTempCoreCookbooksResourceCoreMeta>$(DirBuildTempCoreCookbooks)\ops_resource_core_meta</DirBuildTempCoreCookbooksResourceCoreMeta>
+        <DirBuildTempCoreCookbooksResourceCoreConsul>$(DirBuildTempCoreCookbooks)\ops_resource_core_consul</DirBuildTempCoreCookbooksResourceCoreConsul>
+        <DirBuildTempCoreCookbooksResourceCoreProvisioning>$(DirBuildTempCoreCookbooks)\ops_resource_core_provisioning</DirBuildTempCoreCookbooksResourceCoreProvisioning>
         <DirBuildTempCoreTests>$(DirBuildTempCore)\tests</DirBuildTempCoreTests>
         <DirBuildTempCoreTools>$(DirBuildTempCore)\tools</DirBuildTempCoreTools>
         <DirBuildTempCoreToolsPester>$(DirBuildTempCoreTools)\pester</DirBuildTempCoreToolsPester>
@@ -284,7 +286,9 @@
 
         <!-- The directory that contains the Chef cookbooks -->
         <DirCookbooks Condition=" '$(DirCookbooks)' == '' ">$(DirWorkspace)\cookbooks</DirCookbooks>
-        <DirCookbooksResourceCore>$(DirCookbooks)\ops_resource_core</DirCookbooksResourceCore>
+        <DirCookbooksResourceCoreMeta>$(DirCookbooks)\ops_resource_core_meta</DirCookbooksResourceCoreMeta>
+        <DirCookbooksResourceCoreConsul>$(DirCookbooks)\ops_resource_core_consul</DirCookbooksResourceCoreConsul>
+        <DirCookbooksResourceCoreProvisioning>$(DirCookbooks)\ops_resource_core_provisioning</DirCookbooksResourceCoreProvisioning>
 
         <!-- The directory that contains all the NuGet packages for the project -->
         <DirPackages Condition=" '$(DirPackages)' == '' ">$(DirWorkspace)\packages</DirPackages>
@@ -1205,16 +1209,10 @@
         All file paths allow build templates, e.g. $(DirSrc)\${ProductName}\myproject.nuspec.
     -->
     <ItemGroup>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.azure.windows.nuspec">
+        <NuGetPackageSpecs Include="$(DirTemplates)\*.nuspec">
             <ShouldBuildSymbols>false</ShouldBuildSymbols>
             <IncludedDependencies>
-            </IncludedDependencies>
-            <ExcludedDependencies>
-            </ExcludedDependencies>
-        </NuGetPackageSpecs>
-        <NuGetPackageSpecs Include="$(DirTemplates)\ops.resource.core.lan.windows.nuspec">
-            <ShouldBuildSymbols>false</ShouldBuildSymbols>
-            <IncludedDependencies>
+                $(DirWorkspace)\packages.config
             </IncludedDependencies>
             <ExcludedDependencies>
             </ExcludedDependencies>
@@ -1229,6 +1227,8 @@
     <ItemGroup>
         <DesignTimeDependencies Include="nBuildKit" />
         <DesignTimeDependencies Include="nUnit" />
+        <DesignTimeDependencies Include="GitReleaseNotes" />
+        <DesignTimeDependencies Include="GitVersion" />
     </ItemGroup>
 
 

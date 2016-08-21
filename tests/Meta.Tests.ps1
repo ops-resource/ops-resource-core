@@ -6,7 +6,9 @@
 Describe 'Meta installation' {
     Context 'The meta install location' {
         It 'has the directories' {
+            'c:\logs' | Should Exist
             'c:\meta' | Should Exist
+            'c:\ops' | Should Exist
         }
 
         It 'has a valid metadata file' {
