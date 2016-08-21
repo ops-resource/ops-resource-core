@@ -402,7 +402,7 @@ finally
         Stop-VM `
             -ComputerName $hypervHost `
             -Name $machineName `
-            -Force `
+            -TurnOff `
             @commonParameterSwitches
     }
     catch
