@@ -140,7 +140,6 @@ consultemplate_template_directory_escaped = consultemplate_template_directory.gs
 consultemplate_config_file = 'consultemplate_default.json'
 file "#{consultemplate_bin_directory}\\#{consultemplate_config_file}" do
   content <<-JSON
-
 consul = "127.0.0.1:#{consul_port}"
 
 retry = "10s"
